@@ -1,5 +1,7 @@
 node_modules/
 dist/
+coverage/
+.idea/
 .env
 .env.local
 .env.development.local
@@ -8,6 +10,7 @@ dist/
 .env.billing.production
 !.env.example
 !.env.*.example
+*.tsbuildinfo
 
 *.log
 npm-debug.log*
