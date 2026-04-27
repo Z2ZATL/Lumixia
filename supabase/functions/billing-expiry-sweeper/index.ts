@@ -33,10 +33,14 @@ serve(async (request) => {
 
     const items = Array.isArray(data) ? data : [];
 
-    return jsonResponse({
-      processedCount: items.length,
-      items,
-    });
+    return jsonResponse(
+      {
+        processedCount: items.length,
+        items,
+      },
+      {},
+      request,
+    );
   } catch (error) {
     return jsonResponse(
       {
@@ -44,6 +48,7 @@ serve(async (request) => {
           error instanceof Error ? error.message : 'Credit expiry sweep failed.',
       },
       { status: 400 },
+      request,
     );
   }
 });

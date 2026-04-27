@@ -47,6 +47,11 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           ? 'Active'
           : null;
 
+  const openBillingCenter = () => {
+    onCloseMobile();
+    onOpenCreditsModal();
+  };
+
   return (
     <>
       <div
@@ -143,10 +148,7 @@ export const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               aria-label="Open Lumixia billing center"
               className="ml-auto inline-flex items-center gap-1 rounded-lg border border-primary/20 px-2 py-1 text-[10px] font-semibold text-primary/70 transition-colors hover:border-primary/35 hover:text-primary"
               type="button"
-              onClick={() => {
-                onCloseMobile();
-                onOpenCreditsModal();
-              }}
+              onClick={openBillingCenter}
             >
               <span className="material-symbols-outlined text-[14px]">
                 open_in_new

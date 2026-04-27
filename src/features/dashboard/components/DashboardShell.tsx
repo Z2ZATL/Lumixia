@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { CreditsModal } from '../../billing/components/CreditsModal';
 import { useDashboard } from '../context/DashboardContext';
@@ -8,8 +8,8 @@ import { PopupModal } from './PopupModal';
 import { RightRail } from './RightRail';
 
 export const DashboardShell: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     closePopup,
     popupMessage,
@@ -20,10 +20,13 @@ export const DashboardShell: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMobileRightRailOpen, setIsMobileRightRailOpen] = useState(false);
 
-  const searchParams = new URLSearchParams(location.search);
+  const searchParams = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
   const isCreditsModalOpen = searchParams.get('billing') === 'center';
 
-  const updateBillingModalState = (nextOpenState: boolean) => {
+  const updateBillingModalState = useCallback((nextOpenState: boolean) => {
     const nextSearchParams = new URLSearchParams(location.search);
 
     if (nextOpenState) {
@@ -41,7 +44,7 @@ export const DashboardShell: React.FC = () => {
       },
       { replace: !nextOpenState },
     );
-  };
+  }, [location.pathname, location.search, navigate]);
 
   useEffect(() => {
     void syncLastRoute(location.pathname).catch(() => undefined);
@@ -55,7 +58,7 @@ export const DashboardShell: React.FC = () => {
   const isRightRailCollapsed = preferences?.rightRailCollapsed ?? false;
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-[#F4F5F7]">
+    <div className="fixed inset-0 h-dvh flex overflow-hidden bg-[#F4F5F7]">
       <DashboardSidebar
         isMobileOpen={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -65,6 +68,7 @@ export const DashboardShell: React.FC = () => {
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <button
+            aria-label="Open dashboard navigation"
             className="rounded-xl border border-slate-200 p-2 text-slate-700"
             type="button"
             onClick={() => setIsMobileSidebarOpen(true)}
@@ -80,6 +84,7 @@ export const DashboardShell: React.FC = () => {
             <span className="text-sm font-bold text-slate-900">Lumixia</span>
           </div>
           <button
+            aria-label="Open live activity rail"
             className="rounded-xl border border-slate-200 p-2 text-slate-700"
             type="button"
             onClick={() => setIsMobileRightRailOpen(true)}
@@ -132,6 +137,7 @@ export const DashboardShell: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
             <p className="text-sm font-bold text-slate-900">Live Activity</p>
             <button
+              aria-label="Close live activity rail"
               className="rounded-xl border border-slate-200 p-2 text-slate-700"
               type="button"
               onClick={() => setIsMobileRightRailOpen(false)}

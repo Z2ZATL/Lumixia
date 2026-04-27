@@ -8,29 +8,20 @@ import React, {
   useState,
 } from 'react';
 import { useAppSession } from '../../../app/AppSessionContext';
+import { getCreditsMode } from '../../auth/lib/credits';
 import {
-  consumeAgentCredits,
-  getCreditsMode,
-  refundAgentCredits,
-} from '../../auth/lib/credits';
-import {
-  appendExecutionLogs,
-  createExecutionSessionRecord,
   ensureUserDashboardState,
   fetchDashboardContent,
-  fetchExecutionLogs,
   fetchUserDashboardPreferences,
   fetchUserLifestyleEvents,
-  updateExecutionSessionRecord,
   upsertUserDashboardPreferences,
 } from '../lib/dashboard';
 import { attemptAutoReload } from '../../billing/lib/billing';
-import { getExecutionProvider } from '../lib/execution';
+import { resolveExecutionProvider } from '../lib/execution';
 import type {
   DashboardContentBundle,
   DashboardContextValue,
   DashboardProviderProps,
-  ExecutionSessionStatus,
   UserDashboardPreferences,
 } from '../types';
 
@@ -56,7 +47,8 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [popupMessage, setPopupMessage] = useState<string | null>(null);
   const lastSyncedRouteRef = useRef<string | null>(null);
-  const executionProvider = useMemo(() => getExecutionProvider(), []);
+  const executionProviderConfig = useMemo(() => resolveExecutionProvider(), []);
+  const executionProvider = executionProviderConfig.provider;
   const creditsMode = useMemo(() => getCreditsMode(), []);
 
   const loadDashboard = useCallback(async () => {
@@ -149,38 +141,10 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
         throw new Error('We could not find that workspace agent.');
       }
 
-      const providerSession = await executionProvider.createSession({
+      return executionProvider.createSession({
         agent,
         userId,
       });
-      const session = await createExecutionSessionRecord({
-        agentSlug: agent.slug,
-        agentName: agent.name,
-        executionCost: providerSession.executionCost,
-        providerMode: providerSession.providerMode,
-        status: providerSession.status,
-        userId,
-      });
-      const bootLogs = await executionProvider.listLogs({
-        agent,
-        sessionId: session.id,
-        userId,
-      });
-      await appendExecutionLogs({
-        logs: bootLogs,
-        sessionId: session.id,
-        userId,
-      });
-      const hydratedSession = await updateExecutionSessionRecord(session.id, {
-        status: 'idle',
-      });
-      const logs = await fetchExecutionLogs(session.id);
-
-      return {
-        session: hydratedSession,
-        logs,
-        providerSession,
-      };
     },
     [executionProvider, getAgentBySlug, userId],
   );
@@ -193,20 +157,12 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
         throw new Error('We could not find that workspace agent.');
       }
 
-      const executionAttemptId = crypto.randomUUID();
-      let consumedLiveCredits = false;
-
-      if (creditsMode === 'live') {
-        await consumeAgentCredits({
-          agentSlug: agent.slug,
-          executionSessionId: sessionId,
-          idempotencyKey: `usage:${sessionId}:${executionAttemptId}`,
-        });
-        consumedLiveCredits = true;
-        await refreshCredits();
+      if (creditsMode === 'live' && executionProviderConfig.mode !== 'api') {
+        throw new Error(
+          'Live credit execution requires the secure Lumixia execution API. Demo workspaces cannot debit credits.',
+        );
       }
 
-      await updateExecutionSessionRecord(sessionId, { status: 'running' });
       try {
         const executionResult = await executionProvider.execute({
           agent,
@@ -214,45 +170,27 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
           userId,
         });
 
-        await appendExecutionLogs({
-          logs: executionResult.logs,
-          sessionId,
-          userId,
-        });
-
-        const nextStatus: ExecutionSessionStatus =
-          executionResult.status === 'failed' ? 'failed' : 'completed';
-        const nextSession = await updateExecutionSessionRecord(sessionId, {
-          status: nextStatus,
-        });
-
         if (creditsMode === 'live') {
-          if (executionResult.status === 'failed') {
-            await refundAgentCredits({
-              executionSessionId: sessionId,
-              idempotencyKey: `usage-refund:${sessionId}:${executionAttemptId}`,
-              reason: 'execution_failed',
-            });
+          if (executionResult.session.status === 'failed') {
+            openPopup(
+              'The workspace run did not complete. Any execution-credit refund is handled by the secure server-side execution path.',
+            );
           }
 
           await refreshCredits();
           void attemptAutoReload().catch(() => undefined);
         }
 
-        const logs = await fetchExecutionLogs(sessionId);
-
         return {
-          session: nextSession,
-          logs,
+          session: executionResult.session,
+          logs: executionResult.logs,
         };
       } catch (error) {
-        if (creditsMode === 'live' && consumedLiveCredits) {
-          await refundAgentCredits({
-            executionSessionId: sessionId,
-            idempotencyKey: `usage-refund:${sessionId}:${executionAttemptId}:catch`,
-            reason: 'execution_failed',
-          }).catch(() => undefined);
+        if (creditsMode === 'live') {
           await refreshCredits();
+          openPopup(
+            'The workspace run did not complete. Any execution-credit refund is handled by the secure server-side execution path.',
+          );
         }
 
         throw error;
@@ -261,7 +199,9 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
     [
       creditsMode,
       executionProvider,
+      executionProviderConfig.mode,
       getAgentBySlug,
+      openPopup,
       refreshCredits,
       userId,
     ],
@@ -274,6 +214,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
       creditBalance,
       creditState,
       creditsMode,
+      executionProviderNotice: executionProviderConfig.configurationError,
       content,
       lifestyleEvents,
       preferences,
@@ -298,6 +239,7 @@ export const DashboardProvider: React.FC<DashboardProviderProps> = ({
       creditsMode,
       displayName,
       errorMessage,
+      executionProviderConfig.configurationError,
       executeWorkspaceAction,
       getAgentBySlug,
       isLoading,

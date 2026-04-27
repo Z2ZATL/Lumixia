@@ -34,12 +34,6 @@ export interface ConsumeCreditsResult {
   ledger_entry_id: string;
 }
 
-export interface RefundCreditsResult {
-  balance_after: number;
-  refunded_amount: number;
-  ledger_entry_id: string;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -149,60 +143,11 @@ export async function consumeAgentCredits(input: {
   executionSessionId: string;
   idempotencyKey: string;
 }) {
-  const { data, error } = await getSupabaseClient().rpc(
-    'consume_agent_credits',
-    {
-      agent_slug: input.agentSlug,
-      execution_session_id: input.executionSessionId,
-      idempotency_key: input.idempotencyKey,
-    },
+  void input;
+  throw normalizeCreditsError(
+    new Error(
+      'Execution credit debits are server-owned. Start the workspace through the secure execution API instead.',
+    ),
+    'consume',
   );
-
-  if (error) {
-    throw normalizeCreditsError(error, 'consume');
-  }
-
-  const firstRow = Array.isArray(data) ? data[0] : data;
-
-  if (!isRecord(firstRow)) {
-    throw new Error(
-      'The secure credits RPC did not return the updated account balance.',
-    );
-  }
-
-  return {
-    balance_after: toNumber(firstRow.balance_after, 0),
-    debited_amount: toNumber(firstRow.debited_amount, 0),
-    ledger_entry_id: String(firstRow.ledger_entry_id),
-  } satisfies ConsumeCreditsResult;
-}
-
-export async function refundAgentCredits(input: {
-  executionSessionId: string;
-  idempotencyKey: string;
-  reason?: string;
-}) {
-  const { data, error } = await getSupabaseClient().rpc('refund_agent_credits', {
-    execution_session_id: input.executionSessionId,
-    idempotency_key: input.idempotencyKey,
-    reason: input.reason ?? 'execution_failed',
-  });
-
-  if (error) {
-    throw normalizeCreditsError(error, 'consume');
-  }
-
-  const firstRow = Array.isArray(data) ? data[0] : data;
-
-  if (!isRecord(firstRow)) {
-    throw new Error(
-      'The secure credits refund RPC did not return the updated account balance.',
-    );
-  }
-
-  return {
-    balance_after: toNumber(firstRow.balance_after, 0),
-    refunded_amount: toNumber(firstRow.refunded_amount, 0),
-    ledger_entry_id: String(firstRow.ledger_entry_id),
-  } satisfies RefundCreditsResult;
 }

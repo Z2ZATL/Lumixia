@@ -117,20 +117,21 @@ export interface ExecutionProviderSession {
 }
 
 export interface ExecutionExecutionResult {
-  status: ExecutionSessionStatus;
-  logs: ExecutionProviderLog[];
+  session: ExecutionSessionRecord;
+  logs: ExecutionLogRecord[];
+}
+
+export interface ExecutionWorkspaceSessionResult {
+  session: ExecutionSessionRecord;
+  logs: ExecutionLogRecord[];
+  providerSession: ExecutionProviderSession;
 }
 
 export interface ExecutionProvider {
   createSession: (input: {
     agent: DashboardAgent;
     userId: string;
-  }) => Promise<ExecutionProviderSession>;
-  listLogs: (input: {
-    agent: DashboardAgent;
-    sessionId: string;
-    userId: string;
-  }) => Promise<ExecutionProviderLog[]>;
+  }) => Promise<ExecutionWorkspaceSessionResult>;
   execute: (input: {
     agent: DashboardAgent;
     sessionId: string;
@@ -150,6 +151,7 @@ export interface DashboardContextValue {
   creditBalance: number | null;
   creditState: CreditState;
   creditsMode: CreditsMode;
+  executionProviderNotice: string | null;
   content: DashboardContentBundle;
   lifestyleEvents: UserLifestyleEvent[];
   preferences: UserDashboardPreferences | null;
@@ -164,11 +166,7 @@ export interface DashboardContextValue {
   setRightRailCollapsed: (value: boolean) => Promise<void>;
   createWorkspaceSession: (
     agentSlug: string,
-  ) => Promise<{
-    session: ExecutionSessionRecord;
-    logs: ExecutionLogRecord[];
-    providerSession: ExecutionProviderSession;
-  }>;
+  ) => Promise<ExecutionWorkspaceSessionResult>;
   executeWorkspaceAction: (
     sessionId: string,
     agentSlug: string,

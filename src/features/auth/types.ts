@@ -58,6 +58,7 @@ export interface OtpStepProps {
   onBack: () => void;
   onVerify: (otp: string) => void;
   onResend?: () => Promise<boolean> | boolean;
+  autoSubmit?: boolean;
   timerDuration?: number;
   isDisabled?: boolean;
   isResendDisabled?: boolean;

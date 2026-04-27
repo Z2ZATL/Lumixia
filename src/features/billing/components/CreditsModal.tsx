@@ -307,6 +307,7 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({
       const checkoutSession = await createCheckoutSession({
         amountMinor: quoteAmountMinor,
         currency: selectedCurrency,
+        idempotencyKey: crypto.randomUUID(),
         returnUrl: window.location.href,
       });
 
@@ -361,19 +362,20 @@ export const CreditsModal: React.FC<CreditsModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-[220] bg-slate-950/40 backdrop-blur-md">
-      <div className="flex min-h-full items-center justify-center p-3 sm:p-4">
+      <div className="flex min-h-dvh items-center justify-center p-3 sm:p-4">
         <div
           ref={modalRef}
           aria-describedby={descriptionId}
           aria-labelledby={titleId}
           aria-modal="true"
-          className="relative flex max-h-[90vh] w-[min(960px,calc(100vw-1rem))] flex-col overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.28)]"
+          className="relative flex max-h-[90dvh] w-[min(960px,calc(100vw-1rem))] flex-col overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-[0_40px_120px_rgba(15,23,42,0.28)]"
           role="dialog"
         >
           <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(161,201,255,0.24),transparent_40%),linear-gradient(135deg,#0d2747_0%,#123b68_55%,#0f5a96_100%)] px-5 pb-10 pt-6 text-white sm:px-6 sm:pb-12 sm:pt-6">
             <div className="absolute inset-x-0 bottom-0 h-px bg-white/15" />
             <button
               ref={closeButtonRef}
+              aria-label="Close credits and billing center"
               className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20"
               type="button"
               onClick={onClose}

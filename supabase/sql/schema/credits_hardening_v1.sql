@@ -98,6 +98,10 @@ create table if not exists public.credit_ledger (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+create unique index if not exists credit_ledger_single_execution_refund_idx
+  on public.credit_ledger(user_id, reference_id, entry_kind)
+  where reference_type = 'execution_session' and entry_kind = 'usage_refund';
+
 update public.credit_ledger
 set entry_kind = case
   when entry_kind = 'top_up' then 'top_up_grant'
@@ -324,6 +328,11 @@ create index if not exists credit_top_up_orders_user_created_idx
 
 create index if not exists credit_top_up_orders_status_idx
   on public.credit_top_up_orders(status, created_at desc);
+
+create unique index if not exists credit_top_up_single_active_auto_reload_order_idx
+  on public.credit_top_up_orders(user_id)
+  where trigger_source = 'auto_reload'
+    and status in ('initiated', 'requires_action', 'processing');
 
 create table if not exists public.credit_auto_reload_policies (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -595,6 +604,9 @@ declare
   v_current_balance integer;
   v_next_balance integer;
   v_ledger_entry_id uuid;
+  v_monthly_cap_minor bigint;
+  v_current_month_spend bigint;
+  v_month_window_start timestamptz;
   v_receipt_number text;
   v_invoice_number text;
 begin
@@ -677,6 +689,34 @@ begin
   from public.credit_accounts
   where credit_accounts.user_id = v_order.user_id
   for update;
+
+  v_monthly_cap_minor := nullif(v_order.rate_snapshot ->> 'monthly_user_cap_minor', '')::bigint;
+
+  if v_monthly_cap_minor is null then
+    raise exception 'The monthly cap snapshot is missing for this top-up order.';
+  end if;
+
+  v_month_window_start := date_trunc('month', timezone('utc', now()));
+
+  select coalesce(sum(credit_top_up_orders.subtotal_minor), 0)::bigint
+  into v_current_month_spend
+  from public.credit_top_up_orders
+  where credit_top_up_orders.user_id = v_order.user_id
+    and credit_top_up_orders.currency = v_order.currency
+    and credit_top_up_orders.status in ('succeeded', 'reversed')
+    and credit_top_up_orders.created_at >= v_month_window_start
+    and credit_top_up_orders.id <> v_order.id;
+
+  if v_current_month_spend + v_order.subtotal_minor > v_monthly_cap_minor then
+    update public.credit_top_up_orders
+    set status = 'failed',
+        failure_code = 'monthly_cap_exceeded',
+        failure_message = 'This top-up exceeds the monthly cap configured for this currency.',
+        updated_at = timezone('utc', now())
+    where credit_top_up_orders.id = v_order.id;
+
+    raise exception 'This top-up exceeds the monthly cap configured for this currency.';
+  end if;
 
   v_next_balance := coalesce(v_current_balance, 0) + v_order.quoted_credits;
 
@@ -1259,6 +1299,195 @@ begin
 end;
 $fn$;
 
+create or replace function public.consume_agent_credits_for_user(
+  p_user_id uuid,
+  p_agent_slug text,
+  p_execution_session_id uuid,
+  p_idempotency_key text
+)
+returns table (
+  balance_after integer,
+  debited_amount integer,
+  ledger_entry_id uuid
+)
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_user_id uuid := p_user_id;
+  v_cost integer;
+  v_current_balance integer;
+  v_next_balance integer;
+  v_existing_entry public.credit_ledger%rowtype;
+  v_ledger_entry_id uuid;
+  v_session public.execution_sessions%rowtype;
+  v_remaining_to_consume integer;
+  v_grant public.credit_grants%rowtype;
+  v_consumed integer;
+begin
+  if auth.role() <> 'service_role' then
+    raise exception 'Service role is required to consume execution credits for a user.';
+  end if;
+
+  if v_user_id is null then
+    raise exception 'A user id is required to consume execution credits.';
+  end if;
+
+  if coalesce(trim(p_idempotency_key), '') = '' then
+    raise exception 'An idempotency key is required to consume execution credits.';
+  end if;
+
+  select *
+  into v_existing_entry
+  from public.credit_ledger
+  where credit_ledger.user_id = v_user_id
+    and credit_ledger.idempotency_key = p_idempotency_key
+  limit 1;
+
+  if found then
+    return query
+    select
+      v_existing_entry.balance_after,
+      abs(v_existing_entry.delta),
+      v_existing_entry.id;
+    return;
+  end if;
+
+  select *
+  into v_session
+  from public.execution_sessions
+  where execution_sessions.id = p_execution_session_id
+    and execution_sessions.user_id = v_user_id
+  limit 1;
+
+  if not found then
+    raise exception 'Execution session not found for this user.';
+  end if;
+
+  if v_session.agent_slug <> p_agent_slug then
+    raise exception 'Execution session agent mismatch.';
+  end if;
+
+  select dashboard_agents.execution_cost
+  into v_cost
+  from public.dashboard_agents
+  where dashboard_agents.slug = p_agent_slug
+    and dashboard_agents.is_active = true
+    and dashboard_agents.launch_mode = 'workspace'
+  limit 1;
+
+  if v_cost is null then
+    raise exception 'Agent pricing is not available for this workspace.';
+  end if;
+
+  select credit_accounts.available_balance
+  into v_current_balance
+  from public.credit_accounts
+  where credit_accounts.user_id = v_user_id
+    and credit_accounts.status = 'active'
+  for update;
+
+  if v_current_balance is null then
+    raise exception 'Credit account not found or not active for this user.';
+  end if;
+
+  if v_current_balance < v_cost then
+    raise exception 'Not enough Lumixia Credits.';
+  end if;
+
+  v_next_balance := v_current_balance - v_cost;
+
+  insert into public.credit_ledger (
+    user_id,
+    account_user_id,
+    entry_kind,
+    delta,
+    balance_after,
+    reference_type,
+    reference_id,
+    idempotency_key,
+    metadata
+  )
+  values (
+    v_user_id,
+    v_user_id,
+    'usage_debit',
+    -v_cost,
+    v_next_balance,
+    'execution_session',
+    p_execution_session_id::text,
+    p_idempotency_key,
+    jsonb_build_object(
+      'agent_slug',
+      p_agent_slug,
+      'execution_session_id',
+      p_execution_session_id,
+      'debited_by',
+      'execution_service'
+    )
+  )
+  returning credit_ledger.id
+  into v_ledger_entry_id;
+
+  v_remaining_to_consume := v_cost;
+
+  for v_grant in
+    select *
+    from public.credit_grants
+    where credit_grants.user_id = v_user_id
+      and credit_grants.status = 'active'
+      and credit_grants.remaining_credits > 0
+      and credit_grants.expires_at > timezone('utc', now())
+    order by credit_grants.expires_at asc, credit_grants.created_at asc
+    for update
+  loop
+    exit when v_remaining_to_consume <= 0;
+
+    v_consumed := least(v_grant.remaining_credits, v_remaining_to_consume);
+
+    update public.credit_grants
+    set remaining_credits = remaining_credits - v_consumed,
+        status = case
+          when remaining_credits - v_consumed <= 0 then 'consumed'
+          else 'active'
+        end
+    where credit_grants.id = v_grant.id;
+
+    insert into public.credit_grant_usages (
+      user_id,
+      usage_ledger_entry_id,
+      grant_id,
+      consumed_credits
+    )
+    values (
+      v_user_id,
+      v_ledger_entry_id,
+      v_grant.id,
+      v_consumed
+    );
+
+    v_remaining_to_consume := v_remaining_to_consume - v_consumed;
+  end loop;
+
+  if v_remaining_to_consume > 0 then
+    raise exception 'Credit grants are out of sync with the available balance.';
+  end if;
+
+  update public.credit_accounts
+  set available_balance = v_next_balance,
+      status = 'active',
+      restricted_reason = null
+  where credit_accounts.user_id = v_user_id;
+
+  return query
+  select
+    v_next_balance,
+    v_cost,
+    v_ledger_entry_id;
+end;
+$fn$;
+
 create or replace function public.refund_agent_credits(
   execution_session_id uuid,
   idempotency_key text,
@@ -1277,6 +1506,7 @@ declare
   v_user_id uuid;
   v_existing_entry public.credit_ledger%rowtype;
   v_original_usage public.credit_ledger%rowtype;
+  v_existing_refund public.credit_ledger%rowtype;
   v_current_balance integer;
   v_next_balance integer;
   v_refund_amount integer;
@@ -1320,6 +1550,25 @@ begin
 
   if not found then
     raise exception 'Original credit debit for this execution session was not found.';
+  end if;
+
+  select *
+  into v_existing_refund
+  from public.credit_ledger
+  where credit_ledger.user_id = v_user_id
+    and credit_ledger.reference_type = 'execution_session'
+    and credit_ledger.reference_id = refund_agent_credits.execution_session_id::text
+    and credit_ledger.entry_kind = 'usage_refund'
+  order by credit_ledger.created_at desc
+  limit 1;
+
+  if found then
+    return query
+    select
+      v_existing_refund.balance_after,
+      abs(v_existing_refund.delta),
+      v_existing_refund.id;
+    return;
   end if;
 
   v_refund_amount := abs(v_original_usage.delta);
@@ -1632,8 +1881,15 @@ revoke insert, update, delete on public.billing_webhook_events from authenticate
 revoke all on function public.grant_top_up_credits(uuid, text) from public;
 revoke all on function public.reverse_top_up_credits(uuid, text, text) from public;
 revoke all on function public.consume_agent_credits(text, uuid, text) from public;
+revoke all on function public.consume_agent_credits_for_user(uuid, text, uuid, text) from public;
 revoke all on function public.refund_agent_credits(uuid, text, text) from public;
 revoke all on function public.expire_available_credits(integer) from public;
+revoke all on function public.consume_agent_credits(text, uuid, text) from authenticated;
+revoke all on function public.consume_agent_credits_for_user(uuid, text, uuid, text) from authenticated;
+revoke all on function public.refund_agent_credits(uuid, text, text) from authenticated;
 
-grant execute on function public.consume_agent_credits(text, uuid, text) to authenticated;
-grant execute on function public.refund_agent_credits(uuid, text, text) to authenticated;
+grant execute on function public.grant_top_up_credits(uuid, text) to service_role;
+grant execute on function public.reverse_top_up_credits(uuid, text, text) to service_role;
+grant execute on function public.consume_agent_credits_for_user(uuid, text, uuid, text) to service_role;
+grant execute on function public.refund_agent_credits(uuid, text, text) to service_role;
+grant execute on function public.expire_available_credits(integer) to service_role;

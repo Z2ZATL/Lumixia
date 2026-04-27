@@ -132,12 +132,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   };
 
   return (
-    <main className="relative min-h-screen w-full overflow-x-hidden overflow-y-auto bg-surface px-4 py-10 text-on-surface sm:py-12">
-      <div className="pointer-events-none fixed right-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-primary/10 blur-[120px] animate-float-slow" />
-      <div className="pointer-events-none fixed bottom-[-5%] left-[5%] h-[40%] w-[40%] rounded-full bg-primary/10 blur-[100px] animate-float-medium" />
-      <div className="pointer-events-none fixed left-[10%] top-[20%] h-[150px] w-[150px] rounded-full bg-primary/5 blur-[60px] animate-float-slower" />
+    <main className="relative min-h-dvh w-full overflow-x-hidden overflow-y-auto bg-surface px-4 py-10 text-on-surface sm:py-12">
+      <div className="pointer-events-none fixed right-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-primary/10 blur-[120px] animate-float-slow motion-reduce:animate-none max-lg:blur-[56px]" />
+      <div className="pointer-events-none fixed bottom-[-5%] left-[5%] h-[40%] w-[40%] rounded-full bg-primary/10 blur-[100px] animate-float-medium motion-reduce:animate-none max-lg:blur-[48px]" />
+      <div className="pointer-events-none fixed left-[10%] top-[20%] h-[150px] w-[150px] rounded-full bg-primary/5 blur-[60px] animate-float-slower motion-reduce:animate-none max-lg:blur-[32px]" />
 
-      <div className="onboarding-glow relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl flex-col items-center justify-start py-4 sm:min-h-[calc(100vh-6rem)] sm:py-6 lg:justify-center">
+      <div className="onboarding-glow relative z-10 mx-auto flex min-h-[calc(100dvh-5rem)] w-full max-w-5xl flex-col items-center justify-start py-4 sm:min-h-[calc(100dvh-6rem)] sm:py-6 lg:justify-center">
         <AnimatePresence mode="wait" initial={false} custom={direction}>
           {screen === 'intro' ? (
             <motion.div
@@ -202,28 +202,30 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
                   <div className="onboarding-divider" />
 
-                  <div className="flex items-start gap-4 md:gap-6">
+                  <div className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-start">
                     <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-primary/5 shadow-sm transition-transform duration-300 hover:scale-110 hover:rotate-[5deg] md:h-12 md:w-12">
                       <span className="material-symbols-outlined text-xl text-primary md:text-2xl">
                         insights
                       </span>
                     </div>
 
-                    <div className="relative flex-1 pr-24 md:pr-32">
-                      <h3 className="mb-1 text-base font-bold leading-tight text-on-surface md:text-lg">
-                        Help Lumixia improve:
-                      </h3>
-                      <p className="text-sm leading-relaxed text-on-surface-variant md:text-base">
-                        Allow the use of your logs to train Lumixia.{' '}
-                        <button
-                          className="font-semibold text-primary transition-all hover:underline"
-                          type="button"
-                        >
-                          Learn more
-                        </button>
-                      </p>
+                    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <h3 className="mb-1 text-base font-bold leading-tight text-on-surface md:text-lg">
+                          Help Lumixia improve:
+                        </h3>
+                        <p className="text-sm leading-relaxed text-on-surface-variant md:text-base">
+                          Allow the use of your logs to train Lumixia.{' '}
+                          <button
+                            className="font-semibold text-primary transition-all hover:underline"
+                            type="button"
+                          >
+                            Learn more
+                          </button>
+                        </p>
+                      </div>
 
-                      <label className="absolute right-0 top-0 flex cursor-pointer select-none items-center gap-3">
+                      <label className="flex cursor-pointer select-none items-center gap-3 self-start sm:ml-4">
                         <input
                           checked={allowTraining}
                           className="sr-only"
@@ -317,7 +319,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   <div className="relative flex h-24 w-24 items-center justify-center overflow-visible">
                     <img
                       alt="Lumixia Prism"
-                      className="h-full w-full object-contain onboarding-logo-spin"
+                        className="h-full w-full object-contain onboarding-logo-spin motion-reduce:animate-none"
                       src={LOGO_SRC}
                     />
                   </div>

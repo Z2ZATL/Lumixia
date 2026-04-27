@@ -39,7 +39,7 @@ serve(async (request) => {
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 });
+    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 }, request);
   }
 
   try {
@@ -48,11 +48,14 @@ serve(async (request) => {
     const body = (await request.json()) as {
       amountMinor?: number;
       currency?: string;
+      idempotencyKey?: string;
       returnUrl?: string;
     };
 
     const amountMinor = Number(body.amountMinor ?? 0);
     const currency = normalizeCurrency(String(body.currency ?? ''));
+    const rawIdempotencyKey =
+      typeof body.idempotencyKey === 'string' ? body.idempotencyKey.trim() : '';
     const returnUrl = String(body.returnUrl ?? '');
 
     if (!Number.isInteger(amountMinor) || amountMinor <= 0) {
@@ -67,11 +70,23 @@ serve(async (request) => {
       throw new Error('A return URL is required before Stripe checkout can open.');
     }
 
+    if (
+      rawIdempotencyKey &&
+      !/^[A-Za-z0-9:_-]{8,128}$/.test(rawIdempotencyKey)
+    ) {
+      throw new Error('Stripe checkout idempotency key is invalid.');
+    }
+
+    const checkoutIdempotencyKey = rawIdempotencyKey || crypto.randomUUID();
     const requestOrigin = request.headers.get('Origin');
     const parsedReturnUrl = new URL(returnUrl);
 
     if (!['http:', 'https:'].includes(parsedReturnUrl.protocol)) {
       throw new Error('Stripe checkout requires a valid return URL.');
+    }
+
+    if (!requestOrigin) {
+      throw new Error('Stripe checkout requires a browser origin header.');
     }
 
     if (
@@ -83,19 +98,17 @@ serve(async (request) => {
       );
     }
 
-    if (requestOrigin) {
-      const parsedOrigin = new URL(requestOrigin);
-      const isEquivalentLoopbackOrigin =
-        parsedReturnUrl.port === parsedOrigin.port &&
-        isLoopbackHost(parsedReturnUrl.hostname) &&
-        isLoopbackHost(parsedOrigin.hostname);
+    const parsedOrigin = new URL(requestOrigin);
+    const isEquivalentLoopbackOrigin =
+      parsedReturnUrl.port === parsedOrigin.port &&
+      isLoopbackHost(parsedReturnUrl.hostname) &&
+      isLoopbackHost(parsedOrigin.hostname);
 
-      if (
-        parsedReturnUrl.origin !== parsedOrigin.origin &&
-        !isEquivalentLoopbackOrigin
-      ) {
-        throw new Error('Stripe checkout can only return to the current Lumixia origin.');
-      }
+    if (
+      parsedReturnUrl.origin !== parsedOrigin.origin &&
+      !isEquivalentLoopbackOrigin
+    ) {
+      throw new Error('Stripe checkout can only return to the current Lumixia origin.');
     }
 
     const rateBook = await getCurrentRateBook(serviceRole, currency);
@@ -121,7 +134,7 @@ serve(async (request) => {
       .select('subtotal_minor')
       .eq('user_id', user.id)
       .eq('currency', currency)
-      .eq('status', 'succeeded')
+      .in('status', ['succeeded', 'reversed'])
       .gte('created_at', monthStart.toISOString());
 
     if (priorOrdersError) {
@@ -205,20 +218,24 @@ serve(async (request) => {
           lumixia_quoted_credits: String(quotedCredits),
         },
       },
-      `checkout-session:${user.id}:${rateBook.id}:${currency}:${amountMinor}`,
+      `checkout-session:${user.id}:${checkoutIdempotencyKey}`,
     );
 
     if (!checkoutSession.url) {
       throw new Error('Stripe checkout did not return a hosted session URL.');
     }
 
-    return jsonResponse({
-      sessionId: String(checkoutSession.id ?? ''),
-      url: String(checkoutSession.url),
-      quotedCredits,
-      currency: currency.toUpperCase(),
-      amountMinor,
-    });
+    return jsonResponse(
+      {
+        sessionId: String(checkoutSession.id ?? ''),
+        url: String(checkoutSession.url),
+        quotedCredits,
+        currency: currency.toUpperCase(),
+        amountMinor,
+      },
+      {},
+      request,
+    );
   } catch (error) {
     return jsonResponse(
       {
@@ -228,6 +245,7 @@ serve(async (request) => {
             : 'Stripe checkout could not be prepared.',
       },
       { status: 400 },
+      request,
     );
   }
 });

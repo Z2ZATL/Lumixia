@@ -415,17 +415,17 @@ async function listCurrentMonthSpend(
 
   const { data, error } = await serviceRole
     .from('credit_top_up_orders')
-    .select('total_minor')
+    .select('subtotal_minor')
     .eq('user_id', userId)
     .eq('currency', currency)
-    .eq('status', 'succeeded')
+    .in('status', ['succeeded', 'reversed'])
     .gte('created_at', windowStart.toISOString());
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return (data ?? []).reduce((sum, row) => sum + Number(row.total_minor ?? 0), 0);
+  return (data ?? []).reduce((sum, row) => sum + Number(row.subtotal_minor ?? 0), 0);
 }
 
 async function resolveBillingUser(
@@ -676,6 +676,29 @@ export async function attemptAutoReloadForUserId(
     })
     .select('*')
     .single();
+
+  if (orderError?.code === '23505') {
+    const { data: existingOrder, error: existingOrderError } = await serviceRole
+      .from('credit_top_up_orders')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('trigger_source', 'auto_reload')
+      .in('status', ['initiated', 'requires_action', 'processing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingOrderError) {
+      throw new Error(existingOrderError.message);
+    }
+
+    if (existingOrder) {
+      return {
+        attempted: true,
+        order: mapOrder(existingOrder as Record<string, unknown>),
+      };
+    }
+  }
 
   if (orderError || !order) {
     throw new Error(orderError?.message ?? 'The auto reload order could not be created.');

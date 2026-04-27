@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import {
   BrowserRouter,
   Navigate,
@@ -9,16 +9,34 @@ import {
 } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthLayout } from '../features/auth/components/AuthLayout';
-import { AuthFlow } from '../features/auth/components/AuthFlow';
-import { OnboardingFlow } from '../features/auth/components/OnboardingFlow';
-import { ReviewGate } from '../features/auth/components/ReviewGate';
-import { DashboardShell } from '../features/dashboard/components/DashboardShell';
 import { DashboardProvider } from '../features/dashboard/context/DashboardContext';
-import { DashboardHomePage } from '../features/dashboard/pages/DashboardHomePage';
-import { LockedRoutePage } from '../features/dashboard/components/LockedRoutePage';
-import { TerminalWorkspace } from '../features/dashboard/components/TerminalWorkspace';
 import { useAppSession } from './AppSessionContext';
 import { isSupabaseConfigured } from '../lib/supabase';
+
+const AuthFlow = React.lazy(async () => ({
+  default: (await import('../features/auth/components/AuthFlow')).AuthFlow,
+}));
+const ReviewGate = React.lazy(async () => ({
+  default: (await import('../features/auth/components/ReviewGate')).ReviewGate,
+}));
+const OnboardingFlow = React.lazy(async () => ({
+  default: (await import('../features/auth/components/OnboardingFlow')).OnboardingFlow,
+}));
+const DashboardShell = React.lazy(async () => ({
+  default: (await import('../features/dashboard/components/DashboardShell')).DashboardShell,
+}));
+const DashboardHomePage = React.lazy(async () => ({
+  default: (await import('../features/dashboard/pages/DashboardHomePage'))
+    .DashboardHomePage,
+}));
+const LockedRoutePage = React.lazy(async () => ({
+  default: (await import('../features/dashboard/components/LockedRoutePage'))
+    .LockedRoutePage,
+}));
+const TerminalWorkspace = React.lazy(async () => ({
+  default: (await import('../features/dashboard/components/TerminalWorkspace'))
+    .TerminalWorkspace,
+}));
 
 const routeVariants = {
   initial: {
@@ -98,6 +116,13 @@ const ConfigurationState: React.FC<{ errorMessage?: string | null }> = ({
           into a local env file and add your Supabase project values before
           launching Lumixia.
         </p>
+        <p>
+          Set{' '}
+          <code className="font-semibold text-on-surface">
+            VITE_PUBLIC_APP_ORIGIN
+          </code>{' '}
+          to the trusted browser origin that should receive passwordless auth redirects.
+        </p>
       </div>
     </div>
 
@@ -151,6 +176,22 @@ const LoadingState: React.FC<{ message: string }> = ({ message }) => (
       Preparing Lumixia
     </h1>
     <p className="text-lg text-on-surface-variant">{message}</p>
+  </div>
+);
+
+const InterfaceLoadingState: React.FC = () => (
+  <div className="flex min-h-dvh items-center justify-center bg-surface px-4 py-10 text-center text-on-surface">
+    <div className="space-y-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-primary/70">
+        Lumixia
+      </p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">
+        Loading interface
+      </h1>
+      <p className="text-sm leading-relaxed text-on-surface-variant">
+        Preparing the next secure Lumixia surface...
+      </p>
+    </div>
   </div>
 );
 
@@ -416,24 +457,26 @@ const AppRouteContent: React.FC = () => {
   }
 
   return (
-    <RouteTransition routeKey={location.pathname}>
-      <Routes location={location}>
-        <Route path="/" element={<RootRedirect />} />
-        <Route element={<UnauthenticatedOnly />}>
-          <Route path="/auth" element={<AuthPage />} />
-        </Route>
-        <Route element={<ReviewGuard />}>
-          <Route path="/review" element={<ReviewPage />} />
-        </Route>
-        <Route element={<OnboardingGuard />}>
-          <Route path="/onboarding" element={<OnboardingPage />} />
-        </Route>
-        <Route element={<SessionAwareRedirect targetForGuests="/auth" />}>
-          <Route path="/dashboard/*" element={<DashboardRoutes />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </RouteTransition>
+    <Suspense fallback={<InterfaceLoadingState />}>
+      <RouteTransition routeKey={location.pathname}>
+        <Routes location={location}>
+          <Route path="/" element={<RootRedirect />} />
+          <Route element={<UnauthenticatedOnly />}>
+            <Route path="/auth" element={<AuthPage />} />
+          </Route>
+          <Route element={<ReviewGuard />}>
+            <Route path="/review" element={<ReviewPage />} />
+          </Route>
+          <Route element={<OnboardingGuard />}>
+            <Route path="/onboarding" element={<OnboardingPage />} />
+          </Route>
+          <Route element={<SessionAwareRedirect targetForGuests="/auth" />}>
+            <Route path="/dashboard/*" element={<DashboardRoutes />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </RouteTransition>
+    </Suspense>
   );
 };
 
