@@ -168,6 +168,10 @@ function mapAuthError(
     return 'Supabase is not configured yet. Double-check your local environment values.';
   }
 
+  if (normalizedMessage.includes('vite_public_app_origin')) {
+    return 'Passwordless auth redirects are not configured yet. Set VITE_PUBLIC_APP_ORIGIN to your trusted browser origin and try again.';
+  }
+
   if (
     mode === 'google' &&
     (normalizedMessage.includes('provider') ||

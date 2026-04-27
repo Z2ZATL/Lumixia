@@ -9,6 +9,7 @@ export const TerminalWorkspace: React.FC = () => {
   const {
     creditsMode,
     createWorkspaceSession,
+    executionProviderNotice,
     executeWorkspaceAction,
     getAgentBySlug,
     isLoading,
@@ -138,32 +139,34 @@ export const TerminalWorkspace: React.FC = () => {
       setIsExecuting(false);
     }
   };
+  const isDemoSession = (session?.providerMode ?? 'mock') === 'mock';
 
   return (
     <div className="terminal-bg relative flex h-full min-h-0 flex-col overflow-hidden text-slate-300">
       <div className="terminal-scanline" />
 
-      <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-slate-900/50 px-4 backdrop-blur-md md:px-6">
-        <div className="flex items-center gap-4">
+      <header className="relative z-30 flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-slate-900/50 px-4 py-3 backdrop-blur-md md:px-6">
+        <div className="flex min-w-0 items-center gap-4">
           <Link
+            aria-label="Return to Lumixia dashboard"
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
             to="/dashboard"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-sky-500/30 bg-sky-500/20 text-sky-400">
               <span className="material-symbols-outlined text-sm">code</span>
             </div>
-            <div>
-              <h2 className="flex items-center gap-2 text-sm font-bold tracking-tight text-white">
-                {workspaceTitle}
+            <div className="min-w-0">
+              <h2 className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-bold tracking-tight text-white">
+                <span className="truncate">{workspaceTitle}</span>
                 <span className="rounded border border-sky-500/20 bg-sky-500/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest text-sky-300">
-                  {session?.providerMode || 'mock'}
+                  {isDemoSession ? 'demo mock' : 'server api'}
                 </span>
               </h2>
-              <p className="font-mono text-[10px] text-slate-500">
+              <p className="truncate font-mono text-[10px] text-slate-500">
                 {workspaceSubtitle}
               </p>
             </div>
@@ -171,8 +174,13 @@ export const TerminalWorkspace: React.FC = () => {
         </div>
 
         <button
-          className="flex h-9 items-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/20 px-4 font-mono text-xs text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.15)] transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={isInitializing || isExecuting || !session}
+          className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/20 px-4 font-mono text-xs text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.15)] transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          disabled={
+            isInitializing ||
+            isExecuting ||
+            !session ||
+            (creditsMode === 'live' && isDemoSession)
+          }
           type="button"
           onClick={handleExecute}
         >
@@ -181,8 +189,10 @@ export const TerminalWorkspace: React.FC = () => {
           </span>
           {isExecuting
             ? 'Executing...'
-            : creditsMode === 'live'
+            : creditsMode === 'live' && !isDemoSession
               ? `Execute Code - ${agent.executionCost} Credits`
+              : creditsMode === 'live' && isDemoSession
+                ? 'Secure API Required'
               : 'Run Demo Workspace'}
         </button>
       </header>
@@ -201,6 +211,20 @@ export const TerminalWorkspace: React.FC = () => {
               Retry Session Boot
             </button>
           </div>
+        </div>
+      )}
+
+      {executionProviderNotice && (
+        <div className="relative z-30 border-b border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 md:px-6">
+          {executionProviderNotice}
+        </div>
+      )}
+
+      {isDemoSession && session && (
+        <div className="relative z-30 border-b border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-100 md:px-6">
+          Code Architect AI is currently running as a demo/mock workspace. It is
+          not branded as Dremo Code and does not execute sandboxed production
+          code yet.
         </div>
       )}
 
@@ -284,7 +308,9 @@ export const TerminalWorkspace: React.FC = () => {
               </span>
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-500 shadow-[0_0_5px_rgba(14,165,233,0.8)]" />
-                <span className="text-[9px] text-sky-400">LIVE</span>
+                <span className="text-[9px] text-sky-400">
+                  {session?.providerMode === 'api' ? 'LIVE' : 'SIMULATED'}
+                </span>
               </div>
             </div>
 

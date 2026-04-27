@@ -1,4 +1,4 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { OtpStepProps } from '../types';
 import { useOtpInput } from '../hooks/useOtpInput';
@@ -17,6 +17,7 @@ export const OtpStep: React.FC<OtpStepProps> = ({
   onBack,
   onVerify,
   onResend,
+  autoSubmit = true,
   timerDuration = 60,
   isDisabled = false,
   isResendDisabled = false,
@@ -36,10 +37,29 @@ export const OtpStep: React.FC<OtpStepProps> = ({
     isComplete,
     focusInput,
   } = useOtpInput(6);
+  const lastAutoSubmittedCodeRef = useRef<string | null>(null);
 
   useEffect(() => {
     focusInput(0);
   }, [focusInput]);
+
+  useEffect(() => {
+    const joinedOtp = otp.join('');
+
+    if (!autoSubmit || isDisabled || !isComplete) {
+      if (joinedOtp !== lastAutoSubmittedCodeRef.current) {
+        lastAutoSubmittedCodeRef.current = null;
+      }
+      return;
+    }
+
+    if (lastAutoSubmittedCodeRef.current === joinedOtp) {
+      return;
+    }
+
+    lastAutoSubmittedCodeRef.current = joinedOtp;
+    onVerify(joinedOtp);
+  }, [autoSubmit, isComplete, isDisabled, onVerify, otp]);
 
   const handleVerify = () => {
     if (isDisabled || !isComplete) {

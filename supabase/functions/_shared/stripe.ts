@@ -5,18 +5,16 @@ function requireStripeSecretKey() {
     throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
 
-  if (
-    secretKey.endsWith('_xxx') ||
-    secretKey.includes('YOUR_STRIPE_SECRET_KEY') ||
-    secretKey === 'sk_test_xxx' ||
-    secretKey === 'sk_live_xxx'
-  ) {
+  const normalizedSecretKey = secretKey.trim();
+  const lowerSecretKey = normalizedSecretKey.toLowerCase();
+
+  if (/_xxx$/i.test(normalizedSecretKey) || lowerSecretKey.includes('replace_with')) {
     throw new Error(
       'STRIPE_SECRET_KEY is still a placeholder. Replace it with a real Stripe secret key before opening checkout.',
     );
   }
 
-  return secretKey;
+  return normalizedSecretKey;
 }
 
 export function getStripeSecretKeyMode() {
@@ -246,6 +244,23 @@ export async function verifyStripeWebhookSignature(
 
   if (!timestamp || signatures.length === 0) {
     throw new Error('Stripe signature header is malformed.');
+  }
+
+  const parsedTimestamp = Number(timestamp);
+  const toleranceSeconds = Number(
+    Deno.env.get('STRIPE_WEBHOOK_TOLERANCE_SECONDS') ?? '300',
+  );
+
+  if (!Number.isFinite(parsedTimestamp)) {
+    throw new Error('Stripe signature timestamp is invalid.');
+  }
+
+  if (
+    Number.isFinite(toleranceSeconds) &&
+    toleranceSeconds > 0 &&
+    Math.abs(Math.floor(Date.now() / 1000) - parsedTimestamp) > toleranceSeconds
+  ) {
+    throw new Error('Stripe signature timestamp is outside the allowed tolerance.');
   }
 
   const expectedSignature = await computeStripeSignature(

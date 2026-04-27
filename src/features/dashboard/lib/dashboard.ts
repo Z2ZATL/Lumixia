@@ -183,22 +183,6 @@ function mapTrendingSearch(
   };
 }
 
-function mapExecutionSession(
-  row: Record<string, unknown>,
-): ExecutionSessionRecord {
-  return {
-    id: String(row.id),
-    userId: String(row.user_id),
-    agentSlug: String(row.agent_slug),
-    agentName: String(row.agent_name),
-    status: (row.status as ExecutionSessionStatus) ?? 'idle',
-    executionCost: toNumber(row.execution_cost, 150),
-    providerMode: row.provider_mode === 'api' ? 'api' : 'mock',
-    createdAt: String(row.created_at),
-    updatedAt: String(row.updated_at),
-  };
-}
-
 function mapExecutionLog(row: Record<string, unknown>): ExecutionLogRecord {
   return {
     id: String(row.id),
@@ -488,68 +472,21 @@ export async function createExecutionSessionRecord(input: {
   status: ExecutionSessionStatus;
   userId: string;
 }) {
-  const { data, error } = await getSupabaseClient()
-    .from('execution_sessions')
-    .insert({
-      user_id: input.userId,
-      agent_slug: input.agentSlug,
-      agent_name: input.agentName,
-      execution_cost: input.executionCost,
-      provider_mode: input.providerMode,
-      status: input.status,
-    })
-    .select(`
-      id,
-      user_id,
-      agent_slug,
-      agent_name,
-      status,
-      execution_cost,
-      provider_mode,
-      created_at,
-      updated_at
-    `)
-    .single();
-
-  if (error) {
-    throw normalizeDashboardError(error);
-  }
-
-  return mapExecutionSession(data as Record<string, unknown>);
+  void input;
+  throw new Error(
+    'Execution sessions are server-owned. Start workspaces through the secure execution API.',
+  );
 }
 
 export async function updateExecutionSessionRecord(
   sessionId: string,
   patch: Partial<Pick<ExecutionSessionRecord, 'status'>>,
 ) {
-  const payload: Record<string, unknown> = {};
-
-  if (patch.status) {
-    payload.status = patch.status;
-  }
-
-  const { data, error } = await getSupabaseClient()
-    .from('execution_sessions')
-    .update(payload)
-    .eq('id', sessionId)
-    .select(`
-      id,
-      user_id,
-      agent_slug,
-      agent_name,
-      status,
-      execution_cost,
-      provider_mode,
-      created_at,
-      updated_at
-    `)
-    .single();
-
-  if (error) {
-    throw normalizeDashboardError(error);
-  }
-
-  return mapExecutionSession(data as Record<string, unknown>);
+  void sessionId;
+  void patch;
+  throw new Error(
+    'Execution session status is server-owned. Update status through the secure execution API.',
+  );
 }
 
 export async function fetchExecutionLogs(sessionId: string) {
@@ -573,28 +510,9 @@ export async function appendExecutionLogs(input: {
   sessionId: string;
   userId: string;
 }) {
-  if (input.logs.length === 0) {
-    return [] as ExecutionLogRecord[];
-  }
-
-  const { data, error } = await getSupabaseClient()
-    .from('execution_logs')
-    .insert(
-      input.logs.map((log) => ({
-        session_id: input.sessionId,
-        user_id: input.userId,
-        kind: log.kind,
-        message: log.message,
-      })),
-    )
-    .select('id, session_id, user_id, kind, message, created_at');
-
-  if (error) {
-    throw normalizeDashboardError(error);
-  }
-
-  return (data ?? []).map((row) =>
-    mapExecutionLog(row as Record<string, unknown>),
+  void input;
+  throw new Error(
+    'Execution logs are server-owned. Append logs through the secure execution API.',
   );
 }
 

@@ -281,6 +281,147 @@ create trigger on_auth_user_created_credit_account
 after insert on auth.users
 for each row execute function public.handle_new_credit_account();
 
+create or replace function public.create_execution_session(
+  p_agent_slug text,
+  p_provider_mode text default 'mock'
+)
+returns table (
+  id uuid,
+  user_id uuid,
+  agent_slug text,
+  agent_name text,
+  status text,
+  execution_cost integer,
+  provider_mode text,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_user_id uuid;
+  v_agent public.dashboard_agents%rowtype;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Authenticated user is required to create an execution session.';
+  end if;
+
+  if public.create_execution_session.p_provider_mode not in ('mock', 'api') then
+    raise exception 'Execution provider mode is invalid.';
+  end if;
+
+  select *
+  into v_agent
+  from public.dashboard_agents
+  where dashboard_agents.slug = create_execution_session.p_agent_slug
+    and dashboard_agents.is_active = true
+    and dashboard_agents.launch_mode = 'workspace'
+  limit 1;
+
+  if not found then
+    raise exception 'Workspace agent not found or not available.';
+  end if;
+
+  return query
+  insert into public.execution_sessions (
+    user_id,
+    agent_slug,
+    agent_name,
+    status,
+    execution_cost,
+    provider_mode
+  )
+  values (
+    v_user_id,
+    v_agent.slug,
+    v_agent.name,
+    'booting',
+    coalesce(v_agent.execution_cost, 150),
+    create_execution_session.p_provider_mode
+  )
+  returning
+    execution_sessions.id,
+    execution_sessions.user_id,
+    execution_sessions.agent_slug,
+    execution_sessions.agent_name,
+    execution_sessions.status,
+    execution_sessions.execution_cost,
+    execution_sessions.provider_mode,
+    execution_sessions.created_at,
+    execution_sessions.updated_at;
+end;
+$fn$;
+
+create or replace function public.set_execution_session_status(
+  p_session_id uuid,
+  p_next_status text
+)
+returns table (
+  id uuid,
+  user_id uuid,
+  agent_slug text,
+  agent_name text,
+  status text,
+  execution_cost integer,
+  provider_mode text,
+  created_at timestamptz,
+  updated_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  v_user_id uuid;
+  v_session public.execution_sessions%rowtype;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Authenticated user is required to update an execution session.';
+  end if;
+
+  if set_execution_session_status.p_next_status not in ('idle', 'booting', 'running', 'completed', 'failed') then
+    raise exception 'Execution session status is invalid.';
+  end if;
+
+  select *
+  into v_session
+  from public.execution_sessions
+  where execution_sessions.id = set_execution_session_status.p_session_id
+    and execution_sessions.user_id = v_user_id
+  for update;
+
+  if not found then
+    raise exception 'Execution session not found for this user.';
+  end if;
+
+  if v_session.status in ('completed', 'failed')
+     and v_session.status <> set_execution_session_status.p_next_status then
+    raise exception 'Execution session is already in a terminal state.';
+  end if;
+
+  return query
+  update public.execution_sessions
+  set status = set_execution_session_status.p_next_status
+  where execution_sessions.id = v_session.id
+  returning
+    execution_sessions.id,
+    execution_sessions.user_id,
+    execution_sessions.agent_slug,
+    execution_sessions.agent_name,
+    execution_sessions.status,
+    execution_sessions.execution_cost,
+    execution_sessions.provider_mode,
+    execution_sessions.created_at,
+    execution_sessions.updated_at;
+end;
+$fn$;
+
 alter table public.dashboard_sections enable row level security;
 alter table public.dashboard_agents enable row level security;
 alter table public.dashboard_section_items enable row level security;
@@ -386,19 +527,7 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution sessions" on public.execution_sessions;
-create policy "Users can insert own execution sessions"
-on public.execution_sessions
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
-
 drop policy if exists "Users can update own execution sessions" on public.execution_sessions;
-create policy "Users can update own execution sessions"
-on public.execution_sessions
-for update
-to authenticated
-using ((select auth.uid()) = user_id)
-with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can view own execution logs" on public.execution_logs;
 create policy "Users can view own execution logs"
@@ -408,11 +537,6 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution logs" on public.execution_logs;
-create policy "Users can insert own execution logs"
-on public.execution_logs
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
 
 grant select on public.dashboard_sections to authenticated;
 grant select on public.dashboard_agents to authenticated;
@@ -422,8 +546,17 @@ grant select, insert, update on public.user_dashboard_preferences to authenticat
 grant select, insert, update on public.user_lifestyle_events to authenticated;
 grant select on public.credit_accounts to authenticated;
 grant select on public.credit_ledger to authenticated;
-grant select, insert, update on public.execution_sessions to authenticated;
-grant select, insert on public.execution_logs to authenticated;
+
+revoke all on public.execution_sessions from public;
+revoke all on public.execution_logs from public;
+revoke all on public.execution_sessions from anon;
+revoke all on public.execution_logs from anon;
+revoke all on public.execution_sessions from authenticated;
+revoke all on public.execution_logs from authenticated;
+grant select on public.execution_sessions to authenticated;
+grant select on public.execution_logs to authenticated;
+grant select, insert, update on public.execution_sessions to service_role;
+grant select, insert, update on public.execution_logs to service_role;
 
 create or replace function public.consume_agent_credits(
   agent_slug text,
@@ -560,4 +693,8 @@ end;
 $fn$;
 
 revoke all on function public.consume_agent_credits(text, uuid, text) from public;
-grant execute on function public.consume_agent_credits(text, uuid, text) to authenticated;
+revoke all on function public.create_execution_session(text, text) from public;
+revoke all on function public.set_execution_session_status(uuid, text) from public;
+revoke all on function public.consume_agent_credits(text, uuid, text) from authenticated;
+revoke all on function public.create_execution_session(text, text) from authenticated;
+revoke all on function public.set_execution_session_status(uuid, text) from authenticated;

@@ -13,6 +13,20 @@ function ensureEnv(value: string, name: string) {
   return value;
 }
 
+function constantTimeEquals(left: string, right: string) {
+  const encoder = new TextEncoder();
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  const length = Math.max(leftBytes.length, rightBytes.length);
+  let diff = leftBytes.length ^ rightBytes.length;
+
+  for (let index = 0; index < length; index += 1) {
+    diff |= (leftBytes[index] ?? 0) ^ (rightBytes[index] ?? 0);
+  }
+
+  return diff === 0;
+}
+
 export function createServiceRoleClient() {
   return createClient(
     ensureEnv(supabaseUrl, 'SUPABASE_URL'),
@@ -83,7 +97,10 @@ export function requireInternalCronRequest(request: Request) {
     throw new Error('LUMIXIA_BILLING_CRON_SECRET is not configured.');
   }
 
-  if (headerSecret !== configuredSecret && bearerSecret !== configuredSecret) {
+  if (
+    !constantTimeEquals(headerSecret, configuredSecret) &&
+    !constantTimeEquals(bearerSecret, configuredSecret)
+  ) {
     throw new Error('A valid Lumixia billing cron secret is required.');
   }
 }

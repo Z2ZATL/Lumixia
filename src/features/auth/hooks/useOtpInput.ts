@@ -89,8 +89,23 @@ export function useOtpInput(length: number = 6): UseOtpInputReturn {
 
   const handleKeyDown = useCallback((index: number, event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Backspace') {
-      if (!otp[index] && index > 0) {
-        event.preventDefault();
+      event.preventDefault();
+
+      if (otp[index]) {
+        setOtp((prev) => {
+          const nextOtp = [...prev];
+          nextOtp[index] = '';
+          return nextOtp;
+        });
+        return;
+      }
+
+      if (index > 0) {
+        setOtp((prev) => {
+          const nextOtp = [...prev];
+          nextOtp[index - 1] = '';
+          return nextOtp;
+        });
         focusInput(index - 1);
       }
 

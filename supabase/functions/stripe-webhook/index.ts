@@ -272,6 +272,17 @@ async function createManualOrderFromCheckoutSession(
     .select('*')
     .single();
 
+  if (insertOrderError?.code === '23505') {
+    const existingOrderAfterConflict = await findOrderByPaymentIntent(
+      serviceRole,
+      paymentIntentId,
+    );
+
+    if (existingOrderAfterConflict) {
+      return existingOrderAfterConflict;
+    }
+  }
+
   if (insertOrderError || !insertedOrder) {
     throw new Error(insertOrderError?.message ?? 'The Lumixia top-up order could not be created.');
   }
@@ -308,7 +319,7 @@ serve(async (request) => {
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 });
+    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 }, request);
   }
 
   try {
@@ -339,7 +350,7 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true, ignored: true });
+        return jsonResponse({ received: true, ignored: true }, {}, request);
       }
 
       if (String(checkoutSession.payment_status ?? '') !== 'paid') {
@@ -351,7 +362,7 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true, ignored: true });
+        return jsonResponse({ received: true, ignored: true }, {}, request);
       }
 
       const order = await createManualOrderFromCheckoutSession(
@@ -377,7 +388,7 @@ serve(async (request) => {
         processed_at: new Date().toISOString(),
       });
 
-      return jsonResponse({ received: true });
+      return jsonResponse({ received: true }, {}, request);
     }
 
     if (eventType === 'setup_intent.succeeded') {
@@ -417,7 +428,7 @@ serve(async (request) => {
         processed_at: new Date().toISOString(),
       });
 
-      return jsonResponse({ received: true });
+      return jsonResponse({ received: true }, {}, request);
     }
 
     if (
@@ -444,7 +455,7 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true, ignored: true });
+        return jsonResponse({ received: true, ignored: true }, {}, request);
       }
 
       const latestCharge =
@@ -518,7 +529,7 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true });
+        return jsonResponse({ received: true }, {}, request);
       }
 
       const { data: quote } = await serviceRole
@@ -575,7 +586,7 @@ serve(async (request) => {
             failure_count: 0,
             month_to_date_minor:
               Number(policy?.month_to_date_minor ?? 0) +
-              Number(order.total_minor ?? 0),
+              Number(order.subtotal_minor ?? 0),
             last_attempt_at: new Date().toISOString(),
             status: 'active',
             updated_at: new Date().toISOString(),
@@ -583,15 +594,32 @@ serve(async (request) => {
           .eq('user_id', String(order.user_id));
       }
 
-      return jsonResponse({ received: true });
+      return jsonResponse({ received: true }, {}, request);
     }
 
     if (
       eventType === 'charge.refunded' ||
       eventType === 'refund.updated' ||
-      eventType === 'charge.dispute.created'
+      eventType === 'charge.dispute.created' ||
+      eventType === 'charge.dispute.closed'
     ) {
       const chargeObject = eventObject;
+      const disputeClosedWithoutLoss =
+        eventType === 'charge.dispute.closed' &&
+        !['lost', 'warning_closed'].includes(String(chargeObject.status ?? ''));
+
+      if (disputeClosedWithoutLoss) {
+        await serviceRole.from('billing_webhook_events').upsert({
+          stripe_event_id: eventId,
+          event_type: eventType,
+          status: 'ignored',
+          payload: event,
+          processed_at: new Date().toISOString(),
+        });
+
+        return jsonResponse({ received: true, ignored: true }, {}, request);
+      }
+
       const chargeId =
         typeof chargeObject.id === 'string'
           ? chargeObject.id
@@ -624,7 +652,7 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true, ignored: true });
+        return jsonResponse({ received: true, ignored: true }, {}, request);
       }
 
       const order = await findOrderByPaymentIntent(serviceRole, paymentIntentId);
@@ -638,12 +666,14 @@ serve(async (request) => {
           processed_at: new Date().toISOString(),
         });
 
-        return jsonResponse({ received: true, ignored: true });
+        return jsonResponse({ received: true, ignored: true }, {}, request);
       }
 
       const { error: reverseError } = await serviceRole.rpc('reverse_top_up_credits', {
         order_id: order.id,
-        reason: eventType === 'charge.dispute.created' ? 'charge_dispute' : 'charge_refund',
+        reason: eventType.startsWith('charge.dispute')
+          ? 'charge_dispute'
+          : 'charge_refund',
         stripe_event_id: eventId,
       });
 
@@ -651,7 +681,7 @@ serve(async (request) => {
         throw new Error(reverseError.message);
       }
 
-      return jsonResponse({ received: true });
+      return jsonResponse({ received: true }, {}, request);
     }
 
     await serviceRole.from('billing_webhook_events').upsert({
@@ -662,7 +692,7 @@ serve(async (request) => {
       processed_at: new Date().toISOString(),
     });
 
-    return jsonResponse({ received: true, ignored: true });
+    return jsonResponse({ received: true, ignored: true }, {}, request);
   } catch (error) {
     return jsonResponse(
       {
@@ -670,6 +700,7 @@ serve(async (request) => {
           error instanceof Error ? error.message : 'Webhook processing failed.',
       },
       { status: 400 },
+      request,
     );
   }
 });

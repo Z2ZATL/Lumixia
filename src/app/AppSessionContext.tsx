@@ -36,12 +36,6 @@ const ONBOARDING_STORAGE_PREFIX = 'lumixia-onboarding:';
 const CURRENT_TERMS_VERSION = '2026-04-23';
 const CURRENT_PRIVACY_VERSION = '2026-04-23';
 
-interface StoredOnboardingState {
-  completed: boolean;
-  displayName: string;
-  allowTraining: boolean;
-}
-
 interface AppSessionContextValue {
   session: Session | null;
   profile: ProfileRecord | null;
@@ -80,56 +74,8 @@ function getReviewGateStorageKey(email: string) {
   return `${REVIEW_GATE_STORAGE_PREFIX}${email.trim().toLowerCase()}`;
 }
 
-function readReviewGateAcceptance(email: string) {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  return window.localStorage.getItem(getReviewGateStorageKey(email)) === 'true';
-}
-
 function getOnboardingStorageKey(email: string) {
   return `${ONBOARDING_STORAGE_PREFIX}${email.trim().toLowerCase()}`;
-}
-
-function readOnboardingState(email: string): StoredOnboardingState {
-  if (typeof window === 'undefined') {
-    return {
-      completed: false,
-      displayName: '',
-      allowTraining: true,
-    };
-  }
-
-  const raw = window.localStorage.getItem(getOnboardingStorageKey(email));
-
-  if (!raw) {
-    return {
-      completed: false,
-      displayName: '',
-      allowTraining: true,
-    };
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Partial<StoredOnboardingState>;
-
-    return {
-      completed: parsed.completed === true,
-      displayName:
-        typeof parsed.displayName === 'string' ? parsed.displayName : '',
-      allowTraining:
-        typeof parsed.allowTraining === 'boolean'
-          ? parsed.allowTraining
-          : true,
-    };
-  } catch {
-    return {
-      completed: false,
-      displayName: '',
-      allowTraining: true,
-    };
-  }
 }
 
 function clearLegacyReviewGateAcceptance(email: string) {
@@ -232,51 +178,13 @@ export const AppSessionProvider: React.FC<{ children: React.ReactNode }> = ({
           nextProfile = await upsertProfile(currentUserId);
         }
 
-        const legacyReviewAccepted = readReviewGateAcceptance(currentEmail);
-        const legacyOnboardingState = readOnboardingState(currentEmail);
-
-        if (
-          legacyReviewAccepted &&
-          !nextProfile.terms_accepted_at &&
-          !nextProfile.privacy_accepted_at
-        ) {
-          const acceptedAt = new Date().toISOString();
-
-          nextProfile = await upsertProfile(currentUserId, {
-            marketing_opt_in: nextProfile.marketing_opt_in,
-            privacy_accepted_at: acceptedAt,
-            privacy_version: CURRENT_PRIVACY_VERSION,
-            terms_accepted_at: acceptedAt,
-            terms_version: CURRENT_TERMS_VERSION,
-          });
-        }
-
-        if (
-          legacyOnboardingState.completed &&
-          !nextProfile.onboarding_completed_at
-        ) {
-          nextProfile = await upsertProfile(currentUserId, {
-            allow_training: legacyOnboardingState.allowTraining,
-            display_name: legacyOnboardingState.displayName || null,
-            onboarding_completed_at: new Date().toISOString(),
-          });
-        }
-
         setProfile(nextProfile);
         await hydrateCredits(currentUserId);
         setBootstrapError(null);
         setReviewGateError(null);
         setOnboardingError(null);
-
-        if (
-          legacyReviewAccepted ||
-          legacyOnboardingState.completed ||
-          legacyOnboardingState.displayName ||
-          legacyOnboardingState.allowTraining !== true
-        ) {
-          clearLegacyReviewGateAcceptance(currentEmail);
-          clearLegacyOnboardingState(currentEmail);
-        }
+        clearLegacyReviewGateAcceptance(currentEmail);
+        clearLegacyOnboardingState(currentEmail);
       } catch (error) {
         setBootstrapError(
           error instanceof Error

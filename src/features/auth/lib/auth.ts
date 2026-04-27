@@ -1,12 +1,30 @@
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../../../lib/supabase';
 
-function getBrowserRedirectUrl() {
-  if (typeof window === 'undefined') {
-    return undefined;
+function getConfiguredBrowserOrigin() {
+  const configuredOrigin = import.meta.env.VITE_PUBLIC_APP_ORIGIN;
+
+  if (typeof configuredOrigin !== 'string' || configuredOrigin.trim().length === 0) {
+    return null;
   }
 
-  return window.location.origin;
+  try {
+    return new URL(configuredOrigin).origin;
+  } catch {
+    return null;
+  }
+}
+
+function getBrowserRedirectUrl() {
+  const configuredOrigin = getConfiguredBrowserOrigin();
+
+  if (!configuredOrigin) {
+    throw new Error(
+      'VITE_PUBLIC_APP_ORIGIN must be configured before secure Lumixia authentication can run.',
+    );
+  }
+
+  return configuredOrigin;
 }
 
 export async function requestEmailOtp(email: string) {

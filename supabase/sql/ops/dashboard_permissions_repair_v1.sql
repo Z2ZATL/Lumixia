@@ -186,19 +186,7 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution sessions" on public.execution_sessions;
-create policy "Users can insert own execution sessions"
-on public.execution_sessions
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
-
 drop policy if exists "Users can update own execution sessions" on public.execution_sessions;
-create policy "Users can update own execution sessions"
-on public.execution_sessions
-for update
-to authenticated
-using ((select auth.uid()) = user_id)
-with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can view own execution logs" on public.execution_logs;
 create policy "Users can view own execution logs"
@@ -208,11 +196,6 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution logs" on public.execution_logs;
-create policy "Users can insert own execution logs"
-on public.execution_logs
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
 
 grant select on public.dashboard_sections to authenticated;
 grant select on public.dashboard_agents to authenticated;
@@ -232,10 +215,27 @@ grant select on public.credit_top_up_quotes to authenticated;
 grant select on public.credit_top_up_orders to authenticated;
 grant select on public.credit_auto_reload_policies to authenticated;
 grant select on public.billing_documents to authenticated;
-grant select, insert, update on public.execution_sessions to authenticated;
-grant select, insert on public.execution_logs to authenticated;
+
+revoke all on public.execution_sessions from public;
+revoke all on public.execution_logs from public;
+revoke all on public.execution_sessions from anon;
+revoke all on public.execution_logs from anon;
+revoke all on public.execution_sessions from authenticated;
+revoke all on public.execution_logs from authenticated;
+grant select on public.execution_sessions to authenticated;
+grant select on public.execution_logs to authenticated;
+grant select, insert, update on public.execution_sessions to service_role;
+grant select, insert, update on public.execution_logs to service_role;
 
 revoke all on function public.consume_agent_credits(text, uuid, text) from public;
 revoke all on function public.refund_agent_credits(uuid, text, text) from public;
-grant execute on function public.consume_agent_credits(text, uuid, text) to authenticated;
-grant execute on function public.refund_agent_credits(uuid, text, text) to authenticated;
+revoke all on function public.create_execution_session(text, text) from public;
+revoke all on function public.set_execution_session_status(uuid, text) from public;
+revoke all on function public.consume_agent_credits(text, uuid, text) from authenticated;
+revoke all on function public.refund_agent_credits(uuid, text, text) from authenticated;
+revoke all on function public.create_execution_session(text, text) from authenticated;
+revoke all on function public.set_execution_session_status(uuid, text) from authenticated;
+grant execute on function public.grant_top_up_credits(uuid, text) to service_role;
+grant execute on function public.reverse_top_up_credits(uuid, text, text) to service_role;
+grant execute on function public.consume_agent_credits_for_user(uuid, text, uuid, text) to service_role;
+grant execute on function public.refund_agent_credits(uuid, text, text) to service_role;

@@ -18,13 +18,14 @@ serve(async (request) => {
     const serviceRole = createServiceRoleClient();
     const overview = await fetchBillingOverview(serviceRole, user.id);
 
-    return jsonResponse(overview);
+    return jsonResponse(overview, {}, request);
   } catch (error) {
     return jsonResponse(
       {
         error: error instanceof Error ? error.message : 'Billing overview failed.',
       },
       { status: 400 },
+      request,
     );
   }
 });

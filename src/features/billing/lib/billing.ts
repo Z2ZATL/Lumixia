@@ -40,6 +40,26 @@ async function normalizeBillingError(error: unknown, functionName: string) {
     'context' in error &&
     error.context instanceof Response
   ) {
+    const { status } = error.context;
+
+    if (status === 401 || status === 403) {
+      return new Error(
+        'Your session cannot access the Lumixia billing service right now. Sign in again and verify function permissions and allowed origins.',
+      );
+    }
+
+    if (status === 404) {
+      return new Error(
+        `The Lumixia billing function (${functionName}) is not deployed yet. Deploy the latest Supabase Edge Functions and try again.`,
+      );
+    }
+
+    if (status >= 500) {
+      return new Error(
+        'The Lumixia billing service encountered a server error. Check the latest Edge Function logs and try again.',
+      );
+    }
+
     try {
       const payload = await error.context.clone().json();
 
@@ -62,6 +82,17 @@ async function normalizeBillingError(error: unknown, functionName: string) {
   if (isRecord(error) && typeof error.message === 'string') {
     const message = error.message.toLowerCase();
     const code = typeof error.code === 'string' ? error.code : '';
+
+    if (
+      message.includes('failed to send a request to the edge function') ||
+      message.includes('failed to fetch') ||
+      message.includes('networkerror') ||
+      message.includes('network request failed')
+    ) {
+      return new Error(
+        'Lumixia could not reach the billing service. Verify the deployed Edge Functions, local network access, and LUMIXIA_ALLOWED_ORIGINS for this frontend origin.',
+      );
+    }
 
     if (
       code === 'PGRST205' ||
@@ -359,6 +390,7 @@ export async function fetchBillingOverview() {
 export async function createCheckoutSession(input: {
   amountMinor: number;
   currency: string;
+  idempotencyKey: string;
   returnUrl: string;
 }) {
   const data = await invokeBillingFunction<unknown>('billing-checkout-session', {
@@ -366,6 +398,7 @@ export async function createCheckoutSession(input: {
     body: {
       amountMinor: input.amountMinor,
       currency: input.currency,
+      idempotencyKey: input.idempotencyKey,
       returnUrl: input.returnUrl,
     },
   });

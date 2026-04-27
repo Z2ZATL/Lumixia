@@ -2,6 +2,11 @@
 -- Run this if sql/ops/dashboard_verify_v1.sql still shows null for:
 --   public.execution_sessions
 --   public.execution_logs
+--
+-- Security note:
+-- This repair keeps execution writes server-owned. Authenticated clients may
+-- read their own sessions/logs, but only the service-role execution backend
+-- may insert or update execution audit records.
 
 create extension if not exists pgcrypto;
 
@@ -58,19 +63,8 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution sessions" on public.execution_sessions;
-create policy "Users can insert own execution sessions"
-on public.execution_sessions
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can update own execution sessions" on public.execution_sessions;
-create policy "Users can update own execution sessions"
-on public.execution_sessions
-for update
-to authenticated
-using ((select auth.uid()) = user_id)
-with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can view own execution logs" on public.execution_logs;
 create policy "Users can view own execution logs"
@@ -80,11 +74,14 @@ to authenticated
 using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can insert own execution logs" on public.execution_logs;
-create policy "Users can insert own execution logs"
-on public.execution_logs
-for insert
-to authenticated
-with check ((select auth.uid()) = user_id);
 
-grant select, insert, update on public.execution_sessions to authenticated;
-grant select, insert on public.execution_logs to authenticated;
+revoke all on public.execution_sessions from public;
+revoke all on public.execution_logs from public;
+revoke all on public.execution_sessions from anon;
+revoke all on public.execution_logs from anon;
+revoke all on public.execution_sessions from authenticated;
+revoke all on public.execution_logs from authenticated;
+grant select on public.execution_sessions to authenticated;
+grant select on public.execution_logs to authenticated;
+grant select, insert, update on public.execution_sessions to service_role;
+grant select, insert, update on public.execution_logs to service_role;

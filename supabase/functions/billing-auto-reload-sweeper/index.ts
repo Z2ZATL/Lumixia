@@ -69,12 +69,16 @@ serve(async (request) => {
       }
     }
 
-    return jsonResponse({
-      scannedUsers: users?.length ?? 0,
-      attemptedUsers: results.filter((result) => result.attempted).length,
-      failedUsers: results.filter((result) => result.error).length,
-      results,
-    });
+    return jsonResponse(
+      {
+        scannedUsers: users?.length ?? 0,
+        attemptedUsers: results.filter((result) => result.attempted).length,
+        failedUsers: results.filter((result) => result.error).length,
+        results,
+      },
+      {},
+      request,
+    );
   } catch (error) {
     return jsonResponse(
       {
@@ -82,6 +86,7 @@ serve(async (request) => {
           error instanceof Error ? error.message : 'Auto reload sweep failed.',
       },
       { status: 400 },
+      request,
     );
   }
 });

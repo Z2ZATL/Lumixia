@@ -23,7 +23,11 @@ serve(async (request) => {
 
     if (request.method === 'GET') {
       const policy = await getAutoReloadPolicy(serviceRole, user.id);
-      return jsonResponse(policy ? mapAutoReloadPolicy(policy as Record<string, unknown>) : null);
+      return jsonResponse(
+        policy ? mapAutoReloadPolicy(policy as Record<string, unknown>) : null,
+        {},
+        request,
+      );
     }
 
     if (request.method === 'PUT') {
@@ -46,6 +50,24 @@ serve(async (request) => {
       if (enabled) {
         if (!defaultPaymentMethodId) {
           throw new Error('Select a default payment method before enabling auto reload.');
+        }
+
+        const { data: paymentMethod, error: paymentMethodError } = await serviceRole
+          .from('billing_payment_methods')
+          .select('id')
+          .eq('id', defaultPaymentMethodId)
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle();
+
+        if (paymentMethodError) {
+          throw new Error(paymentMethodError.message);
+        }
+
+        if (!paymentMethod) {
+          throw new Error(
+            'Select an active Lumixia payment method that belongs to your account before enabling auto reload.',
+          );
         }
 
         if (!currency) {
@@ -98,7 +120,11 @@ serve(async (request) => {
         throw new Error(error?.message ?? 'The auto reload policy could not be saved.');
       }
 
-      return jsonResponse(mapAutoReloadPolicy(policy as Record<string, unknown>));
+      return jsonResponse(
+        mapAutoReloadPolicy(policy as Record<string, unknown>),
+        {},
+        request,
+      );
     }
 
     if (request.method === 'POST') {
@@ -108,10 +134,14 @@ serve(async (request) => {
         throw new Error('Unsupported auto reload action.');
       }
 
-      return jsonResponse(await attemptAutoReloadForUserId(serviceRole, user.id));
+      return jsonResponse(
+        await attemptAutoReloadForUserId(serviceRole, user.id),
+        {},
+        request,
+      );
     }
 
-    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 });
+    return jsonResponse({ error: 'Method not allowed.' }, { status: 405 }, request);
   } catch (error) {
     return jsonResponse(
       {
@@ -119,6 +149,7 @@ serve(async (request) => {
           error instanceof Error ? error.message : 'Auto reload request failed.',
       },
       { status: 400 },
+      request,
     );
   }
 });
