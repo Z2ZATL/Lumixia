@@ -69,8 +69,8 @@ Dremo events are ordered, server-owned records. The frontend renders them but mu
 | `self_review_started` | `{ "scope": string }` | Self-review running state. | Yes | Yes |
 | `self_review_result` | `{ "status": "passed" \| "needs_repair", "findings": object[] }` | Review summary. | Yes | Yes |
 | `repair_started` | `{ "reason": string, "attempt": number }` | Repair loop marker. | Yes | Yes |
-| `final_report_created` | `{ "reportId": string, "summary": string }` | Final report panel. | Yes | Yes |
-| `artifact_created` | `{ "artifactId": string, "kind": string, "name": string, "sizeBytes": number }` | Artifact download row. | Yes | Yes |
+| `final_report_created` | `{ "mode": "stub", "reportId": string, "artifactId": string, "summary": string, "noModelCalls": true }` | Final report panel. | Yes | Yes |
+| `artifact_created` | `{ "artifactId": string, "kind": string, "name": string, "storagePath": string \| null, "noStorageFileCreated": true }` | Artifact metadata row. | Yes | Yes |
 | `task_completed` | `{ "billingState": string, "reportId": string }` | Success completion state. | Yes | Yes |
 | `task_failed` | `{ "reason": string, "billingState": string, "retryable": boolean }` | Failure state with recovery action. | Yes | Yes |
 | `task_cancelled` | `{ "reason": string, "billingState": string }` | Cancelled state. | Yes | Yes |

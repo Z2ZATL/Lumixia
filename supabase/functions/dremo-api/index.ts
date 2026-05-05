@@ -72,6 +72,33 @@ interface DremoRepoScanSummary {
   limitations: string[];
 }
 
+interface DremoFinalReportStub {
+  mode: 'stub';
+  title: string | null;
+  promptPreview: string;
+  promptLength: number;
+  taskStatus: DremoTaskStatus;
+  eventCounts: {
+    total: number;
+    byType: Record<string, number>;
+    byChannel: Record<string, number>;
+  };
+  signals: {
+    hasSandboxLifecycle: boolean;
+    hasRepoScanCompleted: boolean;
+    hasApprovalEvents: boolean;
+    wasCancelled: boolean;
+  };
+  safety: {
+    noCommandExecution: true;
+    noFilesystemAccess: true;
+    noModelCalls: true;
+    noBillingChanges: true;
+    noStorageFileCreated: true;
+  };
+  limitations: string[];
+}
+
 interface DremoEventDraft {
   eventType: string;
   channel: DremoEventChannel;
@@ -106,10 +133,24 @@ const APPROVAL_SELECT = [
   'resolved_at',
 ].join(', ');
 
+const ARTIFACT_SELECT = [
+  'id',
+  'task_id',
+  'user_id',
+  'artifact_type',
+  'name',
+  'storage_path',
+  'metadata',
+  'created_at',
+].join(', ');
+
 const TOOL_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
 const TOOL_INPUT_LIMIT_BYTES = 8 * 1024;
+const REPORT_METADATA_LIMIT_BYTES = 16 * 1024;
 const SENSITIVE_KEY_PATTERN =
   /(authorization|bearer|cookie|secret|token|password|passwd|api[_-]?key|private[_-]?key|stripe|supabase[_-]?service)/i;
+const SENSITIVE_TEXT_PATTERN =
+  /(sk_(?:live|test)_[A-Za-z0-9_]+|pk_(?:live|test)_[A-Za-z0-9_]+|whsec_[A-Za-z0-9_]+|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,})/g;
 
 class DremoApiError extends Error {
   constructor(
@@ -317,6 +358,16 @@ function redactSensitivePayload(value: unknown, depth = 0): unknown {
   return value;
 }
 
+function redactSensitiveText(value: string, maxLength = 500) {
+  const redacted = value.replace(SENSITIVE_TEXT_PATTERN, '[redacted]');
+
+  if (redacted.length <= maxLength) {
+    return redacted;
+  }
+
+  return `${redacted.slice(0, maxLength)}...[truncated]`;
+}
+
 function sanitizeToolInput(value: unknown) {
   if (value === undefined || value === null) {
     return {};
@@ -433,6 +484,78 @@ function buildStubRepoScanSummary(
       'No billing or credit state changed.',
     ],
   };
+}
+
+function countBy<T extends string>(values: T[]) {
+  return values.reduce<Record<string, number>>((counts, value) => {
+    counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function buildStubFinalReport(
+  task: ReturnType<typeof mapTask>,
+  events: ReturnType<typeof mapEvent>[],
+): DremoFinalReportStub {
+  const eventTypes = events.map((event) => event.eventType);
+  const eventChannels = events.map((event) => event.channel);
+  const hasSandboxLifecycle = eventTypes.some((eventType) =>
+    eventType.startsWith('sandbox_')
+  );
+  const hasApprovalEvents = eventTypes.some(
+    (eventType) =>
+      eventType.startsWith('tool_approval_') ||
+      eventType === 'approval_required' ||
+      eventType === 'approval_resolved',
+  );
+
+  return {
+    mode: 'stub',
+    title: task.title,
+    promptPreview: redactSensitiveText(task.prompt, 360),
+    promptLength: task.prompt.length,
+    taskStatus: task.status,
+    eventCounts: {
+      total: events.length,
+      byType: countBy(eventTypes),
+      byChannel: countBy(eventChannels),
+    },
+    signals: {
+      hasSandboxLifecycle,
+      hasRepoScanCompleted: eventTypes.includes('repo_scan_completed'),
+      hasApprovalEvents,
+      wasCancelled:
+        task.status === 'cancelled' || eventTypes.includes('task_cancelled'),
+    },
+    safety: {
+      noCommandExecution: true,
+      noFilesystemAccess: true,
+      noModelCalls: true,
+      noBillingChanges: true,
+      noStorageFileCreated: true,
+    },
+    limitations: [
+      'This is a stub final report generated from task metadata and server-owned events only.',
+      'No shell commands were executed.',
+      'No repository files were read or written.',
+      'No external repositories were cloned.',
+      'No AI models were called.',
+      'No storage file was generated.',
+      'No billing or credit state changed.',
+    ],
+  };
+}
+
+function assertMetadataWithinLimit(metadata: Record<string, unknown>) {
+  const bytes = new TextEncoder().encode(JSON.stringify(metadata)).length;
+
+  if (bytes > REPORT_METADATA_LIMIT_BYTES) {
+    throw new DremoApiError(
+      'Report metadata payload is too large.',
+      413,
+      'report_metadata_too_large',
+    );
+  }
 }
 
 function parseAfterSequence(request: Request) {
@@ -576,6 +699,22 @@ function mapApproval(row: Record<string, unknown>) {
         : null,
     requestedAt: String(row.requested_at),
     resolvedAt: row.resolved_at === null ? null : String(row.resolved_at),
+  };
+}
+
+function mapArtifact(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    taskId: String(row.task_id),
+    userId: String(row.user_id),
+    artifactType: String(row.artifact_type),
+    name: String(row.name),
+    storagePath: row.storage_path === null ? null : String(row.storage_path),
+    metadata:
+      row.metadata && typeof row.metadata === 'object'
+        ? (row.metadata as Record<string, unknown>)
+        : {},
+    createdAt: String(row.created_at),
   };
 }
 
@@ -728,6 +867,57 @@ async function getOwnedApproval(
   }
 
   return asRecord(data);
+}
+
+async function fetchTaskArtifacts(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  userId: string,
+) {
+  const { data, error } = await serviceRole
+    .from('dremo_artifacts')
+    .select(ARTIFACT_SELECT)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Dremo artifacts fetch failed', error.message);
+    throw new DremoApiError(
+      'Unable to load Dremo artifacts.',
+      500,
+      'artifacts_fetch_failed',
+    );
+  }
+
+  return (data ?? []).map((row) => mapArtifact(asRecord(row)));
+}
+
+async function fetchLatestFinalReportArtifact(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  userId: string,
+) {
+  const { data, error } = await serviceRole
+    .from('dremo_artifacts')
+    .select(ARTIFACT_SELECT)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .eq('artifact_type', 'final_report')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Dremo final report fetch failed', error.message);
+    throw new DremoApiError(
+      'Unable to load the Dremo final report.',
+      500,
+      'report_fetch_failed',
+    );
+  }
+
+  return data ? mapArtifact(asRecord(data)) : null;
 }
 
 async function appendTaskEvents(
@@ -1248,6 +1438,110 @@ async function runStubRepoScan(request: Request, taskId: string, userId: string)
   };
 }
 
+async function finalizeStubReport(taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
+  const existingEvents = await fetchTaskEvents(serviceRole, taskId, userId, null);
+  const report = buildStubFinalReport(task, existingEvents);
+  const metadata = redactSensitivePayload({
+    report,
+    stubOnly: true,
+    noStorageFileCreated: true,
+    generatedFrom: {
+      taskMetadata: true,
+      serverOwnedEvents: true,
+      eventCount: existingEvents.length,
+    },
+  }) as Record<string, unknown>;
+
+  assertMetadataWithinLimit(metadata);
+
+  const { data: artifactRow, error: artifactError } = await serviceRole
+    .from('dremo_artifacts')
+    .insert({
+      task_id: taskId,
+      user_id: userId,
+      artifact_type: 'final_report',
+      name: 'Dremo Final Report Stub',
+      storage_path: null,
+      metadata,
+    })
+    .select(ARTIFACT_SELECT)
+    .single();
+
+  if (artifactError) {
+    console.error('Dremo final report artifact create failed', artifactError.message);
+    throw new DremoApiError(
+      'Unable to create the Dremo final report artifact.',
+      500,
+      'report_artifact_create_failed',
+    );
+  }
+
+  const artifact = mapArtifact(asRecord(artifactRow));
+  const events = await appendTaskEvents(serviceRole, taskId, userId, [
+    {
+      eventType: 'final_report_created',
+      channel: 'agent',
+      payload: {
+        mode: 'stub',
+        reportId: artifact.id,
+        artifactId: artifact.id,
+        summary:
+          'Dremo final report stub created from task metadata and server-owned events.',
+        noCommandExecution: true,
+        noFilesystemAccess: true,
+        noModelCalls: true,
+        noBillingChanges: true,
+      },
+    },
+    {
+      eventType: 'artifact_created',
+      channel: 'artifact',
+      payload: {
+        artifactId: artifact.id,
+        kind: 'final_report',
+        name: artifact.name,
+        storagePath: null,
+        stubOnly: true,
+        noStorageFileCreated: true,
+      },
+    },
+  ]);
+
+  return {
+    artifact,
+    report,
+    events,
+  };
+}
+
+async function getFinalReport(taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  await getOwnedTask(serviceRole, taskId, userId);
+  const artifact = await fetchLatestFinalReportArtifact(
+    serviceRole,
+    taskId,
+    userId,
+  );
+
+  if (!artifact) {
+    throw new DremoApiError(
+      'Dremo final report is not ready yet.',
+      404,
+      'report_not_ready',
+    );
+  }
+
+  const metadata = artifact.metadata;
+  const report = asRecord(metadata.report, 'Expected final report metadata.');
+
+  return {
+    artifact,
+    report,
+  };
+}
+
 async function requestToolStub(request: Request, taskId: string, userId: string) {
   const serviceRole = createServiceRoleClient();
   const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
@@ -1525,6 +1819,35 @@ serve(async (request) => {
     }
 
     if (
+      request.method === 'GET' &&
+      route.length === 3 &&
+      route[0] === 'tasks' &&
+      route[2] === 'artifacts'
+    ) {
+      const taskId = requireTaskId(route[1]);
+      await getOwnedTask(serviceRole, taskId, user.id);
+
+      return jsonResponse(
+        {
+          artifacts: await fetchTaskArtifacts(serviceRole, taskId, user.id),
+        },
+        {},
+        request,
+      );
+    }
+
+    if (
+      request.method === 'GET' &&
+      route.length === 3 &&
+      route[0] === 'tasks' &&
+      route[2] === 'report'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(await getFinalReport(taskId, user.id), {}, request);
+    }
+
+    if (
       request.method === 'POST' &&
       route.length === 3 &&
       route[0] === 'tasks' &&
@@ -1533,6 +1856,18 @@ serve(async (request) => {
       const taskId = requireTaskId(route[1]);
 
       return jsonResponse(await cancelTask(taskId, user.id), {}, request);
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 4 &&
+      route[0] === 'tasks' &&
+      route[2] === 'report' &&
+      route[3] === 'finalize'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(await finalizeStubReport(taskId, user.id), {}, request);
     }
 
     if (

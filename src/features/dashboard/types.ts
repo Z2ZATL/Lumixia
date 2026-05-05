@@ -262,6 +262,44 @@ export interface DremoRepoScanSummary {
   limitations: string[];
 }
 
+export interface DremoFinalReportStub {
+  mode: 'stub';
+  title: string | null;
+  promptPreview: string;
+  promptLength: number;
+  taskStatus: DremoTaskStatus;
+  eventCounts: {
+    total: number;
+    byType: Record<string, number>;
+    byChannel: Record<string, number>;
+  };
+  signals: {
+    hasSandboxLifecycle: boolean;
+    hasRepoScanCompleted: boolean;
+    hasApprovalEvents: boolean;
+    wasCancelled: boolean;
+  };
+  safety: {
+    noCommandExecution: boolean;
+    noFilesystemAccess: boolean;
+    noModelCalls: boolean;
+    noBillingChanges: boolean;
+    noStorageFileCreated: boolean;
+  };
+  limitations: string[];
+}
+
+export interface DremoArtifact {
+  id: string;
+  taskId: string;
+  userId: string;
+  artifactType: string;
+  name: string;
+  storagePath: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface ExecutionProviderLog {
   kind: ExecutionLogKind;
   message: string;

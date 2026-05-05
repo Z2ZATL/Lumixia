@@ -58,6 +58,8 @@ Current implementation note: `dremo-api` includes a command approval stub. Low-r
 
 Repo scan stub note: the current `POST /tasks/:taskId/repo-scan` route is metadata-only. It appends `repo_scan_started` and `repo_scan_completed` events but does not run shell commands, read files, clone repositories, access the network, call models, or change billing. A future real scanner must run inside the sandbox policy layer and preserve this no-browser-trusted-write rule.
 
+Final report stub note: the current `POST /tasks/:taskId/report/finalize` route creates database artifact metadata only. It derives a bounded report from the task row and server-owned events, appends `final_report_created` and `artifact_created`, and does not create storage files, execute commands, read repo files, call models, or change billing.
+
 | Tool category | Example | Stub policy |
 | --- | --- | --- |
 | `bash_command` | `npm test` | Approval required unless explicitly low-risk and stubbed. |

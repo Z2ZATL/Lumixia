@@ -30,6 +30,8 @@ The internal `/dashboard/dremo-lab` route includes a Tool Approval Stub section.
 
 The lab also includes a Read-only Repo Scan Stub action. It calls `POST /tasks/:taskId/repo-scan`, renders the returned metadata-only summary, and shows `repo_scan_started` / `repo_scan_completed` in the event timeline. This must remain clearly labeled as stub-only until a sandbox-backed scanner exists.
 
+The lab includes a Final Report Artifact Stub action. It calls `POST /tasks/:taskId/report/finalize`, renders the returned report card and artifact metadata, and shows `final_report_created` / `artifact_created` in the event timeline. The UI must keep stating that no model, sandbox execution, storage file generation, or billing happened.
+
 ## Suggested Desktop Layout
 
 ```text

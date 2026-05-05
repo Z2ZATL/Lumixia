@@ -3,10 +3,12 @@ import type {
   DremoApproval,
   DremoApprovalDecision,
   DremoApprovalStatus,
+  DremoArtifact,
   DremoCreditState,
   DremoEventChannel,
   DremoEventSeverity,
   DremoEventType,
+  DremoFinalReportStub,
   DremoRepoScanSummary,
   DremoRiskLevel,
   DremoSandboxSession,
@@ -87,6 +89,19 @@ export interface DremoRepoScanInput {
 
 export interface DremoRepoScanResponse {
   summary: DremoRepoScanSummary;
+  events: DremoTaskEvent[];
+}
+
+export interface DremoArtifactsResponse {
+  artifacts: DremoArtifact[];
+}
+
+export interface DremoFinalReportResponse {
+  artifact: DremoArtifact;
+  report: DremoFinalReportStub;
+}
+
+export interface DremoFinalizeReportResponse extends DremoFinalReportResponse {
   events: DremoTaskEvent[];
 }
 
@@ -371,6 +386,66 @@ function mapDremoRepoScanSummary(value: unknown): DremoRepoScanSummary {
   };
 }
 
+function mapDremoArtifact(value: unknown): DremoArtifact {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid artifact payload.');
+  }
+
+  return {
+    id: String(value.id ?? ''),
+    taskId: String(value.taskId ?? ''),
+    userId: String(value.userId ?? ''),
+    artifactType: String(value.artifactType ?? ''),
+    name: String(value.name ?? ''),
+    storagePath: toStringOrNull(value.storagePath),
+    metadata: isRecord(value.metadata) ? value.metadata : {},
+    createdAt: String(value.createdAt ?? ''),
+  };
+}
+
+function mapDremoFinalReportStub(value: unknown): DremoFinalReportStub {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid final report payload.');
+  }
+
+  const eventCounts = isRecord(value.eventCounts) ? value.eventCounts : {};
+  const signals = isRecord(value.signals) ? value.signals : {};
+  const safety = isRecord(value.safety) ? value.safety : {};
+
+  return {
+    mode: 'stub',
+    title: toStringOrNull(value.title),
+    promptPreview: String(value.promptPreview ?? ''),
+    promptLength: Number(value.promptLength ?? 0),
+    taskStatus: toDremoTaskStatus(value.taskStatus),
+    eventCounts: {
+      total: Number(eventCounts.total ?? 0),
+      byType: isRecord(eventCounts.byType) ? eventCounts.byType as Record<string, number> : {},
+      byChannel: isRecord(eventCounts.byChannel)
+        ? eventCounts.byChannel as Record<string, number>
+        : {},
+    },
+    signals: {
+      hasSandboxLifecycle: Boolean(signals.hasSandboxLifecycle),
+      hasRepoScanCompleted: Boolean(signals.hasRepoScanCompleted),
+      hasApprovalEvents: Boolean(signals.hasApprovalEvents),
+      wasCancelled: Boolean(signals.wasCancelled),
+    },
+    safety: {
+      noCommandExecution: safety.noCommandExecution === true,
+      noFilesystemAccess: safety.noFilesystemAccess === true,
+      noModelCalls: safety.noModelCalls === true,
+      noBillingChanges: safety.noBillingChanges === true,
+      noStorageFileCreated: safety.noStorageFileCreated === true,
+    },
+    limitations: Array.isArray(value.limitations)
+      ? value.limitations.filter(
+          (limitation): limitation is string => typeof limitation === 'string',
+        )
+      : [],
+  };
+}
+
 function getDremoApiBaseUrl() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -554,6 +629,46 @@ export async function runDremoStubRepoScan(
   return {
     summary: mapDremoRepoScanSummary(payload.summary),
     events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function finalizeDremoStubReport(
+  taskId: string,
+): Promise<DremoFinalizeReportResponse> {
+  const payload = await requestDremoApi<DremoFinalizeReportResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/report/finalize`,
+    { method: 'POST' },
+  );
+
+  return {
+    artifact: mapDremoArtifact(payload.artifact),
+    report: mapDremoFinalReportStub(payload.report),
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function getDremoArtifacts(
+  taskId: string,
+): Promise<DremoArtifactsResponse> {
+  const payload = await requestDremoApi<DremoArtifactsResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/artifacts`,
+  );
+
+  return {
+    artifacts: (payload.artifacts ?? []).map(mapDremoArtifact),
+  };
+}
+
+export async function getDremoFinalReport(
+  taskId: string,
+): Promise<DremoFinalReportResponse> {
+  const payload = await requestDremoApi<DremoFinalReportResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/report`,
+  );
+
+  return {
+    artifact: mapDremoArtifact(payload.artifact),
+    report: mapDremoFinalReportStub(payload.report),
   };
 }
 
