@@ -1,6 +1,8 @@
 # Proposed Dremo Database Schema
 
-Status: proposed. This file does not create SQL migrations.
+Status: proposed design with an initial schema foundation.
+
+Implementation note: the first schema-only foundation is defined in [`supabase/sql/schema/dremo_code_schema_v1.sql`](../../supabase/sql/schema/dremo_code_schema_v1.sql), with permission repair and RLS verification helpers under `supabase/sql/ops/`.
 
 The future Dremo schema should use dedicated `dremo_*` tables instead of stretching the legacy `execution_sessions` and `execution_logs` tables. Existing execution tables can remain as compatibility data during migration.
 
