@@ -64,7 +64,13 @@ export type DremoEventType =
   | 'sandbox_ready'
   | 'sandbox_stopping'
   | 'sandbox_stopped'
-  | 'sandbox_failed';
+  | 'sandbox_failed'
+  | 'tool_call_requested'
+  | 'tool_approval_required'
+  | 'tool_approval_approved'
+  | 'tool_approval_rejected'
+  | 'tool_call_blocked'
+  | 'tool_call_stubbed';
 export type DremoEventChannel =
   | 'system'
   | 'agent'
@@ -86,6 +92,14 @@ export type DremoSandboxStatus =
   | 'destroyed'
   | 'failed'
   | 'quarantined';
+export type DremoRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type DremoApprovalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'expired'
+  | 'cancelled';
+export type DremoApprovalDecision = 'approved' | 'rejected';
 
 export interface DashboardAgent {
   id: string;
@@ -219,6 +233,19 @@ export interface DremoSandboxSession {
   startedAt: string | null;
   stoppedAt: string | null;
   failureReason: string | null;
+}
+
+export interface DremoApproval {
+  id: string;
+  taskId: string;
+  userId: string;
+  approvalType: string;
+  status: DremoApprovalStatus;
+  riskLevel: DremoRiskLevel;
+  requestPayload: Record<string, unknown>;
+  responsePayload: Record<string, unknown> | null;
+  requestedAt: string;
+  resolvedAt: string | null;
 }
 
 export interface ExecutionProviderLog {

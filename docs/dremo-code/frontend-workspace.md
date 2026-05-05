@@ -24,6 +24,10 @@ Lumixia includes an internal `/dashboard/dremo-lab` route for testing the deploy
 | Final report panel | Summarize work, changed files, verification, risks, and next steps. |
 | Artifact downloads | Provide signed downloads for patches, reports, logs, or screenshots. |
 
+## Current Tool Approval Stub
+
+The internal `/dashboard/dremo-lab` route includes a Tool Approval Stub section. It lets developers request low-risk stubbed tools or create pending approval cards for medium/high/critical tool requests. Approve/reject actions call `dremo-api` and only record the decision; the UI must continue to state clearly that no command, file, network, package, git, or model execution happens yet.
+
 ## Suggested Desktop Layout
 
 ```text

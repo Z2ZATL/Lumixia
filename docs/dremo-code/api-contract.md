@@ -279,6 +279,119 @@ Error cases:
 
 Ownership and security rules: the stop route is backend-owned and event-producing. Future real providers must also enforce cleanup, retention, and audit guarantees server-side.
 
+## POST /dremo/tasks/:taskId/tools/request
+
+Purpose: request a future Dremo tool action through the server-owned permission layer.
+
+Current stub behavior: validates the request, records server-owned events, and either returns a low-risk stub result or creates a pending approval. It does not execute commands, read files, write files, access the network, install packages, run git, or call models.
+
+Auth requirements: authenticated owner.
+
+Request:
+
+```json
+{
+  "toolName": "bash",
+  "riskLevel": "medium",
+  "reason": "Run tests in the future sandbox.",
+  "input": {
+    "command": "npm test",
+    "cwd": "/workspace"
+  }
+}
+```
+
+Response for low-risk stubbed tools:
+
+```json
+{
+  "approval": null,
+  "toolResult": {
+    "status": "stubbed",
+    "toolRequestId": "uuid",
+    "executionImplemented": false
+  },
+  "events": [
+    { "eventType": "tool_call_requested" },
+    { "eventType": "tool_call_stubbed" }
+  ]
+}
+```
+
+Response for approval-required tools:
+
+```json
+{
+  "approval": {
+    "id": "approval_uuid",
+    "status": "pending",
+    "approvalType": "bash_command",
+    "riskLevel": "medium"
+  },
+  "toolResult": null,
+  "events": [
+    { "eventType": "tool_call_requested" },
+    { "eventType": "tool_approval_required" }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `invalid_tool_name` | Tool name is missing or uses unsupported characters. |
+| `invalid_risk_level` | Risk level is not `low`, `medium`, `high`, or `critical`. |
+| `payload_too_large` | Request body is too large. |
+| `tool_input_too_large` | Sanitized input exceeds the stub payload limit. |
+| `task_not_found` | Missing or not owned by current user. |
+
+Ownership and security rules: `userId` is derived from JWT. The browser cannot insert trusted events or approval rows directly. Sensitive-looking input keys are redacted before persistence.
+
+## POST /dremo/tasks/:taskId/approvals/:approvalId/resolve
+
+Purpose: approve or reject a pending tool approval.
+
+Current stub behavior: records the user decision and appends an approval event. It does not execute the requested tool after approval.
+
+Auth requirements: authenticated owner of both task and approval.
+
+Request:
+
+```json
+{
+  "decision": "approved",
+  "note": "Approved for this task only."
+}
+```
+
+Response:
+
+```json
+{
+  "approval": {
+    "id": "approval_uuid",
+    "status": "approved",
+    "resolvedAt": "2026-05-06T00:00:00Z"
+  },
+  "executionImplemented": false,
+  "message": "Approval recorded. Tool execution is still not implemented.",
+  "events": [
+    { "eventType": "tool_approval_approved" }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `invalid_approval_decision` | Decision is not `approved` or `rejected`. |
+| `approval_not_found` | Missing, not owned, or not attached to this task. |
+| `approval_already_resolved` | Approval is no longer pending. |
+
+Ownership and security rules: resolving an approval never broadens scope or executes a tool in this PR. Future execution must require a fresh backend-owned policy check after approval.
+
 ## POST /dremo/tasks/:taskId/approvals/:approvalId
 
 Purpose: resolve a pending approval request.

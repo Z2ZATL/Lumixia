@@ -1,9 +1,13 @@
 import { getSupabaseClient } from '../../../lib/supabase';
 import type {
+  DremoApproval,
+  DremoApprovalDecision,
+  DremoApprovalStatus,
   DremoCreditState,
   DremoEventChannel,
   DremoEventSeverity,
   DremoEventType,
+  DremoRiskLevel,
   DremoSandboxSession,
   DremoSandboxStatus,
   DremoTask,
@@ -42,6 +46,36 @@ export interface DremoEventsResponse {
 
 export interface DremoSandboxLifecycleResponse {
   sandboxSession: DremoSandboxSession;
+  events: DremoTaskEvent[];
+}
+
+export interface DremoToolRequestInput {
+  toolName: string;
+  riskLevel: DremoRiskLevel;
+  reason: string;
+  input: Record<string, unknown>;
+}
+
+export interface DremoToolStubResult {
+  status: 'stubbed' | 'blocked';
+  toolRequestId: string;
+  toolName?: string;
+  riskLevel?: DremoRiskLevel;
+  executionImplemented: false;
+  output?: string;
+  reason?: string;
+}
+
+export interface DremoToolRequestResponse {
+  approval: DremoApproval | null;
+  toolResult: DremoToolStubResult | null;
+  events: DremoTaskEvent[];
+}
+
+export interface DremoApprovalResolveResponse {
+  approval: DremoApproval;
+  executionImplemented: false;
+  message: string;
   events: DremoTaskEvent[];
 }
 
@@ -124,11 +158,41 @@ function toDremoEventType(value: unknown): DremoEventType {
     'sandbox_stopping',
     'sandbox_stopped',
     'sandbox_failed',
+    'tool_call_requested',
+    'tool_approval_required',
+    'tool_approval_approved',
+    'tool_approval_rejected',
+    'tool_call_blocked',
+    'tool_call_stubbed',
   ];
 
   return allowed.includes(eventType as DremoEventType)
     ? (eventType as DremoEventType)
     : 'task_failed';
+}
+
+function toDremoRiskLevel(value: unknown): DremoRiskLevel {
+  const riskLevel = String(value);
+  const allowed: DremoRiskLevel[] = ['low', 'medium', 'high', 'critical'];
+
+  return allowed.includes(riskLevel as DremoRiskLevel)
+    ? (riskLevel as DremoRiskLevel)
+    : 'medium';
+}
+
+function toDremoApprovalStatus(value: unknown): DremoApprovalStatus {
+  const status = String(value);
+  const allowed: DremoApprovalStatus[] = [
+    'pending',
+    'approved',
+    'rejected',
+    'expired',
+    'cancelled',
+  ];
+
+  return allowed.includes(status as DremoApprovalStatus)
+    ? (status as DremoApprovalStatus)
+    : 'pending';
 }
 
 function toDremoSandboxStatus(value: unknown): DremoSandboxStatus {
@@ -239,6 +303,27 @@ function mapDremoSandboxSession(value: unknown): DremoSandboxSession {
     startedAt: toStringOrNull(value.startedAt),
     stoppedAt: toStringOrNull(value.stoppedAt),
     failureReason: toStringOrNull(value.failureReason),
+  };
+}
+
+function mapDremoApproval(value: unknown): DremoApproval {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid approval payload.');
+  }
+
+  return {
+    id: String(value.id ?? ''),
+    taskId: String(value.taskId ?? ''),
+    userId: String(value.userId ?? ''),
+    approvalType: String(value.approvalType ?? ''),
+    status: toDremoApprovalStatus(value.status),
+    riskLevel: toDremoRiskLevel(value.riskLevel),
+    requestPayload: isRecord(value.requestPayload) ? value.requestPayload : {},
+    responsePayload: isRecord(value.responsePayload)
+      ? value.responsePayload
+      : null,
+    requestedAt: String(value.requestedAt ?? ''),
+    resolvedAt: toStringOrNull(value.resolvedAt),
   };
 }
 
@@ -406,6 +491,51 @@ export async function stopDremoStubSandbox(
 
   return {
     sandboxSession: mapDremoSandboxSession(payload.sandboxSession),
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function requestDremoTool(
+  taskId: string,
+  input: DremoToolRequestInput,
+): Promise<DremoToolRequestResponse> {
+  const payload = await requestDremoApi<DremoToolRequestResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/tools/request`,
+    {
+      method: 'POST',
+      body: input,
+    },
+  );
+
+  return {
+    approval: payload.approval ? mapDremoApproval(payload.approval) : null,
+    toolResult: payload.toolResult,
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function resolveDremoApproval(
+  taskId: string,
+  approvalId: string,
+  input: {
+    decision: DremoApprovalDecision;
+    note?: string;
+  },
+): Promise<DremoApprovalResolveResponse> {
+  const payload = await requestDremoApi<DremoApprovalResolveResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/approvals/${encodeURIComponent(
+      approvalId,
+    )}/resolve`,
+    {
+      method: 'POST',
+      body: input,
+    },
+  );
+
+  return {
+    approval: mapDremoApproval(payload.approval),
+    executionImplemented: false,
+    message: payload.message,
     events: (payload.events ?? []).map(mapDremoTaskEvent),
   };
 }

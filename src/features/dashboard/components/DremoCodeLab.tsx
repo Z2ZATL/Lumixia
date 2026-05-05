@@ -4,10 +4,19 @@ import {
   createDremoTask,
   getDremoTask,
   getDremoTaskEvents,
+  requestDremoTool,
+  resolveDremoApproval,
   startDremoStubSandbox,
   stopDremoStubSandbox,
 } from '../lib/dremoApi';
-import type { DremoSandboxSession, DremoTask, DremoTaskEvent } from '../types';
+import type {
+  DremoApproval,
+  DremoApprovalDecision,
+  DremoRiskLevel,
+  DremoSandboxSession,
+  DremoTask,
+  DremoTaskEvent,
+} from '../types';
 
 function formatDate(value: string) {
   if (!value) {
@@ -53,12 +62,50 @@ function mergeEvents(
   return sortEvents([...byId.values()]);
 }
 
+function mergeApproval(
+  currentApprovals: DremoApproval[],
+  incomingApproval: DremoApproval,
+) {
+  const byId = new Map(
+    currentApprovals.map((approval) => [approval.id, approval]),
+  );
+  byId.set(incomingApproval.id, incomingApproval);
+
+  return [...byId.values()].sort((left, right) =>
+    right.requestedAt.localeCompare(left.requestedAt),
+  );
+}
+
+function parseToolInputJson(value: string) {
+  if (!value.trim()) {
+    return {};
+  }
+
+  const parsed = JSON.parse(value) as unknown;
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Tool input must be a JSON object.');
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
 export const DremoCodeLab: React.FC = () => {
   const [title, setTitle] = useState('Stub task');
   const [prompt, setPrompt] = useState('Create a server-owned Dremo stub task.');
   const [task, setTask] = useState<DremoTask | null>(null);
   const [sandboxSession, setSandboxSession] =
     useState<DremoSandboxSession | null>(null);
+  const [approvals, setApprovals] = useState<DremoApproval[]>([]);
+  const [toolName, setToolName] = useState('repo_scan');
+  const [riskLevel, setRiskLevel] = useState<DremoRiskLevel>('low');
+  const [toolReason, setToolReason] = useState(
+    'Validate the Dremo tool permission contract in stub mode.',
+  );
+  const [toolInput, setToolInput] = useState('{\n  "scope": "metadata_only"\n}');
+  const [toolResultMessage, setToolResultMessage] = useState<string | null>(
+    null,
+  );
   const [events, setEvents] = useState<DremoTaskEvent[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -66,6 +113,10 @@ export const DremoCodeLab: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isStartingSandbox, setIsStartingSandbox] = useState(false);
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false);
+  const [isRequestingTool, setIsRequestingTool] = useState(false);
+  const [resolvingApprovalId, setResolvingApprovalId] = useState<string | null>(
+    null,
+  );
 
   const latestSequence = useMemo(
     () => events.reduce((max, event) => Math.max(max, event.sequence), 0),
@@ -77,7 +128,9 @@ export const DremoCodeLab: React.FC = () => {
     isRefreshing ||
     isCancelling ||
     isStartingSandbox ||
-    isStoppingSandbox;
+    isStoppingSandbox ||
+    isRequestingTool ||
+    Boolean(resolvingApprovalId);
   const canStartSandbox =
     Boolean(task) &&
     task?.status !== 'cancelled' &&
@@ -115,6 +168,8 @@ export const DremoCodeLab: React.FC = () => {
 
       setTask(result.task);
       setSandboxSession(null);
+      setApprovals([]);
+      setToolResultMessage(null);
       setEvents(sortEvents(result.events));
     } catch (error) {
       setErrorMessage(
@@ -225,6 +280,127 @@ export const DremoCodeLab: React.FC = () => {
       );
     } finally {
       setIsStoppingSandbox(false);
+    }
+  }
+
+  async function submitToolRequest(input: {
+    toolName: string;
+    riskLevel: DremoRiskLevel;
+    reason: string;
+    toolInput: Record<string, unknown>;
+  }) {
+    if (!task) {
+      setErrorMessage('Create a Dremo task before requesting a tool stub.');
+      return;
+    }
+
+    setIsRequestingTool(true);
+    setErrorMessage(null);
+    setToolResultMessage(null);
+
+    try {
+      const result = await requestDremoTool(task.id, {
+        toolName: input.toolName,
+        riskLevel: input.riskLevel,
+        reason: input.reason,
+        input: input.toolInput,
+      });
+
+      const approval = result.approval;
+
+      if (approval) {
+        setApprovals((currentApprovals) =>
+          mergeApproval(currentApprovals, approval),
+        );
+        setToolResultMessage(
+          `Approval required for ${approval.approvalType}. No tool execution happened.`,
+        );
+      } else if (result.toolResult) {
+        setToolResultMessage(
+          result.toolResult.output ??
+            result.toolResult.reason ??
+            'Tool request was handled by the stub.',
+        );
+      }
+
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to request the Dremo tool stub.',
+      );
+    } finally {
+      setIsRequestingTool(false);
+    }
+  }
+
+  async function handleToolRequest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      await submitToolRequest({
+        toolName: toolName.trim(),
+        riskLevel,
+        reason: toolReason.trim(),
+        toolInput: parseToolInputJson(toolInput),
+      });
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Tool input must be valid JSON.',
+      );
+    }
+  }
+
+  async function handleSampleToolRequest(sample: {
+    toolName: string;
+    riskLevel: DremoRiskLevel;
+    reason: string;
+    toolInput: Record<string, unknown>;
+  }) {
+    setToolName(sample.toolName);
+    setRiskLevel(sample.riskLevel);
+    setToolReason(sample.reason);
+    setToolInput(JSON.stringify(sample.toolInput, null, 2));
+    await submitToolRequest(sample);
+  }
+
+  async function handleResolveApproval(
+    approval: DremoApproval,
+    decision: DremoApprovalDecision,
+  ) {
+    if (!task || approval.status !== 'pending') {
+      return;
+    }
+
+    setResolvingApprovalId(approval.id);
+    setErrorMessage(null);
+    setToolResultMessage(null);
+
+    try {
+      const result = await resolveDremoApproval(task.id, approval.id, {
+        decision,
+        note:
+          decision === 'approved'
+            ? 'Approved from Dremo Lab stub. Execution remains disabled.'
+            : 'Rejected from Dremo Lab stub. No execution should happen.',
+      });
+
+      setApprovals((currentApprovals) =>
+        mergeApproval(currentApprovals, result.approval),
+      );
+      setToolResultMessage(result.message);
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to resolve the Dremo approval.',
+      );
+    } finally {
+      setResolvingApprovalId(null);
     }
   }
 
@@ -428,6 +604,213 @@ export const DremoCodeLab: React.FC = () => {
             </p>
           )}
         </section>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+              Tool Approval Stub
+            </p>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950">
+              Approval-before-execution contract
+            </h2>
+            <p className="text-sm leading-6 text-slate-600">
+              Request a tool through <span className="font-bold">dremo-api</span>.
+              Low-risk requests return a stubbed result. Medium, high, and
+              critical requests create an approval card. No command, file,
+              network, package install, git operation, or model call is
+              executed.
+            </p>
+          </div>
+          <span className="w-fit rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-red-700">
+            No execution
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <form
+            className="space-y-4 rounded-2xl border border-slate-100 bg-slate-50 p-4"
+            onSubmit={(event) => {
+              void handleToolRequest(event);
+            }}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-bold text-slate-700">
+                Tool name
+                <input
+                  className="mt-2 min-h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  type="text"
+                  value={toolName}
+                  onChange={(event) => setToolName(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-700">
+                Risk level
+                <select
+                  className="mt-2 min-h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  value={riskLevel}
+                  onChange={(event) =>
+                    setRiskLevel(event.target.value as DremoRiskLevel)
+                  }
+                >
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                  <option value="critical">critical</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="block text-sm font-bold text-slate-700">
+              Reason
+              <textarea
+                className="mt-2 min-h-20 w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                value={toolReason}
+                onChange={(event) => setToolReason(event.target.value)}
+              />
+            </label>
+
+            <label className="block text-sm font-bold text-slate-700">
+              Input JSON
+              <textarea
+                className="mt-2 min-h-28 w-full resize-y rounded-2xl border border-slate-200 bg-white px-4 py-3 font-mono text-xs leading-6 text-slate-900 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+                value={toolInput}
+                onChange={(event) => setToolInput(event.target.value)}
+              />
+            </label>
+
+            <button
+              className="min-h-12 w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-slate-900/15 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              disabled={isBusy || !task}
+              type="submit"
+            >
+              {isRequestingTool ? 'Requesting...' : 'Submit Tool Request'}
+            </button>
+          </form>
+
+          <div className="space-y-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button
+                className="min-h-11 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-emerald-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isBusy || !task}
+                type="button"
+                onClick={() => {
+                  void handleSampleToolRequest({
+                    toolName: 'repo_scan',
+                    riskLevel: 'low',
+                    reason: 'Stub a safe repo metadata scan.',
+                    toolInput: { scope: 'metadata_only' },
+                  });
+                }}
+              >
+                Low repo_scan
+              </button>
+              <button
+                className="min-h-11 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-amber-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isBusy || !task}
+                type="button"
+                onClick={() => {
+                  void handleSampleToolRequest({
+                    toolName: 'bash',
+                    riskLevel: 'medium',
+                    reason: 'Request approval for a future sandbox command.',
+                    toolInput: { command: 'npm test', cwd: '/workspace' },
+                  });
+                }}
+              >
+                Medium bash
+              </button>
+              <button
+                className="min-h-11 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black uppercase tracking-widest text-red-800 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isBusy || !task}
+                type="button"
+                onClick={() => {
+                  void handleSampleToolRequest({
+                    toolName: 'package_install',
+                    riskLevel: 'high',
+                    reason: 'Request approval for a future package install.',
+                    toolInput: { manager: 'npm', packageName: 'example' },
+                  });
+                }}
+              >
+                High install
+              </button>
+            </div>
+
+            {toolResultMessage && (
+              <p className="rounded-2xl border border-sky-100 bg-sky-50 p-4 text-sm font-semibold leading-6 text-sky-800">
+                {toolResultMessage}
+              </p>
+            )}
+
+            {approvals.length > 0 ? (
+              <div className="space-y-3">
+                {approvals.map((approval) => (
+                  <article
+                    className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                    key={approval.id}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                          Approval Request
+                        </p>
+                        <h3 className="mt-1 text-lg font-black text-slate-950">
+                          {approval.approvalType}
+                        </h3>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                          {approval.riskLevel} risk / {approval.status}
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-full border border-slate-200 px-3 py-1 text-[11px] font-black uppercase tracking-widest text-slate-600">
+                        {approval.status}
+                      </span>
+                    </div>
+                    <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-50 p-3 text-xs leading-6 text-slate-700">
+                      {compactPayloadPreview(approval.requestPayload)}
+                    </pre>
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <button
+                        className="min-h-10 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black uppercase tracking-widest text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          isBusy ||
+                          approval.status !== 'pending' ||
+                          resolvingApprovalId === approval.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          void handleResolveApproval(approval, 'approved');
+                        }}
+                      >
+                        Approve Stub
+                      </button>
+                      <button
+                        className="min-h-10 rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-red-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={
+                          isBusy ||
+                          approval.status !== 'pending' ||
+                          resolvingApprovalId === approval.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          void handleResolveApproval(approval, 'rejected');
+                        }}
+                      >
+                        Reject Stub
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                Medium, high, and critical tool requests will create approval
+                cards here. Low-risk requests are stubbed immediately.
+              </p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">

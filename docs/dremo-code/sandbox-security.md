@@ -50,6 +50,20 @@ Current implementation note: `dremo-api` exposes a stub-only lifecycle for contr
 | Destructive command | `rm -rf`, force reset, credential deletion | Require strict policy or deny. |
 | External publication | Git push, PR creation, deployment | Require explicit user approval. |
 
+## Approval Before Execution
+
+No future Dremo tool should execute directly from a browser request. Every tool request must pass through the server-owned permission layer before a sandbox runner can act.
+
+Current implementation note: `dremo-api` includes a command approval stub. Low-risk tool requests emit `tool_call_requested` and `tool_call_stubbed`; medium, high, and critical requests create a pending `dremo_approvals` row and emit `tool_approval_required`. Approving a request only records `tool_approval_approved`; it does not execute the command yet.
+
+| Tool category | Example | Stub policy |
+| --- | --- | --- |
+| `bash_command` | `npm test` | Approval required unless explicitly low-risk and stubbed. |
+| `file_write` | Update a source file | Approval required before future write. |
+| `network_request` | Fetch external URL | Approval and egress policy required. |
+| `package_install` | `npm install` | Approval required with timeout and network controls. |
+| `git_operation` | Commit, push, PR | Explicit approval required. |
+
 ## File Policy
 
 | Path class | Policy |

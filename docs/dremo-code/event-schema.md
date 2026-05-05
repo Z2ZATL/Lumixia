@@ -44,6 +44,12 @@ Dremo events are ordered, server-owned records. The frontend renders them but mu
 | `sandbox_stopping` | `{ "provider": string, "sandboxSessionId": string, "previousStatus": string }` | Cleanup progress marker. | Yes | Yes |
 | `sandbox_stopped` | `{ "provider": string, "sandboxSessionId": string, "status": "stopped" }` | Cleanup complete marker. | Yes | Yes |
 | `sandbox_failed` | `{ "provider": string, "sandboxSessionId": string, "reason": string }` | Failure state with recovery action. | Yes | Yes |
+| `tool_call_requested` | `{ "toolRequestId": string, "toolName": string, "riskLevel": string, "reason": string, "input": object, "noExecution": true }` | Tool request row. | Yes | Yes |
+| `tool_approval_required` | `{ "approvalId": string, "toolRequestId": string, "approvalType": string, "riskLevel": string }` | Approval card. | Yes | Yes |
+| `tool_approval_approved` | `{ "approvalId": string, "decision": "approved", "executionImplemented": false }` | Approval resolved marker. | Yes | Yes |
+| `tool_approval_rejected` | `{ "approvalId": string, "decision": "rejected", "executionImplemented": false }` | Rejection marker. | Yes | Yes |
+| `tool_call_blocked` | `{ "toolRequestId": string, "toolName": string, "blockReason": string }` | Blocked policy row. | Yes | Yes |
+| `tool_call_stubbed` | `{ "toolRequestId": string, "toolName": string, "status": "stubbed", "executionImplemented": false }` | Stubbed low-risk result. | Yes | Yes |
 | `repo_scanned` | `{ "filesScanned": number, "languageHints": string[] }` | Repo insight card. | Yes | Yes |
 | `plan_created` | `{ "summary": string, "steps": [{ "id": string, "title": string, "risk": string }] }` | Plan panel with checklist. | Yes | Yes |
 | `approval_required` | `{ "approvalId": string, "action": string, "risk": string, "details": object }` | Approval card with allow/deny buttons. | Yes | Yes |

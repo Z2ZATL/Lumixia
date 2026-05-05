@@ -52,6 +52,15 @@ type DremoSandboxStatus =
   | 'failed'
   | 'quarantined';
 
+type DremoRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+type DremoApprovalDecision = 'approved' | 'rejected';
+type DremoApprovalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'expired'
+  | 'cancelled';
+
 interface DremoEventDraft {
   eventType: string;
   channel: DremoEventChannel;
@@ -72,6 +81,24 @@ const SANDBOX_SESSION_SELECT = [
   'stopped_at',
   'failure_reason',
 ].join(', ');
+
+const APPROVAL_SELECT = [
+  'id',
+  'task_id',
+  'user_id',
+  'approval_type',
+  'status',
+  'risk_level',
+  'request_payload',
+  'response_payload',
+  'requested_at',
+  'resolved_at',
+].join(', ');
+
+const TOOL_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+const TOOL_INPUT_LIMIT_BYTES = 8 * 1024;
+const SENSITIVE_KEY_PATTERN =
+  /(authorization|bearer|cookie|secret|token|password|passwd|api[_-]?key|private[_-]?key|stripe|supabase[_-]?service)/i;
 
 class DremoApiError extends Error {
   constructor(
@@ -105,6 +132,24 @@ function requireTaskId(value: unknown) {
   return taskId;
 }
 
+function requireApprovalId(value: unknown) {
+  const approvalId = typeof value === 'string' ? value.trim() : '';
+
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      approvalId,
+    )
+  ) {
+    throw new DremoApiError(
+      'A valid Dremo approval id is required.',
+      400,
+      'invalid_approval_id',
+    );
+  }
+
+  return approvalId;
+}
+
 function optionalText(value: unknown, maxLength = 500) {
   if (value === undefined || value === null) {
     return null;
@@ -127,6 +172,20 @@ function optionalText(value: unknown, maxLength = 500) {
   return trimmed;
 }
 
+function requireText(value: unknown, fieldName: string, maxLength = 500) {
+  const text = optionalText(value, maxLength);
+
+  if (!text) {
+    throw new DremoApiError(
+      `${fieldName} is required.`,
+      400,
+      `${fieldName.toLowerCase().replaceAll(' ', '_')}_required`,
+    );
+  }
+
+  return text;
+}
+
 function requirePrompt(value: unknown) {
   const prompt = optionalText(value, 12000);
 
@@ -135,6 +194,169 @@ function requirePrompt(value: unknown) {
   }
 
   return prompt;
+}
+
+async function readJsonBody(
+  request: Request,
+  maxBytes = TOOL_REQUEST_BODY_LIMIT_BYTES,
+) {
+  const rawBody = await request.text();
+
+  if (new TextEncoder().encode(rawBody).length > maxBytes) {
+    throw new DremoApiError(
+      'Request payload is too large.',
+      413,
+      'payload_too_large',
+    );
+  }
+
+  if (!rawBody.trim()) {
+    return {};
+  }
+
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(rawBody);
+  } catch {
+    throw new DremoApiError('Request body must be valid JSON.', 400, 'invalid_json');
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new DremoApiError(
+      'Request body must be a JSON object.',
+      400,
+      'invalid_json_object',
+    );
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function requireRiskLevel(value: unknown): DremoRiskLevel {
+  const riskLevel = String(value);
+  const allowed: DremoRiskLevel[] = ['low', 'medium', 'high', 'critical'];
+
+  if (!allowed.includes(riskLevel as DremoRiskLevel)) {
+    throw new DremoApiError(
+      'riskLevel must be low, medium, high, or critical.',
+      400,
+      'invalid_risk_level',
+    );
+  }
+
+  return riskLevel as DremoRiskLevel;
+}
+
+function requireApprovalDecision(value: unknown): DremoApprovalDecision {
+  const decision = String(value);
+
+  if (decision !== 'approved' && decision !== 'rejected') {
+    throw new DremoApiError(
+      'decision must be approved or rejected.',
+      400,
+      'invalid_approval_decision',
+    );
+  }
+
+  return decision;
+}
+
+function requireToolName(value: unknown) {
+  const toolName = requireText(value, 'toolName', 80);
+
+  if (!/^[a-zA-Z0-9_.:-]+$/.test(toolName)) {
+    throw new DremoApiError(
+      'toolName contains unsupported characters.',
+      400,
+      'invalid_tool_name',
+    );
+  }
+
+  return toolName;
+}
+
+function redactSensitivePayload(value: unknown, depth = 0): unknown {
+  if (depth > 5) {
+    return '[truncated-depth]';
+  }
+
+  if (Array.isArray(value)) {
+    return value.slice(0, 40).map((item) => redactSensitivePayload(item, depth + 1));
+  }
+
+  if (value && typeof value === 'object') {
+    const redacted: Record<string, unknown> = {};
+
+    for (const [key, childValue] of Object.entries(value)) {
+      if (SENSITIVE_KEY_PATTERN.test(key)) {
+        redacted[key] = '[redacted]';
+      } else {
+        redacted[key] = redactSensitivePayload(childValue, depth + 1);
+      }
+    }
+
+    return redacted;
+  }
+
+  if (typeof value === 'string' && value.length > 1000) {
+    return `${value.slice(0, 1000)}...[truncated]`;
+  }
+
+  return value;
+}
+
+function sanitizeToolInput(value: unknown) {
+  if (value === undefined || value === null) {
+    return {};
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new DremoApiError(
+      'input must be a JSON object.',
+      400,
+      'invalid_tool_input',
+    );
+  }
+
+  const sanitized = redactSensitivePayload(value) as Record<string, unknown>;
+  const serialized = JSON.stringify(sanitized);
+
+  if (new TextEncoder().encode(serialized).length > TOOL_INPUT_LIMIT_BYTES) {
+    throw new DremoApiError(
+      'Tool input payload is too large.',
+      413,
+      'tool_input_too_large',
+    );
+  }
+
+  return sanitized;
+}
+
+function classifyApprovalType(toolName: string) {
+  const normalized = toolName.toLowerCase();
+
+  if (normalized === 'bash' || normalized === 'shell' || normalized === 'terminal') {
+    return 'bash_command';
+  }
+
+  if (normalized === 'write_file') {
+    return 'file_write';
+  }
+
+  if (normalized === 'package_install') {
+    return 'package_install';
+  }
+
+  if (normalized === 'network_request' || normalized === 'fetch') {
+    return 'network_request';
+  }
+
+  if (normalized === 'git' || normalized === 'git_operation') {
+    return 'git_operation';
+  }
+
+  return normalized;
 }
 
 function parseAfterSequence(request: Request) {
@@ -260,6 +482,27 @@ function mapSandboxSession(row: Record<string, unknown>) {
   };
 }
 
+function mapApproval(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    taskId: String(row.task_id),
+    userId: String(row.user_id),
+    approvalType: String(row.approval_type),
+    status: String(row.status) as DremoApprovalStatus,
+    riskLevel: String(row.risk_level) as DremoRiskLevel,
+    requestPayload:
+      row.request_payload && typeof row.request_payload === 'object'
+        ? (row.request_payload as Record<string, unknown>)
+        : {},
+    responsePayload:
+      row.response_payload && typeof row.response_payload === 'object'
+        ? (row.response_payload as Record<string, unknown>)
+        : null,
+    requestedAt: String(row.requested_at),
+    resolvedAt: row.resolved_at === null ? null : String(row.resolved_at),
+  };
+}
+
 function isTerminalTaskStatus(status: DremoTaskStatus) {
   return status === 'completed' || status === 'failed' || status === 'cancelled';
 }
@@ -375,6 +618,40 @@ async function fetchLatestSandboxSession(
   }
 
   return data ? asRecord(data) : null;
+}
+
+async function getOwnedApproval(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  approvalId: string,
+  userId: string,
+) {
+  const { data, error } = await serviceRole
+    .from('dremo_approvals')
+    .select(APPROVAL_SELECT)
+    .eq('id', approvalId)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Dremo approval lookup failed', error.message);
+    throw new DremoApiError(
+      'Unable to load Dremo approval.',
+      500,
+      'approval_lookup_failed',
+    );
+  }
+
+  if (!data) {
+    throw new DremoApiError(
+      'Dremo approval not found.',
+      404,
+      'approval_not_found',
+    );
+  }
+
+  return asRecord(data);
 }
 
 async function appendTaskEvents(
@@ -849,6 +1126,236 @@ async function stopStubSandbox(taskId: string, userId: string) {
   };
 }
 
+async function requestToolStub(request: Request, taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
+  const body = await readJsonBody(request);
+  const toolName = requireToolName(body.toolName);
+  const riskLevel = requireRiskLevel(body.riskLevel);
+  const reason = requireText(body.reason, 'reason', 600);
+  const input = sanitizeToolInput(body.input);
+  const approvalType = classifyApprovalType(toolName);
+  const toolRequestId = crypto.randomUUID();
+  const approvalRequired = riskLevel !== 'low';
+  const basePayload = {
+    toolRequestId,
+    toolName,
+    approvalType,
+    riskLevel,
+    reason,
+    input,
+    stubOnly: true,
+    noExecution: true,
+    note:
+      'Dremo tool execution is approval-gated and stubbed. No command, file, network, or model action was run.',
+  };
+
+  if (isTerminalTaskStatus(task.status)) {
+    return {
+      approval: null,
+      toolResult: {
+        status: 'blocked',
+        toolRequestId,
+        executionImplemented: false,
+        reason: 'Task is already terminal.',
+      },
+      events: await appendTaskEvents(serviceRole, taskId, userId, [
+        {
+          eventType: 'tool_call_requested',
+          channel: 'tool',
+          payload: {
+            ...basePayload,
+            approvalRequired,
+          },
+        },
+        {
+          eventType: 'tool_call_blocked',
+          channel: 'tool',
+          severity: 'warning',
+          payload: {
+            ...basePayload,
+            status: 'blocked',
+            blockReason: 'terminal_task',
+          },
+        },
+      ]),
+    };
+  }
+
+  if (!approvalRequired) {
+    return {
+      approval: null,
+      toolResult: {
+        status: 'stubbed',
+        toolRequestId,
+        toolName,
+        riskLevel,
+        executionImplemented: false,
+        output:
+          'Low-risk tool request was stubbed for contract testing. No real tool execution happened.',
+      },
+      events: await appendTaskEvents(serviceRole, taskId, userId, [
+        {
+          eventType: 'tool_call_requested',
+          channel: 'tool',
+          payload: {
+            ...basePayload,
+            approvalRequired: false,
+          },
+        },
+        {
+          eventType: 'tool_call_stubbed',
+          channel: 'tool',
+          payload: {
+            ...basePayload,
+            status: 'stubbed',
+            executionImplemented: false,
+          },
+        },
+      ]),
+    };
+  }
+
+  const { data: approvalRow, error: approvalError } = await serviceRole
+    .from('dremo_approvals')
+    .insert({
+      task_id: taskId,
+      user_id: userId,
+      approval_type: approvalType,
+      status: 'pending',
+      risk_level: riskLevel,
+      request_payload: {
+        ...basePayload,
+        approvalRequired: true,
+      },
+    })
+    .select(APPROVAL_SELECT)
+    .single();
+
+  if (approvalError) {
+    console.error('Dremo approval create failed', approvalError.message);
+    throw new DremoApiError(
+      'Unable to create Dremo approval.',
+      500,
+      'approval_create_failed',
+    );
+  }
+
+  const approval = mapApproval(asRecord(approvalRow));
+
+  return {
+    approval,
+    toolResult: null,
+    events: await appendTaskEvents(serviceRole, taskId, userId, [
+      {
+        eventType: 'tool_call_requested',
+        channel: 'tool',
+        payload: {
+          ...basePayload,
+          approvalId: approval.id,
+          approvalRequired: true,
+        },
+      },
+      {
+        eventType: 'tool_approval_required',
+        channel: 'approval',
+        severity: riskLevel === 'critical' ? 'warning' : 'info',
+        payload: {
+          ...basePayload,
+          approvalId: approval.id,
+          status: 'pending',
+          executionImplemented: false,
+        },
+      },
+    ]),
+  };
+}
+
+async function resolveToolApproval(
+  request: Request,
+  taskId: string,
+  approvalId: string,
+  userId: string,
+) {
+  const serviceRole = createServiceRoleClient();
+  await getOwnedTask(serviceRole, taskId, userId);
+  const body = await readJsonBody(request);
+  const decision = requireApprovalDecision(body.decision);
+  const note = optionalText(body.note, 1000);
+  const existingApproval = mapApproval(
+    await getOwnedApproval(serviceRole, taskId, approvalId, userId),
+  );
+
+  if (existingApproval.status !== 'pending') {
+    throw new DremoApiError(
+      'Dremo approval is already resolved.',
+      409,
+      'approval_already_resolved',
+    );
+  }
+
+  const responsePayload = {
+    decision,
+    note,
+    executionImplemented: false,
+    noteForUser:
+      decision === 'approved'
+        ? 'Approval was recorded, but tool execution is still not implemented.'
+        : 'Approval was rejected. No tool execution happened.',
+  };
+
+  const { data: approvalRow, error: approvalError } = await serviceRole
+    .from('dremo_approvals')
+    .update({
+      status: decision,
+      response_payload: responsePayload,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq('id', approvalId)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .select(APPROVAL_SELECT)
+    .single();
+
+  if (approvalError) {
+    console.error('Dremo approval resolve failed', approvalError.message);
+    throw new DremoApiError(
+      'Unable to resolve Dremo approval.',
+      500,
+      'approval_resolve_failed',
+    );
+  }
+
+  const approval = mapApproval(asRecord(approvalRow));
+  const approved = decision === 'approved';
+
+  return {
+    approval,
+    executionImplemented: false,
+    message: approved
+      ? 'Approval recorded. Tool execution is still not implemented.'
+      : 'Approval rejected. No tool execution happened.',
+    events: await appendTaskEvents(serviceRole, taskId, userId, [
+      {
+        eventType: approved
+          ? 'tool_approval_approved'
+          : 'tool_approval_rejected',
+        channel: 'approval',
+        payload: {
+          approvalId: approval.id,
+          approvalType: approval.approvalType,
+          riskLevel: approval.riskLevel,
+          decision,
+          note,
+          executionImplemented: false,
+          noExecution: true,
+        },
+      },
+    ]),
+  };
+}
+
 serve(async (request) => {
   const preflight = handleOptions(request);
 
@@ -928,6 +1435,39 @@ serve(async (request) => {
       const taskId = requireTaskId(route[1]);
 
       return jsonResponse(await stopStubSandbox(taskId, user.id), {}, request);
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 4 &&
+      route[0] === 'tasks' &&
+      route[2] === 'tools' &&
+      route[3] === 'request'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(
+        await requestToolStub(request, taskId, user.id),
+        {},
+        request,
+      );
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 5 &&
+      route[0] === 'tasks' &&
+      route[2] === 'approvals' &&
+      route[4] === 'resolve'
+    ) {
+      const taskId = requireTaskId(route[1]);
+      const approvalId = requireApprovalId(route[3]);
+
+      return jsonResponse(
+        await resolveToolApproval(request, taskId, approvalId, user.id),
+        {},
+        request,
+      );
     }
 
     return jsonResponse(
