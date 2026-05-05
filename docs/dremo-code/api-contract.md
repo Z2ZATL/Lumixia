@@ -2,7 +2,7 @@
 
 Status: proposed contract with a server-owned stub foundation.
 
-Implementation note: `supabase/functions/dremo-api/index.ts` currently provides a stub-only Edge Function for authenticated task creation, task reads, event reads, and task cancellation. It intentionally does not run sandbox execution, call models, charge credits, or replace Code Architect AI branding.
+Implementation note: `supabase/functions/dremo-api/index.ts` currently provides a stub-only Edge Function for authenticated task creation, task reads, event reads, and task cancellation. Event appends and status transitions are backed by service-role-only Postgres RPCs so sequence assignment and cancellation events are server-owned. It intentionally does not run sandbox execution, call models, charge credits, or replace Code Architect AI branding.
 
 All Dremo API routes must require a valid Supabase bearer token. The backend must derive `userId` from the JWT and must not trust a user id supplied in request bodies.
 
