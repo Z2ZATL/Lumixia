@@ -147,6 +147,14 @@ async function requireDremoUser(request: Request) {
   }
 }
 
+function asRecord(value: unknown, message = 'Expected database row.') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new DremoApiError(message, 500, 'invalid_database_row');
+  }
+
+  return value as Record<string, unknown>;
+}
+
 function mapTask(row: Record<string, unknown>) {
   return {
     id: String(row.id),
@@ -232,7 +240,7 @@ async function getOwnedTask(
     throw new DremoApiError('Dremo task not found.', 404, 'task_not_found');
   }
 
-  return data as Record<string, unknown>;
+  return asRecord(data);
 }
 
 async function fetchTaskEvents(
@@ -265,7 +273,7 @@ async function fetchTaskEvents(
     );
   }
 
-  return (data ?? []).map((row) => mapEvent(row as Record<string, unknown>));
+  return (data ?? []).map((row) => mapEvent(asRecord(row)));
 }
 
 async function appendTaskEvents(
@@ -305,7 +313,7 @@ async function appendTaskEvents(
     );
   }
 
-  return (data ?? []).map((row) => mapEvent(row as Record<string, unknown>));
+  return (data ?? []).map((row) => mapEvent(asRecord(row)));
 }
 
 async function getNextSequence(
@@ -331,7 +339,9 @@ async function getNextSequence(
     );
   }
 
-  return Number(data?.sequence ?? 0) + 1;
+  const latestEvent = data ? asRecord(data) : null;
+
+  return Number(latestEvent?.sequence ?? 0) + 1;
 }
 
 async function createTask(request: Request, userId: string) {
@@ -389,7 +399,8 @@ async function createTask(request: Request, userId: string) {
     );
   }
 
-  const taskId = String(taskRow.id);
+  const task = asRecord(taskRow);
+  const taskId = String(task.id);
   const events = await appendTaskEvents(serviceRole, taskId, userId, [
     {
       sequence: 1,
@@ -442,7 +453,7 @@ async function createTask(request: Request, userId: string) {
   ]);
 
   return {
-    task: mapTask(taskRow as Record<string, unknown>),
+    task: mapTask(task),
     events,
   };
 }
@@ -513,6 +524,7 @@ async function cancelTask(taskId: string, userId: string) {
   // Stub-only sequence handling is intentionally simple. The production
   // orchestrator should move task status + event append into a transaction or
   // RPC that locks the task row before choosing the next sequence.
+  const task = asRecord(taskRow);
   const nextSequence = await getNextSequence(serviceRole, taskId, userId);
   const events = await appendTaskEvents(serviceRole, taskId, userId, [
     {
@@ -521,13 +533,13 @@ async function cancelTask(taskId: string, userId: string) {
       channel: 'system',
       payload: {
         reason: 'Cancelled through authenticated Dremo API stub.',
-        creditState: String(taskRow.credit_state),
+        creditState: String(task.credit_state),
       },
     },
   ]);
 
   return {
-    task: mapTask(taskRow as Record<string, unknown>),
+    task: mapTask(task),
     events,
   };
 }
