@@ -4,6 +4,8 @@ Status: proposed contract with a server-owned stub foundation.
 
 Implementation note: `supabase/functions/dremo-api/index.ts` currently provides a stub-only Edge Function for authenticated task creation, task reads, event reads, and task cancellation. Event appends and status transitions are backed by service-role-only Postgres RPCs so sequence assignment and cancellation events are server-owned. It intentionally does not run sandbox execution, call models, charge credits, or replace Code Architect AI branding.
 
+Sandbox lifecycle note: the same Edge Function also provides stub-only `POST /tasks/:taskId/sandbox/start` and `POST /tasks/:taskId/sandbox/stop` routes. These routes create/update `provider = "stub"` sandbox lifecycle records and append server-owned events only. They do not run commands, mount files, make network calls, inject secrets, or create real provider sandboxes.
+
 All Dremo API routes must require a valid Supabase bearer token. The backend must derive `userId` from the JWT and must not trust a user id supplied in request bodies.
 
 ## Shared Rules
@@ -199,6 +201,83 @@ Error cases:
 | `billing_release_failed` | Cancellation happened but credit release needs manual review. |
 
 Ownership and security rules: cancellation request is user-initiated, but final state and credit release are backend-owned.
+
+## POST /dremo/tasks/:taskId/sandbox/start
+
+Purpose: request a sandbox lifecycle for a task.
+
+Current stub behavior: creates or reuses a `dremo_sandbox_sessions` row with `provider = "stub"` and returns lifecycle events. No real sandbox provider is contacted.
+
+Auth requirements: authenticated owner.
+
+Response:
+
+```json
+{
+  "sandboxSession": {
+    "id": "sandbox_uuid",
+    "taskId": "task_uuid",
+    "provider": "stub",
+    "status": "ready",
+    "resourceLimits": {
+      "stubOnly": true,
+      "codeExecution": false,
+      "networkEgress": "disabled",
+      "secrets": "none"
+    }
+  },
+  "events": [
+    { "eventType": "sandbox_requested" },
+    { "eventType": "sandbox_starting" },
+    { "eventType": "sandbox_ready" }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `unauthorized` | Missing or invalid JWT. |
+| `task_not_found` | Missing or not owned by current user. |
+| `task_terminal` | A new sandbox cannot start for a completed, failed, or cancelled task. |
+| `sandbox_create_failed` | Stub sandbox session could not be recorded. |
+
+Ownership and security rules: the frontend can request lifecycle changes but cannot insert sandbox records or trusted events directly. Stub start must not execute code or expose secrets.
+
+## POST /dremo/tasks/:taskId/sandbox/stop
+
+Purpose: stop or close the sandbox lifecycle for a task.
+
+Current stub behavior: marks the latest stub sandbox session as `stopped` and appends lifecycle events. No real runtime resources are destroyed because none were created.
+
+Auth requirements: authenticated owner.
+
+Response:
+
+```json
+{
+  "sandboxSession": {
+    "id": "sandbox_uuid",
+    "taskId": "task_uuid",
+    "provider": "stub",
+    "status": "stopped"
+  },
+  "events": [
+    { "eventType": "sandbox_stopping" },
+    { "eventType": "sandbox_stopped" }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `sandbox_not_found` | No sandbox session exists for this task. |
+| `sandbox_stop_failed` | Stub sandbox session could not be marked stopped. |
+
+Ownership and security rules: the stop route is backend-owned and event-producing. Future real providers must also enforce cleanup, retention, and audit guarantees server-side.
 
 ## POST /dremo/tasks/:taskId/approvals/:approvalId
 

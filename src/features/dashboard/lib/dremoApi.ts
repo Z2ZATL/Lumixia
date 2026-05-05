@@ -4,6 +4,8 @@ import type {
   DremoEventChannel,
   DremoEventSeverity,
   DremoEventType,
+  DremoSandboxSession,
+  DremoSandboxStatus,
   DremoTask,
   DremoTaskEvent,
   DremoTaskStatus,
@@ -35,6 +37,11 @@ export interface DremoTaskWithEventsResponse {
 }
 
 export interface DremoEventsResponse {
+  events: DremoTaskEvent[];
+}
+
+export interface DremoSandboxLifecycleResponse {
+  sandboxSession: DremoSandboxSession;
   events: DremoTaskEvent[];
 }
 
@@ -111,11 +118,38 @@ function toDremoEventType(value: unknown): DremoEventType {
     'task_completed',
     'task_failed',
     'task_cancelled',
+    'sandbox_requested',
+    'sandbox_starting',
+    'sandbox_ready',
+    'sandbox_stopping',
+    'sandbox_stopped',
+    'sandbox_failed',
   ];
 
   return allowed.includes(eventType as DremoEventType)
     ? (eventType as DremoEventType)
     : 'task_failed';
+}
+
+function toDremoSandboxStatus(value: unknown): DremoSandboxStatus {
+  const status = String(value);
+  const allowed: DremoSandboxStatus[] = [
+    'not_requested',
+    'requested',
+    'starting',
+    'creating',
+    'ready',
+    'running',
+    'stopping',
+    'stopped',
+    'destroyed',
+    'failed',
+    'quarantined',
+  ];
+
+  return allowed.includes(status as DremoSandboxStatus)
+    ? (status as DremoSandboxStatus)
+    : 'failed';
 }
 
 function toDremoEventChannel(value: unknown): DremoEventChannel {
@@ -185,6 +219,26 @@ function mapDremoTaskEvent(value: unknown): DremoTaskEvent {
     severity: toDremoEventSeverity(value.severity),
     payload: isRecord(value.payload) ? value.payload : {},
     createdAt: String(value.createdAt ?? ''),
+  };
+}
+
+function mapDremoSandboxSession(value: unknown): DremoSandboxSession {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid sandbox payload.');
+  }
+
+  return {
+    id: String(value.id ?? ''),
+    taskId: String(value.taskId ?? ''),
+    userId: String(value.userId ?? ''),
+    provider: String(value.provider ?? ''),
+    providerSandboxId: toStringOrNull(value.providerSandboxId),
+    status: toDremoSandboxStatus(value.status),
+    resourceLimits: isRecord(value.resourceLimits) ? value.resourceLimits : {},
+    createdAt: String(value.createdAt ?? ''),
+    startedAt: toStringOrNull(value.startedAt),
+    stoppedAt: toStringOrNull(value.stoppedAt),
+    failureReason: toStringOrNull(value.failureReason),
   };
 }
 
@@ -324,6 +378,34 @@ export async function cancelDremoTask(
 
   return {
     task: mapDremoTask(payload.task),
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function startDremoStubSandbox(
+  taskId: string,
+): Promise<DremoSandboxLifecycleResponse> {
+  const payload = await requestDremoApi<DremoSandboxLifecycleResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/sandbox/start`,
+    { method: 'POST' },
+  );
+
+  return {
+    sandboxSession: mapDremoSandboxSession(payload.sandboxSession),
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function stopDremoStubSandbox(
+  taskId: string,
+): Promise<DremoSandboxLifecycleResponse> {
+  const payload = await requestDremoApi<DremoSandboxLifecycleResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/sandbox/stop`,
+    { method: 'POST' },
+  );
+
+  return {
+    sandboxSession: mapDremoSandboxSession(payload.sandboxSession),
     events: (payload.events ?? []).map(mapDremoTaskEvent),
   };
 }

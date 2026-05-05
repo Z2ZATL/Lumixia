@@ -39,12 +39,39 @@ type DremoEventChannel =
 
 type DremoEventSeverity = 'debug' | 'info' | 'warning' | 'error';
 
+type DremoSandboxStatus =
+  | 'not_requested'
+  | 'requested'
+  | 'starting'
+  | 'creating'
+  | 'ready'
+  | 'running'
+  | 'stopping'
+  | 'stopped'
+  | 'destroyed'
+  | 'failed'
+  | 'quarantined';
+
 interface DremoEventDraft {
   eventType: string;
   channel: DremoEventChannel;
   severity?: DremoEventSeverity;
   payload?: Record<string, unknown>;
 }
+
+const SANDBOX_SESSION_SELECT = [
+  'id',
+  'task_id',
+  'user_id',
+  'provider',
+  'provider_sandbox_id',
+  'status',
+  'resource_limits',
+  'created_at',
+  'started_at',
+  'stopped_at',
+  'failure_reason',
+].join(', ');
 
 class DremoApiError extends Error {
   constructor(
@@ -210,6 +237,43 @@ function mapEvent(row: Record<string, unknown>) {
   };
 }
 
+function mapSandboxSession(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    taskId: String(row.task_id),
+    userId: String(row.user_id),
+    provider: String(row.provider),
+    providerSandboxId:
+      row.provider_sandbox_id === null
+        ? null
+        : String(row.provider_sandbox_id),
+    status: String(row.status) as DremoSandboxStatus,
+    resourceLimits:
+      row.resource_limits && typeof row.resource_limits === 'object'
+        ? (row.resource_limits as Record<string, unknown>)
+        : {},
+    createdAt: String(row.created_at),
+    startedAt: row.started_at === null ? null : String(row.started_at),
+    stoppedAt: row.stopped_at === null ? null : String(row.stopped_at),
+    failureReason:
+      row.failure_reason === null ? null : String(row.failure_reason),
+  };
+}
+
+function isTerminalTaskStatus(status: DremoTaskStatus) {
+  return status === 'completed' || status === 'failed' || status === 'cancelled';
+}
+
+function isActiveSandboxStatus(status: DremoSandboxStatus) {
+  return [
+    'requested',
+    'starting',
+    'creating',
+    'ready',
+    'running',
+  ].includes(status);
+}
+
 async function getOwnedTask(
   serviceRole: ReturnType<typeof createServiceRoleClient>,
   taskId: string,
@@ -285,6 +349,32 @@ async function fetchTaskEvents(
   }
 
   return (data ?? []).map((row) => mapEvent(asRecord(row)));
+}
+
+async function fetchLatestSandboxSession(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  userId: string,
+) {
+  const { data, error } = await serviceRole
+    .from('dremo_sandbox_sessions')
+    .select(SANDBOX_SESSION_SELECT)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Dremo sandbox lookup failed', error.message);
+    throw new DremoApiError(
+      'Unable to load Dremo sandbox session.',
+      500,
+      'sandbox_lookup_failed',
+    );
+  }
+
+  return data ? asRecord(data) : null;
 }
 
 async function appendTaskEvents(
@@ -502,6 +592,263 @@ async function cancelTask(taskId: string, userId: string) {
   });
 }
 
+async function startStubSandbox(taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  const existingTask = mapTask(await getOwnedTask(serviceRole, taskId, userId));
+
+  if (isTerminalTaskStatus(existingTask.status)) {
+    throw new DremoApiError(
+      'A sandbox cannot be started for a terminal Dremo task.',
+      409,
+      'task_terminal',
+    );
+  }
+
+  const latestSandbox = await fetchLatestSandboxSession(
+    serviceRole,
+    taskId,
+    userId,
+  );
+
+  if (latestSandbox) {
+    const sandboxSession = mapSandboxSession(latestSandbox);
+
+    if (isActiveSandboxStatus(sandboxSession.status)) {
+      return {
+        sandboxSession,
+        events: await appendTaskEvents(serviceRole, taskId, userId, [
+          {
+            eventType: 'sandbox_ready',
+            channel: 'system',
+            payload: {
+              provider: 'stub',
+              sandboxSessionId: sandboxSession.id,
+              status: sandboxSession.status,
+              stubOnly: true,
+              noCodeExecution: true,
+              note:
+                'Stub sandbox session is already available. No code execution is happening.',
+            },
+          },
+        ]),
+      };
+    }
+  }
+
+  const now = new Date().toISOString();
+  const { data: sandboxRow, error: sandboxError } = await serviceRole
+    .from('dremo_sandbox_sessions')
+    .insert({
+      task_id: taskId,
+      user_id: userId,
+      provider: 'stub',
+      provider_sandbox_id: `stub:${taskId}`,
+      status: 'ready',
+      resource_limits: {
+        stubOnly: true,
+        cpu: 'none',
+        memory: 'none',
+        filesystem: 'none',
+        networkEgress: 'disabled',
+        secrets: 'none',
+        codeExecution: false,
+      },
+      created_at: now,
+      started_at: now,
+    })
+    .select(SANDBOX_SESSION_SELECT)
+    .single();
+
+  if (sandboxError) {
+    console.error('Dremo sandbox create failed', sandboxError.message);
+    throw new DremoApiError(
+      'Unable to create Dremo sandbox session.',
+      500,
+      'sandbox_create_failed',
+    );
+  }
+
+  const sandboxSession = mapSandboxSession(asRecord(sandboxRow));
+
+  const { error: taskUpdateError } = await serviceRole
+    .from('dremo_tasks')
+    .update({ sandbox_id: sandboxSession.id })
+    .eq('id', taskId)
+    .eq('user_id', userId);
+
+  if (taskUpdateError) {
+    console.error('Dremo task sandbox link failed', taskUpdateError.message);
+    throw new DremoApiError(
+      'Unable to link Dremo sandbox session.',
+      500,
+      'sandbox_link_failed',
+    );
+  }
+
+  return {
+    sandboxSession,
+    events: await appendTaskEvents(serviceRole, taskId, userId, [
+      {
+        eventType: 'sandbox_requested',
+        channel: 'system',
+        payload: {
+          provider: 'stub',
+          sandboxSessionId: sandboxSession.id,
+          status: 'requested',
+          stubOnly: true,
+          noCodeExecution: true,
+          note:
+            'Sandbox lifecycle was requested for contract testing only. No sandbox provider was called.',
+        },
+      },
+      {
+        eventType: 'sandbox_starting',
+        channel: 'system',
+        payload: {
+          provider: 'stub',
+          sandboxSessionId: sandboxSession.id,
+          status: 'starting',
+          stubOnly: true,
+          noCodeExecution: true,
+          filesystemAccess: false,
+          networkEgress: false,
+          secretsMounted: false,
+        },
+      },
+      {
+        eventType: 'sandbox_ready',
+        channel: 'system',
+        payload: {
+          provider: 'stub',
+          sandboxSessionId: sandboxSession.id,
+          status: 'ready',
+          stubOnly: true,
+          noCodeExecution: true,
+          note:
+            'Stub sandbox is marked ready for lifecycle testing. It cannot run commands.',
+        },
+      },
+    ]),
+  };
+}
+
+async function stopStubSandbox(taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  await getOwnedTask(serviceRole, taskId, userId);
+
+  const latestSandbox = await fetchLatestSandboxSession(
+    serviceRole,
+    taskId,
+    userId,
+  );
+
+  if (!latestSandbox) {
+    throw new DremoApiError(
+      'No Dremo sandbox session exists for this task.',
+      404,
+      'sandbox_not_found',
+    );
+  }
+
+  const sandboxSession = mapSandboxSession(latestSandbox);
+
+  if (sandboxSession.status === 'stopped') {
+    return {
+      sandboxSession,
+      events: await appendTaskEvents(serviceRole, taskId, userId, [
+        {
+          eventType: 'sandbox_stopped',
+          channel: 'system',
+          payload: {
+            provider: 'stub',
+            sandboxSessionId: sandboxSession.id,
+            status: 'stopped',
+            stubOnly: true,
+            noCodeExecution: true,
+            note: 'Stub sandbox session was already stopped.',
+          },
+        },
+      ]),
+    };
+  }
+
+  const stoppingEvents = await appendTaskEvents(serviceRole, taskId, userId, [
+    {
+      eventType: 'sandbox_stopping',
+      channel: 'system',
+      payload: {
+        provider: 'stub',
+        sandboxSessionId: sandboxSession.id,
+        previousStatus: sandboxSession.status,
+        status: 'stopping',
+        stubOnly: true,
+        noCodeExecution: true,
+      },
+    },
+  ]);
+
+  const stoppedAt = new Date().toISOString();
+  const { data: stoppedRow, error: stopError } = await serviceRole
+    .from('dremo_sandbox_sessions')
+    .update({
+      status: 'stopped',
+      stopped_at: stoppedAt,
+    })
+    .eq('id', sandboxSession.id)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .select(SANDBOX_SESSION_SELECT)
+    .single();
+
+  if (stopError) {
+    console.error('Dremo sandbox stop failed', stopError.message);
+    await appendTaskEvents(serviceRole, taskId, userId, [
+      {
+        eventType: 'sandbox_failed',
+        channel: 'system',
+        severity: 'error',
+        payload: {
+          provider: 'stub',
+          sandboxSessionId: sandboxSession.id,
+          status: 'failed',
+          stubOnly: true,
+          noCodeExecution: true,
+          reason: 'Unable to mark the stub sandbox session stopped.',
+        },
+      },
+    ]);
+    throw new DremoApiError(
+      'Unable to stop Dremo sandbox session.',
+      500,
+      'sandbox_stop_failed',
+    );
+  }
+
+  const stoppedSandboxSession = mapSandboxSession(asRecord(stoppedRow));
+
+  return {
+    sandboxSession: stoppedSandboxSession,
+    events: [
+      ...stoppingEvents,
+      ...(await appendTaskEvents(serviceRole, taskId, userId, [
+        {
+          eventType: 'sandbox_stopped',
+          channel: 'system',
+          payload: {
+            provider: 'stub',
+            sandboxSessionId: stoppedSandboxSession.id,
+            status: 'stopped',
+            stubOnly: true,
+            noCodeExecution: true,
+            note:
+              'Stub sandbox lifecycle stopped. No runtime resources were created.',
+          },
+        },
+      ])),
+    ],
+  };
+}
+
 serve(async (request) => {
   const preflight = handleOptions(request);
 
@@ -557,6 +904,30 @@ serve(async (request) => {
       const taskId = requireTaskId(route[1]);
 
       return jsonResponse(await cancelTask(taskId, user.id), {}, request);
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 4 &&
+      route[0] === 'tasks' &&
+      route[2] === 'sandbox' &&
+      route[3] === 'start'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(await startStubSandbox(taskId, user.id), {}, request);
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 4 &&
+      route[0] === 'tasks' &&
+      route[2] === 'sandbox' &&
+      route[3] === 'stop'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(await stopStubSandbox(taskId, user.id), {}, request);
     }
 
     return jsonResponse(

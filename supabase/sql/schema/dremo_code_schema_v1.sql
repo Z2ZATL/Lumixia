@@ -74,7 +74,7 @@ create table if not exists public.dremo_task_events (
   task_id uuid not null references public.dremo_tasks(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   sequence bigint not null check (sequence > 0),
-  event_type text not null check (
+  event_type text not null constraint dremo_task_events_event_type_check check (
     event_type in (
       'task_created',
       'task_started',
@@ -98,7 +98,13 @@ create table if not exists public.dremo_task_events (
       'artifact_created',
       'task_completed',
       'task_failed',
-      'task_cancelled'
+      'task_cancelled',
+      'sandbox_requested',
+      'sandbox_starting',
+      'sandbox_ready',
+      'sandbox_stopping',
+      'sandbox_stopped',
+      'sandbox_failed'
     )
   ),
   channel text not null check (
@@ -169,8 +175,11 @@ create table if not exists public.dremo_sandbox_sessions (
   user_id uuid not null references auth.users(id) on delete cascade,
   provider text not null,
   provider_sandbox_id text,
-  status text not null check (
+  status text not null constraint dremo_sandbox_sessions_status_check check (
     status in (
+      'not_requested',
+      'requested',
+      'starting',
       'creating',
       'ready',
       'running',
@@ -191,6 +200,67 @@ create table if not exists public.dremo_sandbox_sessions (
     and (stopped_at is null or started_at is null or stopped_at >= started_at)
   )
 );
+
+-- Keep this schema file safely re-runnable against existing Dremo databases.
+-- Earlier v1 installs created narrower CHECK constraints before the sandbox
+-- lifecycle stub existed, so these ALTERs expand the allowlists in place.
+alter table public.dremo_task_events
+  drop constraint if exists dremo_task_events_event_type_check;
+
+alter table public.dremo_task_events
+  add constraint dremo_task_events_event_type_check check (
+    event_type in (
+      'task_created',
+      'task_started',
+      'repo_scanned',
+      'plan_created',
+      'approval_required',
+      'approval_resolved',
+      'tool_call_started',
+      'tool_call_output',
+      'tool_call_completed',
+      'terminal_output',
+      'file_read',
+      'file_changed',
+      'diff_created',
+      'verification_started',
+      'verification_result',
+      'self_review_started',
+      'self_review_result',
+      'repair_started',
+      'final_report_created',
+      'artifact_created',
+      'task_completed',
+      'task_failed',
+      'task_cancelled',
+      'sandbox_requested',
+      'sandbox_starting',
+      'sandbox_ready',
+      'sandbox_stopping',
+      'sandbox_stopped',
+      'sandbox_failed'
+    )
+  );
+
+alter table public.dremo_sandbox_sessions
+  drop constraint if exists dremo_sandbox_sessions_status_check;
+
+alter table public.dremo_sandbox_sessions
+  add constraint dremo_sandbox_sessions_status_check check (
+    status in (
+      'not_requested',
+      'requested',
+      'starting',
+      'creating',
+      'ready',
+      'running',
+      'stopping',
+      'stopped',
+      'destroyed',
+      'failed',
+      'quarantined'
+    )
+  );
 
 create table if not exists public.dremo_model_runs (
   id uuid primary key default gen_random_uuid(),

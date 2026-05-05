@@ -13,6 +13,8 @@
 -- 6. service_role has SELECT/INSERT/UPDATE/DELETE for backend-owned writes.
 -- 7. service_role has EXECUTE on Dremo RPC helpers.
 -- 8. anon/authenticated/public do not have EXECUTE on Dremo RPC helpers.
+-- 9. dremo_task_events allows sandbox lifecycle event types.
+-- 10. dremo_sandbox_sessions allows the stub lifecycle statuses.
 --
 -- Manual REST/API checks to run separately with real tokens:
 --   - Authenticated user can SELECT their own dremo_* rows.
@@ -149,3 +151,17 @@ where routine_schema = 'public'
   )
   and lower(grantee) in ('anon', 'authenticated', 'public')
   and privilege_type = 'EXECUTE';
+
+select
+  conname as constraint_name,
+  pg_get_constraintdef(oid) as constraint_definition
+from pg_constraint
+where conrelid = 'public.dremo_task_events'::regclass
+  and conname = 'dremo_task_events_event_type_check';
+
+select
+  conname as constraint_name,
+  pg_get_constraintdef(oid) as constraint_definition
+from pg_constraint
+where conrelid = 'public.dremo_sandbox_sessions'::regclass
+  and conname = 'dremo_sandbox_sessions_status_check';

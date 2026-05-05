@@ -4,8 +4,10 @@ import {
   createDremoTask,
   getDremoTask,
   getDremoTaskEvents,
+  startDremoStubSandbox,
+  stopDremoStubSandbox,
 } from '../lib/dremoApi';
-import type { DremoTask, DremoTaskEvent } from '../types';
+import type { DremoSandboxSession, DremoTask, DremoTaskEvent } from '../types';
 
 function formatDate(value: string) {
   if (!value) {
@@ -55,18 +57,43 @@ export const DremoCodeLab: React.FC = () => {
   const [title, setTitle] = useState('Stub task');
   const [prompt, setPrompt] = useState('Create a server-owned Dremo stub task.');
   const [task, setTask] = useState<DremoTask | null>(null);
+  const [sandboxSession, setSandboxSession] =
+    useState<DremoSandboxSession | null>(null);
   const [events, setEvents] = useState<DremoTaskEvent[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isStartingSandbox, setIsStartingSandbox] = useState(false);
+  const [isStoppingSandbox, setIsStoppingSandbox] = useState(false);
 
   const latestSequence = useMemo(
     () => events.reduce((max, event) => Math.max(max, event.sequence), 0),
     [events],
   );
   const sortedEvents = useMemo(() => sortEvents(events), [events]);
-  const isBusy = isCreating || isRefreshing || isCancelling;
+  const isBusy =
+    isCreating ||
+    isRefreshing ||
+    isCancelling ||
+    isStartingSandbox ||
+    isStoppingSandbox;
+  const canStartSandbox =
+    Boolean(task) &&
+    task?.status !== 'cancelled' &&
+    task?.status !== 'completed' &&
+    task?.status !== 'failed' &&
+    sandboxSession?.status !== 'ready' &&
+    sandboxSession?.status !== 'running' &&
+    sandboxSession?.status !== 'starting' &&
+    sandboxSession?.status !== 'requested' &&
+    sandboxSession?.status !== 'creating';
+  const canStopSandbox =
+    Boolean(task && sandboxSession) &&
+    sandboxSession?.status !== 'stopped' &&
+    sandboxSession?.status !== 'failed' &&
+    sandboxSession?.status !== 'destroyed' &&
+    sandboxSession?.status !== 'quarantined';
 
   async function handleCreateTask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,6 +114,7 @@ export const DremoCodeLab: React.FC = () => {
       });
 
       setTask(result.task);
+      setSandboxSession(null);
       setEvents(sortEvents(result.events));
     } catch (error) {
       setErrorMessage(
@@ -149,6 +177,54 @@ export const DremoCodeLab: React.FC = () => {
       );
     } finally {
       setIsCancelling(false);
+    }
+  }
+
+  async function handleStartSandbox() {
+    if (!task) {
+      return;
+    }
+
+    setIsStartingSandbox(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await startDremoStubSandbox(task.id);
+
+      setSandboxSession(result.sandboxSession);
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start the Dremo stub sandbox lifecycle.',
+      );
+    } finally {
+      setIsStartingSandbox(false);
+    }
+  }
+
+  async function handleStopSandbox() {
+    if (!task) {
+      return;
+    }
+
+    setIsStoppingSandbox(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await stopDremoStubSandbox(task.id);
+
+      setSandboxSession(result.sandboxSession);
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to stop the Dremo stub sandbox lifecycle.',
+      );
+    } finally {
+      setIsStoppingSandbox(false);
     }
   }
 
@@ -270,6 +346,21 @@ export const DremoCodeLab: React.FC = () => {
                     {task.creditState}
                   </p>
                 </div>
+                <div className="rounded-2xl bg-slate-50 p-4 sm:col-span-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Sandbox Lifecycle
+                  </p>
+                  <p className="mt-2 font-semibold text-slate-800">
+                    {sandboxSession
+                      ? `${sandboxSession.provider} / ${sandboxSession.status}`
+                      : 'not_requested'}
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Stub only. No shell, filesystem, network, secrets, model
+                    calls, or code execution are available in this lifecycle
+                    test.
+                  </p>
+                </div>
               </div>
               <p>
                 Created <span className="font-semibold">{formatDate(task.createdAt)}</span>
@@ -295,6 +386,39 @@ export const DremoCodeLab: React.FC = () => {
                 >
                   {isCancelling ? 'Cancelling...' : 'Cancel Stub Task'}
                 </button>
+              </div>
+              <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-black text-slate-900">
+                    Stub sandbox lifecycle
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Starts/stops a server-owned lifecycle record only. This
+                    never runs user code.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    className="min-h-11 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isBusy || !canStartSandbox}
+                    type="button"
+                    onClick={() => {
+                      void handleStartSandbox();
+                    }}
+                  >
+                    {isStartingSandbox ? 'Starting...' : 'Start Stub Sandbox'}
+                  </button>
+                  <button
+                    className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isBusy || !canStopSandbox}
+                    type="button"
+                    onClick={() => {
+                      void handleStopSandbox();
+                    }}
+                  >
+                    {isStoppingSandbox ? 'Stopping...' : 'Stop Stub Sandbox'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

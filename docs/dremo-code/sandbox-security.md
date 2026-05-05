@@ -4,6 +4,22 @@ Status: proposed.
 
 Dremo Code must execute untrusted or semi-trusted code safely. Repo contents, generated code, terminal output, package scripts, and model output must all be treated as untrusted.
 
+## Sandbox Lifecycle Model
+
+The proposed lifecycle uses these statuses:
+
+| Status | Meaning |
+| --- | --- |
+| `not_requested` | No sandbox lifecycle has been requested for the task. |
+| `requested` | The backend accepted a sandbox lifecycle request. |
+| `starting` | The backend is preparing a sandbox provider session. |
+| `ready` | The sandbox can accept controlled work. |
+| `stopping` | The backend is stopping the sandbox session. |
+| `stopped` | The sandbox session is closed and should not accept work. |
+| `failed` | The sandbox lifecycle failed and requires recovery or manual review. |
+
+Current implementation note: `dremo-api` exposes a stub-only lifecycle for contract testing. It writes `provider = "stub"` records and server-owned events, but it does not create Docker/E2B/Daytona resources, execute commands, mount files, use network egress, inject secrets, or call models.
+
 ## Core Requirements
 
 | Requirement | Policy |
