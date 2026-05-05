@@ -104,7 +104,13 @@ create table if not exists public.dremo_task_events (
       'sandbox_ready',
       'sandbox_stopping',
       'sandbox_stopped',
-      'sandbox_failed'
+      'sandbox_failed',
+      'tool_call_requested',
+      'tool_approval_required',
+      'tool_approval_approved',
+      'tool_approval_rejected',
+      'tool_call_blocked',
+      'tool_call_stubbed'
     )
   ),
   channel text not null check (
@@ -238,7 +244,13 @@ alter table public.dremo_task_events
       'sandbox_ready',
       'sandbox_stopping',
       'sandbox_stopped',
-      'sandbox_failed'
+      'sandbox_failed',
+      'tool_call_requested',
+      'tool_approval_required',
+      'tool_approval_approved',
+      'tool_approval_rejected',
+      'tool_call_blocked',
+      'tool_call_stubbed'
     )
   );
 
