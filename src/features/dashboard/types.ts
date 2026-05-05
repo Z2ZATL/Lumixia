@@ -14,6 +14,60 @@ export type ExecutionSessionStatus =
   | 'failed';
 export type ExecutionLogKind = 'system' | 'progress' | 'success' | 'error';
 export type ExecutionProviderMode = 'mock' | 'api';
+export type DremoTaskStatus =
+  | 'created'
+  | 'queued'
+  | 'planning'
+  | 'awaiting_approval'
+  | 'running'
+  | 'verifying'
+  | 'repairing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+export type DremoCreditState =
+  | 'not_required'
+  | 'quoted'
+  | 'reserved'
+  | 'running'
+  | 'completed_charged'
+  | 'failed_refunded'
+  | 'cancelled_released'
+  | 'disputed'
+  | 'manual_review';
+export type DremoEventType =
+  | 'task_created'
+  | 'task_started'
+  | 'repo_scanned'
+  | 'plan_created'
+  | 'approval_required'
+  | 'approval_resolved'
+  | 'tool_call_started'
+  | 'tool_call_output'
+  | 'tool_call_completed'
+  | 'terminal_output'
+  | 'file_read'
+  | 'file_changed'
+  | 'diff_created'
+  | 'verification_started'
+  | 'verification_result'
+  | 'self_review_started'
+  | 'self_review_result'
+  | 'repair_started'
+  | 'final_report_created'
+  | 'artifact_created'
+  | 'task_completed'
+  | 'task_failed'
+  | 'task_cancelled';
+export type DremoEventChannel =
+  | 'system'
+  | 'agent'
+  | 'terminal'
+  | 'tool'
+  | 'approval'
+  | 'artifact'
+  | 'billing';
+export type DremoEventSeverity = 'debug' | 'info' | 'warning' | 'error';
 
 export interface DashboardAgent {
   id: string;
@@ -100,6 +154,38 @@ export interface ExecutionLogRecord {
   userId: string;
   kind: ExecutionLogKind;
   message: string;
+  createdAt: string;
+}
+
+export interface DremoTask {
+  id: string;
+  userId: string;
+  status: DremoTaskStatus;
+  title: string | null;
+  prompt: string;
+  repoUrl: string | null;
+  repoBranch: string | null;
+  sandboxId: string | null;
+  modelProvider: string | null;
+  modelId: string | null;
+  creditState: DremoCreditState;
+  creditReservationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  failureReason: string | null;
+}
+
+export interface DremoTaskEvent {
+  id: string;
+  taskId: string;
+  userId: string;
+  sequence: number;
+  eventType: DremoEventType;
+  channel: DremoEventChannel;
+  severity: DremoEventSeverity;
+  payload: Record<string, unknown>;
   createdAt: string;
 }
 
