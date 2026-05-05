@@ -11,6 +11,8 @@
 -- 4. anon has no privileges on dremo_* tables.
 -- 5. authenticated has SELECT only and no INSERT/UPDATE/DELETE.
 -- 6. service_role has SELECT/INSERT/UPDATE/DELETE for backend-owned writes.
+-- 7. service_role has EXECUTE on Dremo RPC helpers.
+-- 8. anon/authenticated/public do not have EXECUTE on Dremo RPC helpers.
 --
 -- Manual REST/API checks to run separately with real tokens:
 --   - Authenticated user can SELECT their own dremo_* rows.
@@ -18,6 +20,7 @@
 --   - Authenticated user cannot INSERT dremo_task_events.
 --   - Authenticated user cannot UPDATE dremo_tasks.
 --   - service role / future Dremo backend can INSERT events and UPDATE task status.
+--   - authenticated cannot EXECUTE append_dremo_task_event or transition_dremo_task_status.
 
 select
   checks.schema_name,
@@ -121,3 +124,28 @@ where table_schema = 'public'
   and table_name like 'dremo_%'
   and grantee = 'authenticated'
   and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE');
+
+select
+  grantee,
+  routine_name,
+  privilege_type
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name in (
+    'append_dremo_task_event',
+    'transition_dremo_task_status'
+  )
+  and lower(grantee) in ('anon', 'authenticated', 'public', 'service_role')
+order by routine_name, grantee, privilege_type;
+
+select
+  'dremo rpc public/authenticated execute leak' as check_name,
+  count(*) as finding_count
+from information_schema.routine_privileges
+where routine_schema = 'public'
+  and routine_name in (
+    'append_dremo_task_event',
+    'transition_dremo_task_status'
+  )
+  and lower(grantee) in ('anon', 'authenticated', 'public')
+  and privilege_type = 'EXECUTE';

@@ -40,7 +40,6 @@ type DremoEventChannel =
 type DremoEventSeverity = 'debug' | 'info' | 'warning' | 'error';
 
 interface DremoEventDraft {
-  sequence: number;
   eventType: string;
   channel: DremoEventChannel;
   severity?: DremoEventSeverity;
@@ -153,6 +152,18 @@ function asRecord(value: unknown, message = 'Expected database row.') {
   }
 
   return value as Record<string, unknown>;
+}
+
+function asRpcRecord(value: unknown, message = 'Expected RPC row.') {
+  if (Array.isArray(value)) {
+    if (value.length !== 1) {
+      throw new DremoApiError(message, 500, 'invalid_rpc_result');
+    }
+
+    return asRecord(value[0], message);
+  }
+
+  return asRecord(value, message);
 }
 
 function mapTask(row: Record<string, unknown>) {
@@ -286,62 +297,66 @@ async function appendTaskEvents(
     return [];
   }
 
-  const { data, error } = await serviceRole
-    .from('dremo_task_events')
-    .insert(
-      events.map((event) => ({
-        task_id: taskId,
-        user_id: userId,
-        sequence: event.sequence,
-        event_type: event.eventType,
-        channel: event.channel,
-        severity: event.severity ?? 'info',
-        payload: event.payload ?? {},
-      })),
-    )
-    .select(
-      'id, task_id, user_id, sequence, event_type, channel, severity, payload, created_at',
-    )
-    .order('sequence', { ascending: true });
+  const insertedEvents = [];
 
-  if (error) {
-    console.error('Dremo event append failed', error.message);
-    throw new DremoApiError(
-      'Unable to append Dremo task events.',
-      500,
-      'event_append_failed',
-    );
+  for (const event of events) {
+    const { data, error } = await serviceRole.rpc('append_dremo_task_event', {
+      p_task_id: taskId,
+      p_user_id: userId,
+      p_event_type: event.eventType,
+      p_channel: event.channel,
+      p_severity: event.severity ?? 'info',
+      p_payload: event.payload ?? {},
+    });
+
+    if (error) {
+      console.error('Dremo event append failed', error.message);
+      throw new DremoApiError(
+        'Unable to append Dremo task events.',
+        500,
+        'event_append_failed',
+      );
+    }
+
+    insertedEvents.push(mapEvent(asRpcRecord(data, 'Expected Dremo event row.')));
   }
 
-  return (data ?? []).map((row) => mapEvent(asRecord(row)));
+  return insertedEvents;
 }
 
-async function getNextSequence(
+async function transitionTaskStatus(
   serviceRole: ReturnType<typeof createServiceRoleClient>,
   taskId: string,
   userId: string,
+  nextStatus: DremoTaskStatus,
+  event: DremoEventDraft,
 ) {
   const { data, error } = await serviceRole
-    .from('dremo_task_events')
-    .select('sequence')
-    .eq('task_id', taskId)
-    .eq('user_id', userId)
-    .order('sequence', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .rpc('transition_dremo_task_status', {
+      p_task_id: taskId,
+      p_user_id: userId,
+      p_next_status: nextStatus,
+      p_event_type: event.eventType,
+      p_channel: event.channel,
+      p_severity: event.severity ?? 'info',
+      p_payload: event.payload ?? {},
+    });
 
   if (error) {
-    console.error('Dremo sequence lookup failed', error.message);
+    console.error('Dremo task transition failed', error.message);
     throw new DremoApiError(
-      'Unable to prepare Dremo event sequence.',
+      'Unable to transition Dremo task.',
       500,
-      'sequence_lookup_failed',
+      'task_transition_failed',
     );
   }
 
-  const latestEvent = data ? asRecord(data) : null;
+  const result = asRpcRecord(data, 'Expected Dremo task transition result.');
 
-  return Number(latestEvent?.sequence ?? 0) + 1;
+  return {
+    task: mapTask(asRecord(result.task, 'Expected transitioned Dremo task.')),
+    events: [mapEvent(asRecord(result.event, 'Expected transition Dremo event.'))],
+  };
 }
 
 async function createTask(request: Request, userId: string) {
@@ -403,7 +418,6 @@ async function createTask(request: Request, userId: string) {
   const taskId = String(task.id);
   const events = await appendTaskEvents(serviceRole, taskId, userId, [
     {
-      sequence: 1,
       eventType: 'task_created',
       channel: 'system',
       payload: {
@@ -413,7 +427,6 @@ async function createTask(request: Request, userId: string) {
       },
     },
     {
-      sequence: 2,
       eventType: 'task_started',
       channel: 'system',
       payload: {
@@ -423,7 +436,6 @@ async function createTask(request: Request, userId: string) {
       },
     },
     {
-      sequence: 3,
       eventType: 'plan_created',
       channel: 'agent',
       payload: {
@@ -477,71 +489,17 @@ async function cancelTask(taskId: string, userId: string) {
     };
   }
 
-  const { data: taskRow, error: updateError } = await serviceRole
-    .from('dremo_tasks')
-    .update({
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      credit_state:
+  return transitionTaskStatus(serviceRole, taskId, userId, 'cancelled', {
+    eventType: 'task_cancelled',
+    channel: 'system',
+    payload: {
+      reason: 'Cancelled through authenticated Dremo API stub.',
+      creditState:
         existingTask.creditState === 'not_required'
           ? 'not_required'
           : 'cancelled_released',
-    })
-    .eq('id', taskId)
-    .eq('user_id', userId)
-    .select(
-      [
-        'id',
-        'user_id',
-        'status',
-        'title',
-        'prompt',
-        'repo_url',
-        'repo_branch',
-        'sandbox_id',
-        'model_provider',
-        'model_id',
-        'credit_state',
-        'credit_reservation_id',
-        'created_at',
-        'updated_at',
-        'completed_at',
-        'cancelled_at',
-        'failure_reason',
-      ].join(', '),
-    )
-    .single();
-
-  if (updateError) {
-    console.error('Dremo task cancel failed', updateError.message);
-    throw new DremoApiError(
-      'Unable to cancel Dremo task.',
-      500,
-      'task_cancel_failed',
-    );
-  }
-
-  // Stub-only sequence handling is intentionally simple. The production
-  // orchestrator should move task status + event append into a transaction or
-  // RPC that locks the task row before choosing the next sequence.
-  const task = asRecord(taskRow);
-  const nextSequence = await getNextSequence(serviceRole, taskId, userId);
-  const events = await appendTaskEvents(serviceRole, taskId, userId, [
-    {
-      sequence: nextSequence,
-      eventType: 'task_cancelled',
-      channel: 'system',
-      payload: {
-        reason: 'Cancelled through authenticated Dremo API stub.',
-        creditState: String(task.credit_state),
-      },
     },
-  ]);
-
-  return {
-    task: mapTask(task),
-    events,
-  };
+  });
 }
 
 serve(async (request) => {

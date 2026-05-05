@@ -355,3 +355,186 @@ comment on table public.dremo_sandbox_sessions is
 
 comment on table public.dremo_model_runs is
   'Dremo model run audit and cost metadata. Sensitive prompts/responses should not be stored here by default.';
+
+create or replace function public.append_dremo_task_event(
+  p_task_id uuid,
+  p_user_id uuid,
+  p_event_type text,
+  p_channel text,
+  p_severity text,
+  p_payload jsonb
+)
+returns public.dremo_task_events
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_task public.dremo_tasks%rowtype;
+  v_next_sequence bigint;
+  v_event public.dremo_task_events%rowtype;
+begin
+  select *
+  into v_task
+  from public.dremo_tasks
+  where id = p_task_id
+    and user_id = p_user_id
+  for update;
+
+  if not found then
+    raise exception 'Dremo task not found for this user.'
+      using errcode = 'P0002';
+  end if;
+
+  select coalesce(max(sequence), 0) + 1
+  into v_next_sequence
+  from public.dremo_task_events
+  where task_id = p_task_id;
+
+  insert into public.dremo_task_events (
+    task_id,
+    user_id,
+    sequence,
+    event_type,
+    channel,
+    severity,
+    payload
+  )
+  values (
+    p_task_id,
+    p_user_id,
+    v_next_sequence,
+    p_event_type,
+    p_channel,
+    coalesce(p_severity, 'info'),
+    coalesce(p_payload, '{}'::jsonb)
+  )
+  returning *
+  into v_event;
+
+  return v_event;
+end;
+$fn$;
+
+create or replace function public.transition_dremo_task_status(
+  p_task_id uuid,
+  p_user_id uuid,
+  p_next_status text,
+  p_event_type text,
+  p_channel text,
+  p_severity text,
+  p_payload jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $fn$
+declare
+  v_task public.dremo_tasks%rowtype;
+  v_updated_task public.dremo_tasks%rowtype;
+  v_next_sequence bigint;
+  v_event public.dremo_task_events%rowtype;
+begin
+  if p_next_status not in (
+    'created',
+    'queued',
+    'planning',
+    'awaiting_approval',
+    'running',
+    'verifying',
+    'repairing',
+    'completed',
+    'failed',
+    'cancelled'
+  ) then
+    raise exception 'Invalid Dremo task status: %', p_next_status
+      using errcode = '22023';
+  end if;
+
+  select *
+  into v_task
+  from public.dremo_tasks
+  where id = p_task_id
+    and user_id = p_user_id
+  for update;
+
+  if not found then
+    raise exception 'Dremo task not found for this user.'
+      using errcode = 'P0002';
+  end if;
+
+  if v_task.status in ('completed', 'failed', 'cancelled')
+    and p_next_status <> v_task.status then
+    raise exception 'Dremo task is already in a terminal state.'
+      using errcode = '25006';
+  end if;
+
+  update public.dremo_tasks
+  set
+    status = p_next_status,
+    completed_at = case
+      when p_next_status = 'completed' then coalesce(completed_at, timezone('utc', now()))
+      else completed_at
+    end,
+    cancelled_at = case
+      when p_next_status = 'cancelled' then coalesce(cancelled_at, timezone('utc', now()))
+      else cancelled_at
+    end,
+    credit_state = case
+      when p_next_status = 'cancelled' and credit_state <> 'not_required' then 'cancelled_released'
+      else credit_state
+    end
+  where id = p_task_id
+    and user_id = p_user_id
+  returning *
+  into v_updated_task;
+
+  select coalesce(max(sequence), 0) + 1
+  into v_next_sequence
+  from public.dremo_task_events
+  where task_id = p_task_id;
+
+  insert into public.dremo_task_events (
+    task_id,
+    user_id,
+    sequence,
+    event_type,
+    channel,
+    severity,
+    payload
+  )
+  values (
+    p_task_id,
+    p_user_id,
+    v_next_sequence,
+    p_event_type,
+    p_channel,
+    coalesce(p_severity, 'info'),
+    coalesce(p_payload, '{}'::jsonb)
+  )
+  returning *
+  into v_event;
+
+  return jsonb_build_object(
+    'task', to_jsonb(v_updated_task),
+    'event', to_jsonb(v_event)
+  );
+end;
+$fn$;
+
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from public;
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from anon;
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from authenticated;
+grant execute on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) to service_role;
+
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from public;
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from anon;
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from authenticated;
+grant execute on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) to service_role;
+
+comment on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) is
+  'Service-role-only Dremo helper. Locks the task row, computes the next event sequence, and appends one server-owned event.';
+
+comment on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) is
+  'Service-role-only Dremo helper. Locks the task row, transitions status, timestamps terminal states, and appends one event atomically.';

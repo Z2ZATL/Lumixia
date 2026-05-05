@@ -90,3 +90,13 @@ grant select, insert, update, delete on public.dremo_approvals to service_role;
 grant select, insert, update, delete on public.dremo_artifacts to service_role;
 grant select, insert, update, delete on public.dremo_sandbox_sessions to service_role;
 grant select, insert, update, delete on public.dremo_model_runs to service_role;
+
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from public;
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from anon;
+revoke all on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) from authenticated;
+grant execute on function public.append_dremo_task_event(uuid, uuid, text, text, text, jsonb) to service_role;
+
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from public;
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from anon;
+revoke all on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) from authenticated;
+grant execute on function public.transition_dremo_task_status(uuid, uuid, text, text, text, text, jsonb) to service_role;
