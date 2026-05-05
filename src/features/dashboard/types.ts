@@ -58,7 +58,13 @@ export type DremoEventType =
   | 'artifact_created'
   | 'task_completed'
   | 'task_failed'
-  | 'task_cancelled';
+  | 'task_cancelled'
+  | 'sandbox_requested'
+  | 'sandbox_starting'
+  | 'sandbox_ready'
+  | 'sandbox_stopping'
+  | 'sandbox_stopped'
+  | 'sandbox_failed';
 export type DremoEventChannel =
   | 'system'
   | 'agent'
@@ -68,6 +74,18 @@ export type DremoEventChannel =
   | 'artifact'
   | 'billing';
 export type DremoEventSeverity = 'debug' | 'info' | 'warning' | 'error';
+export type DremoSandboxStatus =
+  | 'not_requested'
+  | 'requested'
+  | 'starting'
+  | 'creating'
+  | 'ready'
+  | 'running'
+  | 'stopping'
+  | 'stopped'
+  | 'destroyed'
+  | 'failed'
+  | 'quarantined';
 
 export interface DashboardAgent {
   id: string;
@@ -187,6 +205,20 @@ export interface DremoTaskEvent {
   severity: DremoEventSeverity;
   payload: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface DremoSandboxSession {
+  id: string;
+  taskId: string;
+  userId: string;
+  provider: string;
+  providerSandboxId: string | null;
+  status: DremoSandboxStatus;
+  resourceLimits: Record<string, unknown>;
+  createdAt: string;
+  startedAt: string | null;
+  stoppedAt: string | null;
+  failureReason: string | null;
 }
 
 export interface ExecutionProviderLog {

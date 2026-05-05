@@ -38,6 +38,12 @@ Dremo events are ordered, server-owned records. The frontend renders them but mu
 | --- | --- | --- | --- | --- |
 | `task_created` | `{ "title": string, "agentSlug": string }` | Timeline start marker. | Yes | Yes |
 | `task_started` | `{ "sandboxId": string, "billingState": string }` | Running status badge. | Yes | Yes |
+| `sandbox_requested` | `{ "provider": string, "sandboxSessionId": string, "stubOnly": boolean, "noCodeExecution": boolean }` | Sandbox lifecycle marker. | Yes | Yes |
+| `sandbox_starting` | `{ "provider": string, "sandboxSessionId": string, "filesystemAccess": boolean, "networkEgress": boolean, "secretsMounted": boolean }` | Sandbox preparation state. | Yes | Yes |
+| `sandbox_ready` | `{ "provider": string, "sandboxSessionId": string, "status": "ready", "stubOnly": boolean }` | Ready badge or lifecycle card. | Yes | Yes |
+| `sandbox_stopping` | `{ "provider": string, "sandboxSessionId": string, "previousStatus": string }` | Cleanup progress marker. | Yes | Yes |
+| `sandbox_stopped` | `{ "provider": string, "sandboxSessionId": string, "status": "stopped" }` | Cleanup complete marker. | Yes | Yes |
+| `sandbox_failed` | `{ "provider": string, "sandboxSessionId": string, "reason": string }` | Failure state with recovery action. | Yes | Yes |
 | `repo_scanned` | `{ "filesScanned": number, "languageHints": string[] }` | Repo insight card. | Yes | Yes |
 | `plan_created` | `{ "summary": string, "steps": [{ "id": string, "title": string, "risk": string }] }` | Plan panel with checklist. | Yes | Yes |
 | `approval_required` | `{ "approvalId": string, "action": string, "risk": string, "details": object }` | Approval card with allow/deny buttons. | Yes | Yes |
