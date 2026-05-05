@@ -4,6 +4,10 @@ Status: proposed.
 
 The Dremo workspace should render server-owned task state and event streams. It should not mutate trusted runtime logs, task status, billing state, or artifacts directly.
 
+## Current Frontend Stub
+
+Lumixia includes an internal `/dashboard/dremo-lab` route for testing the deployed `dremo-api` stub. This lab can create stub tasks, refresh server-owned events, and cancel a task through authenticated Edge Function calls only. It is not the production Dremo workspace, does not run sandboxes or model calls, and does not replace Code Architect AI.
+
 ## Core Panels
 
 | Panel | Purpose |

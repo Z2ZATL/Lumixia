@@ -37,6 +37,10 @@ const TerminalWorkspace = React.lazy(async () => ({
   default: (await import('../features/dashboard/components/TerminalWorkspace'))
     .TerminalWorkspace,
 }));
+const DremoCodeLab = React.lazy(async () => ({
+  default: (await import('../features/dashboard/components/DremoCodeLab'))
+    .DremoCodeLab,
+}));
 
 const routeVariants = {
   initial: {
@@ -368,6 +372,7 @@ const DashboardRoutes: React.FC = () => {
             path="workspace/:agentSlug"
             element={<TerminalWorkspace />}
           />
+          <Route path="dremo-lab" element={<DremoCodeLab />} />
           <Route
             path="discover"
             element={
