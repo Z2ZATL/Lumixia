@@ -39,6 +39,9 @@ export type DremoEventType =
   | 'task_created'
   | 'task_started'
   | 'repo_scanned'
+  | 'repo_scan_started'
+  | 'repo_scan_completed'
+  | 'repo_scan_failed'
   | 'plan_created'
   | 'approval_required'
   | 'approval_resolved'
@@ -246,6 +249,17 @@ export interface DremoApproval {
   responsePayload: Record<string, unknown> | null;
   requestedAt: string;
   resolvedAt: string | null;
+}
+
+export interface DremoRepoScanSummary {
+  mode: 'stub';
+  source: 'request' | 'task_metadata' | 'none';
+  repoUrl: string | null;
+  repoBranch: string | null;
+  taskTitle: string | null;
+  promptLength: number;
+  languageHints: string[];
+  limitations: string[];
 }
 
 export interface ExecutionProviderLog {

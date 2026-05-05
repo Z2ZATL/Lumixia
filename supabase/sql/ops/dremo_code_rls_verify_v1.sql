@@ -16,6 +16,7 @@
 -- 9. dremo_task_events allows sandbox lifecycle event types.
 -- 10. dremo_sandbox_sessions allows the stub lifecycle statuses.
 -- 11. dremo_task_events allows tool request/approval event types.
+-- 12. dremo_task_events allows repo scan lifecycle event types.
 --
 -- Manual REST/API checks to run separately with real tokens:
 --   - Authenticated user can SELECT their own dremo_* rows.

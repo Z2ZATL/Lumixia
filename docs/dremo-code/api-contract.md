@@ -6,6 +6,8 @@ Implementation note: `supabase/functions/dremo-api/index.ts` currently provides 
 
 Sandbox lifecycle note: the same Edge Function also provides stub-only `POST /tasks/:taskId/sandbox/start` and `POST /tasks/:taskId/sandbox/stop` routes. These routes create/update `provider = "stub"` sandbox lifecycle records and append server-owned events only. They do not run commands, mount files, make network calls, inject secrets, or create real provider sandboxes.
 
+Repo scan note: `POST /tasks/:taskId/repo-scan` is currently a read-only stub contract. It appends server-owned repo scan events and returns a metadata-only summary based on request/task fields. It does not execute shell commands, clone repos, read local files, access the network, call models, or touch billing.
+
 All Dremo API routes must require a valid Supabase bearer token. The backend must derive `userId` from the JWT and must not trust a user id supplied in request bodies.
 
 ## Shared Rules
@@ -201,6 +203,58 @@ Error cases:
 | `billing_release_failed` | Cancellation happened but credit release needs manual review. |
 
 Ownership and security rules: cancellation request is user-initiated, but final state and credit release are backend-owned.
+
+## POST /dremo/tasks/:taskId/repo-scan
+
+Purpose: request a safe repo scan summary for a task.
+
+Current stub behavior: records `repo_scan_started` and `repo_scan_completed` events, then returns a metadata-only summary. The summary may use optional request fields or existing task metadata, but it never reads arbitrary filesystem paths or clones external repositories.
+
+Auth requirements: authenticated owner.
+
+Request:
+
+```json
+{
+  "repoUrl": "https://github.com/owner/repo",
+  "repoBranch": "main"
+}
+```
+
+Response:
+
+```json
+{
+  "summary": {
+    "mode": "stub",
+    "source": "request",
+    "repoUrl": "https://github.com/owner/repo",
+    "repoBranch": "main",
+    "promptLength": 120,
+    "languageHints": [],
+    "limitations": [
+      "No shell commands were executed.",
+      "No filesystem paths were read.",
+      "No external repositories were cloned."
+    ]
+  },
+  "events": [
+    { "eventType": "repo_scan_started" },
+    { "eventType": "repo_scan_completed" }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `unauthorized` | Missing or invalid JWT. |
+| `task_not_found` | Missing or not owned by current user. |
+| `payload_too_large` | Request body exceeds the stub limit. |
+| `text_too_long` | Repo metadata field is too long. |
+
+Ownership and security rules: `userId` is derived from JWT, trusted event writes remain service-role-only, and the stub must not perform shell, filesystem, network, model, or billing work.
 
 ## POST /dremo/tasks/:taskId/sandbox/start
 

@@ -7,6 +7,7 @@ import type {
   DremoEventChannel,
   DremoEventSeverity,
   DremoEventType,
+  DremoRepoScanSummary,
   DremoRiskLevel,
   DremoSandboxSession,
   DremoSandboxStatus,
@@ -79,6 +80,16 @@ export interface DremoApprovalResolveResponse {
   events: DremoTaskEvent[];
 }
 
+export interface DremoRepoScanInput {
+  repoUrl?: string;
+  repoBranch?: string;
+}
+
+export interface DremoRepoScanResponse {
+  summary: DremoRepoScanSummary;
+  events: DremoTaskEvent[];
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -132,6 +143,9 @@ function toDremoEventType(value: unknown): DremoEventType {
     'task_created',
     'task_started',
     'repo_scanned',
+    'repo_scan_started',
+    'repo_scan_completed',
+    'repo_scan_failed',
     'plan_created',
     'approval_required',
     'approval_resolved',
@@ -327,6 +341,36 @@ function mapDremoApproval(value: unknown): DremoApproval {
   };
 }
 
+function mapDremoRepoScanSummary(value: unknown): DremoRepoScanSummary {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid repo scan payload.');
+  }
+
+  return {
+    mode: 'stub',
+    source:
+      value.source === 'request' ||
+      value.source === 'task_metadata' ||
+      value.source === 'none'
+        ? value.source
+        : 'none',
+    repoUrl: toStringOrNull(value.repoUrl),
+    repoBranch: toStringOrNull(value.repoBranch),
+    taskTitle: toStringOrNull(value.taskTitle),
+    promptLength: Number(value.promptLength ?? 0),
+    languageHints: Array.isArray(value.languageHints)
+      ? value.languageHints.filter(
+          (language): language is string => typeof language === 'string',
+        )
+      : [],
+    limitations: Array.isArray(value.limitations)
+      ? value.limitations.filter(
+          (limitation): limitation is string => typeof limitation === 'string',
+        )
+      : [],
+  };
+}
+
 function getDremoApiBaseUrl() {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
@@ -491,6 +535,24 @@ export async function stopDremoStubSandbox(
 
   return {
     sandboxSession: mapDremoSandboxSession(payload.sandboxSession),
+    events: (payload.events ?? []).map(mapDremoTaskEvent),
+  };
+}
+
+export async function runDremoStubRepoScan(
+  taskId: string,
+  input: DremoRepoScanInput = {},
+): Promise<DremoRepoScanResponse> {
+  const payload = await requestDremoApi<DremoRepoScanResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/repo-scan`,
+    {
+      method: 'POST',
+      body: input,
+    },
+  );
+
+  return {
+    summary: mapDremoRepoScanSummary(payload.summary),
     events: (payload.events ?? []).map(mapDremoTaskEvent),
   };
 }

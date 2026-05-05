@@ -61,6 +61,17 @@ type DremoApprovalStatus =
   | 'expired'
   | 'cancelled';
 
+interface DremoRepoScanSummary {
+  mode: 'stub';
+  source: 'request' | 'task_metadata' | 'none';
+  repoUrl: string | null;
+  repoBranch: string | null;
+  taskTitle: string | null;
+  promptLength: number;
+  languageHints: string[];
+  limitations: string[];
+}
+
 interface DremoEventDraft {
   eventType: string;
   channel: DremoEventChannel;
@@ -357,6 +368,71 @@ function classifyApprovalType(toolName: string) {
   }
 
   return normalized;
+}
+
+function inferLanguageHintsFromRepoUrl(repoUrl: string | null) {
+  if (!repoUrl) {
+    return [];
+  }
+
+  const normalized = repoUrl.toLowerCase();
+  const hints = new Set<string>();
+
+  if (normalized.includes('typescript') || normalized.includes('ts-')) {
+    hints.add('typescript');
+  }
+
+  if (normalized.includes('react') || normalized.includes('vite')) {
+    hints.add('react');
+  }
+
+  if (normalized.includes('python') || normalized.includes('py-')) {
+    hints.add('python');
+  }
+
+  if (normalized.includes('rust')) {
+    hints.add('rust');
+  }
+
+  if (normalized.includes('go-') || normalized.endsWith('/go')) {
+    hints.add('go');
+  }
+
+  return [...hints];
+}
+
+function buildStubRepoScanSummary(
+  task: ReturnType<typeof mapTask>,
+  input: {
+    repoUrl: string | null;
+    repoBranch: string | null;
+  },
+): DremoRepoScanSummary {
+  const repoUrl = input.repoUrl ?? task.repoUrl;
+  const repoBranch = input.repoBranch ?? task.repoBranch ?? 'main';
+  const source = input.repoUrl || input.repoBranch
+    ? 'request'
+    : task.repoUrl || task.repoBranch
+      ? 'task_metadata'
+      : 'none';
+
+  return {
+    mode: 'stub',
+    source,
+    repoUrl,
+    repoBranch,
+    taskTitle: task.title,
+    promptLength: task.prompt.length,
+    languageHints: inferLanguageHintsFromRepoUrl(repoUrl),
+    limitations: [
+      'No shell commands were executed.',
+      'No filesystem paths were read.',
+      'No external repositories were cloned.',
+      'No network requests were made.',
+      'No model calls were made.',
+      'No billing or credit state changed.',
+    ],
+  };
 }
 
 function parseAfterSequence(request: Request) {
@@ -1126,6 +1202,52 @@ async function stopStubSandbox(taskId: string, userId: string) {
   };
 }
 
+async function runStubRepoScan(request: Request, taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
+  const body = await readJsonBody(request);
+  const requestedRepoUrl = optionalText(body.repoUrl, 1000);
+  const requestedRepoBranch = optionalText(body.repoBranch, 160);
+  const summary = buildStubRepoScanSummary(task, {
+    repoUrl: requestedRepoUrl,
+    repoBranch: requestedRepoBranch,
+  });
+  const events = await appendTaskEvents(serviceRole, taskId, userId, [
+    {
+      eventType: 'repo_scan_started',
+      channel: 'agent',
+      payload: {
+        mode: 'stub',
+        source: summary.source,
+        repoUrl: summary.repoUrl,
+        repoBranch: summary.repoBranch,
+        noFilesystemAccess: true,
+        noCommandExecution: true,
+        noNetworkAccess: true,
+        noModelCalls: true,
+        noBillingChanges: true,
+        note:
+          'Dremo repo scan stub started. It only inspects safe request/task metadata.',
+      },
+    },
+    {
+      eventType: 'repo_scan_completed',
+      channel: 'agent',
+      payload: {
+        mode: 'stub',
+        noFilesystemAccess: true,
+        noCommandExecution: true,
+        summary,
+      },
+    },
+  ]);
+
+  return {
+    summary,
+    events,
+  };
+}
+
 async function requestToolStub(request: Request, taskId: string, userId: string) {
   const serviceRole = createServiceRoleClient();
   const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
@@ -1435,6 +1557,21 @@ serve(async (request) => {
       const taskId = requireTaskId(route[1]);
 
       return jsonResponse(await stopStubSandbox(taskId, user.id), {}, request);
+    }
+
+    if (
+      request.method === 'POST' &&
+      route.length === 3 &&
+      route[0] === 'tasks' &&
+      route[2] === 'repo-scan'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(
+        await runStubRepoScan(request, taskId, user.id),
+        {},
+        request,
+      );
     }
 
     if (
