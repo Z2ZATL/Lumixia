@@ -6,12 +6,14 @@ import {
   getDremoTaskEvents,
   requestDremoTool,
   resolveDremoApproval,
+  runDremoStubRepoScan,
   startDremoStubSandbox,
   stopDremoStubSandbox,
 } from '../lib/dremoApi';
 import type {
   DremoApproval,
   DremoApprovalDecision,
+  DremoRepoScanSummary,
   DremoRiskLevel,
   DremoSandboxSession,
   DremoTask,
@@ -97,6 +99,8 @@ export const DremoCodeLab: React.FC = () => {
   const [sandboxSession, setSandboxSession] =
     useState<DremoSandboxSession | null>(null);
   const [approvals, setApprovals] = useState<DremoApproval[]>([]);
+  const [repoScanSummary, setRepoScanSummary] =
+    useState<DremoRepoScanSummary | null>(null);
   const [toolName, setToolName] = useState('repo_scan');
   const [riskLevel, setRiskLevel] = useState<DremoRiskLevel>('low');
   const [toolReason, setToolReason] = useState(
@@ -113,6 +117,7 @@ export const DremoCodeLab: React.FC = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isStartingSandbox, setIsStartingSandbox] = useState(false);
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false);
+  const [isRunningRepoScan, setIsRunningRepoScan] = useState(false);
   const [isRequestingTool, setIsRequestingTool] = useState(false);
   const [resolvingApprovalId, setResolvingApprovalId] = useState<string | null>(
     null,
@@ -129,6 +134,7 @@ export const DremoCodeLab: React.FC = () => {
     isCancelling ||
     isStartingSandbox ||
     isStoppingSandbox ||
+    isRunningRepoScan ||
     isRequestingTool ||
     Boolean(resolvingApprovalId);
   const canStartSandbox =
@@ -169,6 +175,7 @@ export const DremoCodeLab: React.FC = () => {
       setTask(result.task);
       setSandboxSession(null);
       setApprovals([]);
+      setRepoScanSummary(null);
       setToolResultMessage(null);
       setEvents(sortEvents(result.events));
     } catch (error) {
@@ -280,6 +287,33 @@ export const DremoCodeLab: React.FC = () => {
       );
     } finally {
       setIsStoppingSandbox(false);
+    }
+  }
+
+  async function handleRunRepoScan() {
+    if (!task) {
+      return;
+    }
+
+    setIsRunningRepoScan(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await runDremoStubRepoScan(task.id, {
+        repoBranch: task.repoBranch ?? 'main',
+        ...(task.repoUrl ? { repoUrl: task.repoUrl } : {}),
+      });
+
+      setRepoScanSummary(result.summary);
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to run the Dremo repo scan stub.',
+      );
+    } finally {
+      setIsRunningRepoScan(false);
     }
   }
 
@@ -595,6 +629,67 @@ export const DremoCodeLab: React.FC = () => {
                     {isStoppingSandbox ? 'Stopping...' : 'Stop Stub Sandbox'}
                   </button>
                 </div>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-900">
+                      Read-only repo scan stub
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">
+                      Summarizes safe task metadata only. No shell, filesystem,
+                      clone, network, model, or billing execution happens.
+                    </p>
+                  </div>
+                  <button
+                    className="min-h-11 rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={isBusy}
+                    type="button"
+                    onClick={() => {
+                      void handleRunRepoScan();
+                    }}
+                  >
+                    {isRunningRepoScan ? 'Scanning...' : 'Run Stub Repo Scan'}
+                  </button>
+                </div>
+                {repoScanSummary && (
+                  <div className="mt-4 rounded-2xl border border-emerald-100 bg-white p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
+                      Stub scan result
+                    </p>
+                    <dl className="mt-3 grid gap-3 text-xs text-slate-600 sm:grid-cols-2">
+                      <div>
+                        <dt className="font-black uppercase tracking-widest text-slate-400">
+                          Source
+                        </dt>
+                        <dd className="mt-1 font-semibold text-slate-800">
+                          {repoScanSummary.source}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-black uppercase tracking-widest text-slate-400">
+                          Branch
+                        </dt>
+                        <dd className="mt-1 font-semibold text-slate-800">
+                          {repoScanSummary.repoBranch ?? 'Not provided'}
+                        </dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="font-black uppercase tracking-widest text-slate-400">
+                          Repo URL
+                        </dt>
+                        <dd className="mt-1 break-all font-semibold text-slate-800">
+                          {repoScanSummary.repoUrl ?? 'Not provided'}
+                        </dd>
+                      </div>
+                    </dl>
+                    <pre className="mt-3 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-emerald-50 p-3 text-xs leading-6 text-slate-700">
+                      {compactPayloadPreview(
+                        repoScanSummary as unknown as Record<string, unknown>,
+                      )}
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

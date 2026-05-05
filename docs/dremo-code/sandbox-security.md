@@ -56,6 +56,8 @@ No future Dremo tool should execute directly from a browser request. Every tool 
 
 Current implementation note: `dremo-api` includes a command approval stub. Low-risk tool requests emit `tool_call_requested` and `tool_call_stubbed`; medium, high, and critical requests create a pending `dremo_approvals` row and emit `tool_approval_required`. Approving a request only records `tool_approval_approved`; it does not execute the command yet.
 
+Repo scan stub note: the current `POST /tasks/:taskId/repo-scan` route is metadata-only. It appends `repo_scan_started` and `repo_scan_completed` events but does not run shell commands, read files, clone repositories, access the network, call models, or change billing. A future real scanner must run inside the sandbox policy layer and preserve this no-browser-trusted-write rule.
+
 | Tool category | Example | Stub policy |
 | --- | --- | --- |
 | `bash_command` | `npm test` | Approval required unless explicitly low-risk and stubbed. |

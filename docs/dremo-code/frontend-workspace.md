@@ -28,6 +28,8 @@ Lumixia includes an internal `/dashboard/dremo-lab` route for testing the deploy
 
 The internal `/dashboard/dremo-lab` route includes a Tool Approval Stub section. It lets developers request low-risk stubbed tools or create pending approval cards for medium/high/critical tool requests. Approve/reject actions call `dremo-api` and only record the decision; the UI must continue to state clearly that no command, file, network, package, git, or model execution happens yet.
 
+The lab also includes a Read-only Repo Scan Stub action. It calls `POST /tasks/:taskId/repo-scan`, renders the returned metadata-only summary, and shows `repo_scan_started` / `repo_scan_completed` in the event timeline. This must remain clearly labeled as stub-only until a sandbox-backed scanner exists.
+
 ## Suggested Desktop Layout
 
 ```text

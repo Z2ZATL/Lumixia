@@ -50,6 +50,9 @@ Dremo events are ordered, server-owned records. The frontend renders them but mu
 | `tool_approval_rejected` | `{ "approvalId": string, "decision": "rejected", "executionImplemented": false }` | Rejection marker. | Yes | Yes |
 | `tool_call_blocked` | `{ "toolRequestId": string, "toolName": string, "blockReason": string }` | Blocked policy row. | Yes | Yes |
 | `tool_call_stubbed` | `{ "toolRequestId": string, "toolName": string, "status": "stubbed", "executionImplemented": false }` | Stubbed low-risk result. | Yes | Yes |
+| `repo_scan_started` | `{ "mode": "stub", "repoUrl": string \| null, "repoBranch": string \| null, "noFilesystemAccess": true, "noCommandExecution": true }` | Repo scan lifecycle start marker. | Yes | Yes |
+| `repo_scan_completed` | `{ "mode": "stub", "noFilesystemAccess": true, "noCommandExecution": true, "summary": object }` | Repo scan summary card. | Yes | Yes |
+| `repo_scan_failed` | `{ "mode": "stub", "reason": string, "noFilesystemAccess": true, "noCommandExecution": true }` | Repo scan failure or blocked-state row. | Yes | Yes |
 | `repo_scanned` | `{ "filesScanned": number, "languageHints": string[] }` | Repo insight card. | Yes | Yes |
 | `plan_created` | `{ "summary": string, "steps": [{ "id": string, "title": string, "risk": string }] }` | Plan panel with checklist. | Yes | Yes |
 | `approval_required` | `{ "approvalId": string, "action": string, "risk": string, "details": object }` | Approval card with allow/deny buttons. | Yes | Yes |
