@@ -4,6 +4,8 @@ Status: proposed.
 
 Dremo Code must execute untrusted or semi-trusted code safely. Repo contents, generated code, terminal output, package scripts, and model output must all be treated as untrusted.
 
+Provider decision note: see [sandbox-provider-decision.md](./sandbox-provider-decision.md). The proposed direction is Docker local/dev only for the first prototype, E2B or Daytona evaluation before hosted production, and a managed isolated sandbox provider or dedicated sandbox worker pool for production. Supabase Edge Functions and Vercel Functions remain API/orchestration runtimes, not arbitrary code execution runtimes.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -117,7 +119,7 @@ Every sandbox should emit events for:
 
 ## Possible Sandbox Backends
 
-No final provider is chosen by this PR.
+No permanent production provider is chosen yet. The current decision record narrows the path: Docker is acceptable for local/dev prototype work only; E2B and Daytona should be evaluated before production; Fly Machines, Cloud Run, Kubernetes, or other worker models remain fallback options if Dremo needs more operational control.
 
 | Backend | Strengths | Risks / Tradeoffs |
 | --- | --- | --- |
