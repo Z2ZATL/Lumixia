@@ -6,6 +6,8 @@ Dremo Code must execute untrusted or semi-trusted code safely. Repo contents, ge
 
 Provider decision note: see [sandbox-provider-decision.md](./sandbox-provider-decision.md). The proposed direction is Docker local/dev only for the first prototype, E2B or Daytona evaluation before hosted production, and a managed isolated sandbox provider or dedicated sandbox worker pool for production. Supabase Edge Functions and Vercel Functions remain API/orchestration runtimes, not arbitrary code execution runtimes.
 
+Runner interface note: PR #13 adds `src/features/dremo-code/sandbox/` with TypeScript interfaces, static default policy, pure event mapping helpers, and a noop runner that blocks every command. This is not a real runtime and must not be treated as Docker/E2B/Daytona integration.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
