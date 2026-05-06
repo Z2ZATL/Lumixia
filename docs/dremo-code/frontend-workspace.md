@@ -8,6 +8,8 @@ The Dremo workspace should render server-owned task state and event streams. It 
 
 Lumixia includes an internal `/dashboard/dremo-lab` route for testing the deployed `dremo-api` stub. This lab can create stub tasks, refresh server-owned events, and cancel a task through authenticated Edge Function calls only. It is not the production Dremo workspace, does not run sandboxes or model calls, and does not replace Code Architect AI.
 
+The lab now includes a Task History panel. It calls `GET /tasks` to list recent owner-scoped tasks and `GET /tasks/:taskId/summary` plus event/artifact routes to restore an existing task after refresh. The selected task id is mirrored in the URL as `?taskId=...` so reloads can rehydrate state without localStorage and without direct browser reads from `dremo_*` tables.
+
 ## Core Panels
 
 | Panel | Purpose |
@@ -79,6 +81,7 @@ Mobile must be tabbed, not a squeezed desktop split layout.
 | Action | Frontend behavior |
 | --- | --- |
 | Start task | POST to Dremo API; do not create DB rows directly. |
+| Restore task | GET task history/summary/events/artifacts through Dremo API; do not query Supabase tables directly. |
 | Cancel task | POST cancellation request; wait for server-owned final state. |
 | Resolve approval | POST approval decision; show exact approved action. |
 | View events | Subscribe/poll event API; keep last sequence checkpoint. |

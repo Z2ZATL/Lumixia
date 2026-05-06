@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   cancelDremoTask,
   createDremoTask,
   finalizeDremoStubReport,
   getDremoArtifacts,
   getDremoTask,
+  getDremoTaskSummary,
   getDremoTaskEvents,
+  listDremoTasks,
   requestDremoTool,
   resolveDremoApproval,
   runDremoStubRepoScan,
@@ -22,6 +24,7 @@ import type {
   DremoSandboxSession,
   DremoTask,
   DremoTaskEvent,
+  DremoTaskSummary,
 } from '../types';
 
 function formatDate(value: string) {
@@ -110,6 +113,77 @@ function reportFromArtifact(
   return artifact.metadata.report as unknown as DremoFinalReportStub;
 }
 
+function repoScanSummaryFromEvents(
+  events: DremoTaskEvent[],
+): DremoRepoScanSummary | null {
+  const completedRepoScan = [...events]
+    .reverse()
+    .find((event) => event.eventType === 'repo_scan_completed');
+  const summary = completedRepoScan?.payload.summary;
+
+  if (!isRecord(summary)) {
+    return null;
+  }
+
+  return summary as unknown as DremoRepoScanSummary;
+}
+
+function taskToSummary(task: DremoTask): DremoTaskSummary {
+  return {
+    id: task.id,
+    userId: task.userId,
+    status: task.status,
+    title: task.title,
+    repoUrl: task.repoUrl,
+    repoBranch: task.repoBranch,
+    creditState: task.creditState,
+    createdAt: task.createdAt,
+    updatedAt: task.updatedAt,
+    completedAt: task.completedAt,
+    cancelledAt: task.cancelledAt,
+    failureReason: task.failureReason,
+  };
+}
+
+function mergeTaskHistory(
+  currentTasks: DremoTaskSummary[],
+  incomingTasks: DremoTaskSummary[],
+) {
+  const byId = new Map(currentTasks.map((historyTask) => [historyTask.id, historyTask]));
+
+  for (const historyTask of incomingTasks) {
+    byId.set(historyTask.id, historyTask);
+  }
+
+  return [...byId.values()].sort((left, right) =>
+    right.createdAt.localeCompare(left.createdAt),
+  );
+}
+
+function updateActiveTaskUrl(taskId: string | null) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+
+  if (taskId) {
+    url.searchParams.set('taskId', taskId);
+  } else {
+    url.searchParams.delete('taskId');
+  }
+
+  window.history.replaceState(null, '', url);
+}
+
+function getInitialTaskIdFromUrl() {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return new URL(window.location.href).searchParams.get('taskId');
+}
+
 export const DremoCodeLab: React.FC = () => {
   const [title, setTitle] = useState('Stub task');
   const [prompt, setPrompt] = useState('Create a server-owned Dremo stub task.');
@@ -135,8 +209,11 @@ export const DremoCodeLab: React.FC = () => {
     null,
   );
   const [events, setEvents] = useState<DremoTaskEvent[]>([]);
+  const [taskHistory, setTaskHistory] = useState<DremoTaskSummary[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isRestoringTask, setIsRestoringTask] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isStartingSandbox, setIsStartingSandbox] = useState(false);
@@ -156,6 +233,7 @@ export const DremoCodeLab: React.FC = () => {
   const sortedEvents = useMemo(() => sortEvents(events), [events]);
   const isBusy =
     isCreating ||
+    isRestoringTask ||
     isRefreshing ||
     isCancelling ||
     isStartingSandbox ||
@@ -181,6 +259,106 @@ export const DremoCodeLab: React.FC = () => {
     sandboxSession?.status !== 'failed' &&
     sandboxSession?.status !== 'destroyed' &&
     sandboxSession?.status !== 'quarantined';
+
+  useEffect(() => {
+    void initializeDremoLab();
+  }, []);
+
+  async function initializeDremoLab() {
+    setIsLoadingHistory(true);
+    setErrorMessage(null);
+
+    try {
+      const historyResult = await listDremoTasks({ limit: 20 });
+      const initialTaskId = getInitialTaskIdFromUrl();
+
+      setTaskHistory(historyResult.tasks);
+
+      if (initialTaskId) {
+        await restoreTask(initialTaskId, { updateUrl: false });
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to load Dremo task history.',
+      );
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  async function handleRefreshHistory() {
+    setIsLoadingHistory(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await listDremoTasks({ limit: 20 });
+      setTaskHistory(result.tasks);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to refresh Dremo task history.',
+      );
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  async function restoreTask(
+    taskId: string,
+    options: { updateUrl?: boolean } = {},
+  ) {
+    setIsRestoringTask(true);
+    setErrorMessage(null);
+
+    try {
+      const [summaryResult, eventResult, artifactResult] = await Promise.all([
+        getDremoTaskSummary(taskId),
+        getDremoTaskEvents(taskId),
+        getDremoArtifacts(taskId),
+      ]);
+      const restoredEvents = sortEvents(
+        eventResult.events.length > 0
+          ? eventResult.events
+          : summaryResult.recentEvents,
+      );
+      const latestFinalReportArtifact =
+        artifactResult.artifacts.find(
+          (artifact) => artifact.artifactType === 'final_report',
+        ) ??
+        summaryResult.latestFinalReportArtifact ??
+        null;
+
+      setTask(summaryResult.task);
+      setTitle(summaryResult.task.title ?? 'Stub task');
+      setPrompt(summaryResult.task.prompt);
+      setSandboxSession(summaryResult.sandboxSession);
+      setApprovals(summaryResult.approvals);
+      setRepoScanSummary(repoScanSummaryFromEvents(restoredEvents));
+      setArtifacts(artifactResult.artifacts);
+      setFinalReportArtifact(latestFinalReportArtifact);
+      setFinalReport(reportFromArtifact(latestFinalReportArtifact ?? undefined));
+      setToolResultMessage(null);
+      setEvents(restoredEvents);
+      setTaskHistory((currentTasks) =>
+        mergeTaskHistory(currentTasks, [taskToSummary(summaryResult.task)]),
+      );
+
+      if (options.updateUrl !== false) {
+        updateActiveTaskUrl(taskId);
+      }
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to restore the selected Dremo task.',
+      );
+    } finally {
+      setIsRestoringTask(false);
+    }
+  }
 
   async function handleCreateTask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -209,6 +387,10 @@ export const DremoCodeLab: React.FC = () => {
       setFinalReportArtifact(null);
       setToolResultMessage(null);
       setEvents(sortEvents(result.events));
+      setTaskHistory((currentTasks) =>
+        mergeTaskHistory(currentTasks, [taskToSummary(result.task)]),
+      );
+      updateActiveTaskUrl(result.task.id);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -235,6 +417,9 @@ export const DremoCodeLab: React.FC = () => {
       ]);
 
       setTask(taskResult.task);
+      setTaskHistory((currentTasks) =>
+        mergeTaskHistory(currentTasks, [taskToSummary(taskResult.task)]),
+      );
       setEvents((currentEvents) =>
         mergeEvents(currentEvents, eventResult.events),
       );
@@ -261,6 +446,9 @@ export const DremoCodeLab: React.FC = () => {
       const result = await cancelDremoTask(task.id);
 
       setTask(result.task);
+      setTaskHistory((currentTasks) =>
+        mergeTaskHistory(currentTasks, [taskToSummary(result.task)]),
+      );
       setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
     } catch (error) {
       setErrorMessage(
@@ -563,6 +751,128 @@ export const DremoCodeLab: React.FC = () => {
           {errorMessage}
         </div>
       )}
+
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+              Task History
+            </p>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950">
+              Restore server-owned stub tasks
+            </h2>
+            <p className="text-sm leading-6 text-slate-600">
+              Recent tasks load through <span className="font-bold">dremo-api</span>.
+              Selecting a task restores its owned events, artifacts, latest
+              report, approvals, and sandbox status without reading Dremo
+              tables directly from the browser.
+            </p>
+          </div>
+          <button
+            className="min-h-11 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.16em] text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isLoadingHistory || isRestoringTask}
+            type="button"
+            onClick={() => {
+              void handleRefreshHistory();
+            }}
+          >
+            {isLoadingHistory ? 'Loading...' : 'Refresh History'}
+          </button>
+        </div>
+
+        {task && (
+          <div className="mt-4 grid gap-3 rounded-2xl border border-primary/10 bg-primary/5 p-4 text-sm text-slate-600 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                Selected Task
+              </p>
+              <p className="mt-2 break-all font-mono text-xs text-slate-700">
+                {task.id}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                Status
+              </p>
+              <p className="mt-2 font-black uppercase tracking-widest text-slate-900">
+                {task.status}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                Created
+              </p>
+              <p className="mt-2 font-semibold text-slate-800">
+                {formatDate(task.createdAt)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {taskHistory.length > 0 ? (
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {taskHistory.map((historyTask) => {
+              const isSelected = task?.id === historyTask.id;
+
+              return (
+                <button
+                  className={`min-h-36 rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isSelected
+                      ? 'border-primary/40 bg-primary/10 shadow-sm'
+                      : 'border-slate-100 bg-slate-50 hover:border-primary/20 hover:bg-white'
+                  }`}
+                  disabled={isBusy}
+                  key={historyTask.id}
+                  type="button"
+                  onClick={() => {
+                    void restoreTask(historyTask.id);
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-black text-slate-950">
+                        {historyTask.title ?? 'Untitled Dremo task'}
+                      </p>
+                      <p className="mt-1 break-all font-mono text-[11px] text-slate-500">
+                        {historyTask.id}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                      {historyTask.status}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid gap-2 text-xs text-slate-600">
+                    <p>
+                      Created{' '}
+                      <span className="font-semibold">
+                        {formatDate(historyTask.createdAt)}
+                      </span>
+                    </p>
+                    <p>
+                      Credits{' '}
+                      <span className="font-semibold">
+                        {historyTask.creditState}
+                      </span>
+                    </p>
+                    <p>
+                      Branch{' '}
+                      <span className="font-semibold">
+                        {historyTask.repoBranch ?? 'Not provided'}
+                      </span>
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+            {isLoadingHistory
+              ? 'Loading Dremo task history...'
+              : 'No Dremo tasks yet. Create two stub tasks, refresh the page, and restore either one from this panel.'}
+          </p>
+        )}
+      </section>
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <form
