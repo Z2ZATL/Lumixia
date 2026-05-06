@@ -10,6 +10,8 @@ Runner interface note: PR #13 adds `src/features/dremo-code/sandbox/` with TypeS
 
 Policy validation note: PR #14 adds pure TypeScript policy validation helpers for command requests, paths, environment variables, resource requests, and output limits. These helpers do not execute commands, read files, read environment variables, call networks, or provide sandbox isolation by themselves.
 
+Smoke UI note: the internal `/dashboard/dremo-lab` route exposes those policy validation helpers for manual developer checks. This browser UI is local-only validation; it does not write Dremo events, call `dremo-api`, access the filesystem, use the network, or execute commands.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:

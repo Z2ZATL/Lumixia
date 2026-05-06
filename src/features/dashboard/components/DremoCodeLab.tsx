@@ -14,6 +14,7 @@ import {
   startDremoStubSandbox,
   stopDremoStubSandbox,
 } from '../lib/dremoApi';
+import { DremoPolicyValidationSmoke } from './DremoPolicyValidationSmoke';
 import type {
   DremoApproval,
   DremoApprovalDecision,
@@ -1310,6 +1311,8 @@ export const DremoCodeLab: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <DremoPolicyValidationSmoke />
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

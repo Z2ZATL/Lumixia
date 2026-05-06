@@ -34,6 +34,8 @@ The lab also includes a Read-only Repo Scan Stub action. It calls `POST /tasks/:
 
 The lab includes a Final Report Artifact Stub action. It calls `POST /tasks/:taskId/report/finalize`, renders the returned report card and artifact metadata, and shows `final_report_created` / `artifact_created` in the event timeline. The UI must keep stating that no model, sandbox execution, storage file generation, or billing happened.
 
+The lab also includes a Policy Validation Smoke section. It runs the pure TypeScript sandbox policy validator locally in the browser against preset or manually entered command requests. This is for developer decision testing only: it does not call `dremo-api`, write DB rows, create task events, access files, use the network, or execute commands.
+
 ## Suggested Desktop Layout
 
 ```text
