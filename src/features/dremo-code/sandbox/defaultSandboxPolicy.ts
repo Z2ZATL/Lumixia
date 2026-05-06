@@ -1,0 +1,63 @@
+import type { DremoSandboxPolicy } from './sandboxRunner';
+
+export const DEFAULT_DREMO_SANDBOX_POLICY: DremoSandboxPolicy = {
+  maxCpu: 1,
+  maxMemoryMb: 1024,
+  wallClockTimeoutMs: 5 * 60 * 1000,
+  maxStdoutBytes: 64 * 1024,
+  maxStderrBytes: 64 * 1024,
+  maxArtifactBytes: 10 * 1024 * 1024,
+  networkPolicy: 'deny_all',
+  allowedCommands: [
+    'pwd',
+    'ls',
+    'find',
+    'git status',
+    'git diff --stat',
+    'npm --version',
+    'node --version',
+  ],
+  deniedCommands: [
+    'bash',
+    'sh',
+    'powershell',
+    'cmd.exe',
+    'rm -rf',
+    'del /s',
+    'git push',
+    'npm publish',
+    'vercel deploy',
+    'supabase secrets',
+    'ssh',
+    'scp',
+    'curl',
+    'wget',
+  ],
+  blockedPaths: [
+    '..',
+    '~',
+    '/',
+    '/etc',
+    '/root',
+    '/home',
+    '/var/run/docker.sock',
+    'C:\\',
+    '.env',
+    '.env.local',
+    '.ssh',
+    '.aws',
+    '.config',
+  ],
+  envPolicy: 'empty',
+  cleanupPolicy: 'destroy_after_task',
+};
+
+export const DREMO_SANDBOX_POLICY_NOTES = {
+  scope: 'interface-only',
+  noExecution: true,
+  noProviderIntegration: true,
+  noFilesystemAccess: true,
+  noNetworkAccess: true,
+  reason:
+    'These defaults describe the future sandbox contract. They do not enable command execution in this PR.',
+} as const;
