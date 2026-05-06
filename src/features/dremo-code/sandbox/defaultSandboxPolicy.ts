@@ -33,6 +33,14 @@ export const DEFAULT_DREMO_SANDBOX_POLICY: DremoSandboxPolicy = {
     'curl',
     'wget',
   ],
+  approvalRequiredCommands: [
+    'npm install',
+    'pnpm add',
+    'pip install',
+    'poetry add',
+    'cargo add',
+    'go get',
+  ],
   blockedPaths: [
     '..',
     '~',
@@ -48,6 +56,7 @@ export const DEFAULT_DREMO_SANDBOX_POLICY: DremoSandboxPolicy = {
     '.aws',
     '.config',
   ],
+  allowedEnvironmentKeys: [],
   envPolicy: 'empty',
   cleanupPolicy: 'destroy_after_task',
 };

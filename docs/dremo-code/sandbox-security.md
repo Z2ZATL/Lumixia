@@ -8,6 +8,8 @@ Provider decision note: see [sandbox-provider-decision.md](./sandbox-provider-de
 
 Runner interface note: PR #13 adds `src/features/dremo-code/sandbox/` with TypeScript interfaces, static default policy, pure event mapping helpers, and a noop runner that blocks every command. This is not a real runtime and must not be treated as Docker/E2B/Daytona integration.
 
+Policy validation note: PR #14 adds pure TypeScript policy validation helpers for command requests, paths, environment variables, resource requests, and output limits. These helpers do not execute commands, read files, read environment variables, call networks, or provide sandbox isolation by themselves.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -71,6 +73,23 @@ Final report stub note: the current `POST /tasks/:taskId/report/finalize` route 
 | `network_request` | Fetch external URL | Approval and egress policy required. |
 | `package_install` | `npm install` | Approval required with timeout and network controls. |
 | `git_operation` | Commit, push, PR | Explicit approval required. |
+
+## Policy Validation Before Execution
+
+Policy validation is required before a future sandbox runner starts any real command. Validation is a gate, not the sandbox itself: a command that passes validation must still run only inside an isolated provider sandbox with runtime CPU, memory, filesystem, network, timeout, and cleanup controls.
+
+Current implementation note: `src/features/dremo-code/sandbox/policyValidation.ts` exports pure helpers only. `DremoNoopSandboxRunner.requestCommand()` calls `validateSandboxCommandRequest(...)` and returns a blocked result with `noExecution: true` for every request.
+
+| Validation area | Current policy |
+| --- | --- |
+| Command allowlist | Only commands explicitly listed in policy can pass validation. |
+| Command denylist | Denied patterns and destructive commands always block. |
+| Shell metacharacters | `;`, `&&`, `||`, pipes, redirects, backticks, and `$()` are denied by default. |
+| Approval-required commands | Package install commands such as `npm install`, `pnpm add`, `pip install`, `poetry add`, `cargo add`, and `go get` require scoped approval. |
+| Path policy | Workspace-relative paths are preferred; traversal, absolute host paths, secret paths, `.env*`, `secrets/**`, `~/.ssh/**`, `/etc/**`, and `/var/run/docker.sock` are denied. |
+| Environment policy | Environment variables must be explicit; sensitive keys such as `*_KEY`, `*_SECRET`, `*_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GITHUB_TOKEN` are denied. |
+| Resource caps | Requested CPU, memory, wall-clock timeout, stdout, stderr, and artifact caps must not exceed policy maximums. |
+| Output caps | Output byte counts must be finite, non-negative, and within policy limits. |
 
 ## File Policy
 
