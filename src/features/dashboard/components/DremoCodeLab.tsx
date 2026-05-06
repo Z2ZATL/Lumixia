@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import {
   cancelDremoTask,
   createDremoTask,
+  finalizeDremoStubReport,
+  getDremoArtifacts,
   getDremoTask,
   getDremoTaskEvents,
   requestDremoTool,
@@ -13,6 +15,8 @@ import {
 import type {
   DremoApproval,
   DremoApprovalDecision,
+  DremoArtifact,
+  DremoFinalReportStub,
   DremoRepoScanSummary,
   DremoRiskLevel,
   DremoSandboxSession,
@@ -45,6 +49,10 @@ function compactPayloadPreview(payload: Record<string, unknown>) {
   }
 
   return `${text.slice(0, 420)}...`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function sortEvents(events: DremoTaskEvent[]) {
@@ -92,6 +100,16 @@ function parseToolInputJson(value: string) {
   return parsed as Record<string, unknown>;
 }
 
+function reportFromArtifact(
+  artifact: DremoArtifact | undefined,
+): DremoFinalReportStub | null {
+  if (!artifact || !isRecord(artifact.metadata.report)) {
+    return null;
+  }
+
+  return artifact.metadata.report as unknown as DremoFinalReportStub;
+}
+
 export const DremoCodeLab: React.FC = () => {
   const [title, setTitle] = useState('Stub task');
   const [prompt, setPrompt] = useState('Create a server-owned Dremo stub task.');
@@ -101,6 +119,12 @@ export const DremoCodeLab: React.FC = () => {
   const [approvals, setApprovals] = useState<DremoApproval[]>([]);
   const [repoScanSummary, setRepoScanSummary] =
     useState<DremoRepoScanSummary | null>(null);
+  const [artifacts, setArtifacts] = useState<DremoArtifact[]>([]);
+  const [finalReport, setFinalReport] = useState<DremoFinalReportStub | null>(
+    null,
+  );
+  const [finalReportArtifact, setFinalReportArtifact] =
+    useState<DremoArtifact | null>(null);
   const [toolName, setToolName] = useState('repo_scan');
   const [riskLevel, setRiskLevel] = useState<DremoRiskLevel>('low');
   const [toolReason, setToolReason] = useState(
@@ -118,6 +142,8 @@ export const DremoCodeLab: React.FC = () => {
   const [isStartingSandbox, setIsStartingSandbox] = useState(false);
   const [isStoppingSandbox, setIsStoppingSandbox] = useState(false);
   const [isRunningRepoScan, setIsRunningRepoScan] = useState(false);
+  const [isFinalizingReport, setIsFinalizingReport] = useState(false);
+  const [isRefreshingArtifacts, setIsRefreshingArtifacts] = useState(false);
   const [isRequestingTool, setIsRequestingTool] = useState(false);
   const [resolvingApprovalId, setResolvingApprovalId] = useState<string | null>(
     null,
@@ -135,6 +161,8 @@ export const DremoCodeLab: React.FC = () => {
     isStartingSandbox ||
     isStoppingSandbox ||
     isRunningRepoScan ||
+    isFinalizingReport ||
+    isRefreshingArtifacts ||
     isRequestingTool ||
     Boolean(resolvingApprovalId);
   const canStartSandbox =
@@ -176,6 +204,9 @@ export const DremoCodeLab: React.FC = () => {
       setSandboxSession(null);
       setApprovals([]);
       setRepoScanSummary(null);
+      setArtifacts([]);
+      setFinalReport(null);
+      setFinalReportArtifact(null);
       setToolResultMessage(null);
       setEvents(sortEvents(result.events));
     } catch (error) {
@@ -314,6 +345,68 @@ export const DremoCodeLab: React.FC = () => {
       );
     } finally {
       setIsRunningRepoScan(false);
+    }
+  }
+
+  async function handleFinalizeReport() {
+    if (!task) {
+      return;
+    }
+
+    setIsFinalizingReport(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await finalizeDremoStubReport(task.id);
+
+      setFinalReport(result.report);
+      setFinalReportArtifact(result.artifact);
+      setArtifacts((currentArtifacts) => {
+        const byId = new Map(
+          currentArtifacts.map((artifact) => [artifact.id, artifact]),
+        );
+        byId.set(result.artifact.id, result.artifact);
+        return [...byId.values()].sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt),
+        );
+      });
+      setEvents((currentEvents) => mergeEvents(currentEvents, result.events));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to finalize the Dremo report stub.',
+      );
+    } finally {
+      setIsFinalizingReport(false);
+    }
+  }
+
+  async function handleRefreshArtifacts() {
+    if (!task) {
+      return;
+    }
+
+    setIsRefreshingArtifacts(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await getDremoArtifacts(task.id);
+      const latestFinalReportArtifact = result.artifacts.find(
+        (artifact) => artifact.artifactType === 'final_report',
+      );
+
+      setArtifacts(result.artifacts);
+      setFinalReportArtifact(latestFinalReportArtifact ?? null);
+      setFinalReport(reportFromArtifact(latestFinalReportArtifact));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to refresh Dremo artifacts.',
+      );
+    } finally {
+      setIsRefreshingArtifacts(false);
     }
   }
 
@@ -905,6 +998,122 @@ export const DremoCodeLab: React.FC = () => {
               </p>
             )}
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white/95 p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+              Final Report Artifact Stub
+            </p>
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-950">
+              Server-owned report contract
+            </h2>
+            <p className="text-sm leading-6 text-slate-600">
+              This creates database artifact metadata only through{' '}
+              <span className="font-bold">dremo-api</span>. It is a stub
+              report. No model, sandbox execution, file generation, storage
+              upload, or billing happened.
+            </p>
+          </div>
+          <span className="w-fit rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-amber-700">
+            Stub metadata only
+          </span>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <button
+            className="min-h-12 rounded-2xl bg-primary px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-primary/20 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+            disabled={isBusy || !task}
+            type="button"
+            onClick={() => {
+              void handleFinalizeReport();
+            }}
+          >
+            {isFinalizingReport ? 'Finalizing...' : 'Finalize Stub Report'}
+          </button>
+          <button
+            className="min-h-12 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-slate-700 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isBusy || !task}
+            type="button"
+            onClick={() => {
+              void handleRefreshArtifacts();
+            }}
+          >
+            {isRefreshingArtifacts ? 'Refreshing...' : 'Refresh Artifacts'}
+          </button>
+        </div>
+
+        {finalReport && finalReportArtifact && (
+          <article className="mt-5 rounded-2xl border border-primary/10 bg-primary/5 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                  Final Report Card
+                </p>
+                <h3 className="mt-1 text-xl font-black text-slate-950">
+                  {finalReportArtifact.name}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Built from {finalReport.eventCounts.total} server-owned
+                  events. Repo scan:{' '}
+                  {finalReport.signals.hasRepoScanCompleted ? 'yes' : 'no'}.
+                  Sandbox lifecycle:{' '}
+                  {finalReport.signals.hasSandboxLifecycle ? 'yes' : 'no'}.
+                  Approvals:{' '}
+                  {finalReport.signals.hasApprovalEvents ? 'yes' : 'no'}.
+                </p>
+              </div>
+              <span className="w-fit rounded-full border border-primary/20 bg-white px-3 py-1 text-[11px] font-black uppercase tracking-widest text-primary">
+                {finalReport.mode}
+              </span>
+            </div>
+            <pre className="mt-4 max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white p-4 text-xs leading-6 text-slate-700">
+              {compactPayloadPreview(finalReport as unknown as Record<string, unknown>)}
+            </pre>
+          </article>
+        )}
+
+        <div className="mt-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+            Artifact Metadata
+          </p>
+          {artifacts.length > 0 ? (
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {artifacts.map((artifact) => (
+                <article
+                  className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                  key={artifact.id}
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-950">
+                        {artifact.name}
+                      </h3>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                        {artifact.artifactType}
+                      </p>
+                    </div>
+                    <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-black uppercase tracking-widest text-slate-600">
+                      {artifact.storagePath ?? 'storage: null'}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs font-semibold text-slate-500">
+                    Created {formatDate(artifact.createdAt)}
+                  </p>
+                  <pre className="mt-3 max-h-44 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white p-3 text-xs leading-6 text-slate-700">
+                    {compactPayloadPreview(artifact.metadata)}
+                  </pre>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+              No artifacts yet. Finalize a stub report to create server-owned
+              artifact metadata.
+            </p>
+          )}
         </div>
       </section>
 
