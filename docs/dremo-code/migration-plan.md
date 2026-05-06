@@ -58,11 +58,21 @@ Code Architect AI must remain the visible production name until Dremo has server
 
 | Item | Details |
 | --- | --- |
-| Goal | Connect a controlled sandbox backend for non-production Dremo tasks. |
-| Files expected to change | Sandbox manager, provider adapter, orchestration code, security policy docs. |
-| Exit criteria | One sandbox per task; time/resource/network limits enforced; cleanup confirmed. |
-| Risks | Secret leakage, weak isolation, runaway processes, excessive cost. |
-| Verification steps | Escape-resistance checks, command timeout tests, network egress tests, cleanup tests. |
+| Goal | Add a local/dev sandbox prototype after the provider decision record. Docker is allowed only for developer validation, not production multi-tenant execution. |
+| Files expected to change | Sandbox runner interface, local/dev policy config, provider adapter stubs, security policy docs, and later local Docker prototype code. |
+| Exit criteria | Interface exists before execution; first prototype runs only allowlisted harmless commands with strict CPU, memory, timeout, output, artifact, network, and cleanup controls. |
+| Risks | Secret leakage, weak isolation, runaway processes, excessive cost, or treating local Docker as production-ready. |
+| Verification steps | Confirm no production secrets in sandbox, command timeout tests, output truncation tests, blocked path tests, default-deny network tests, cleanup tests. |
+
+## Phase 5.5: Hosted Sandbox Evaluation
+
+| Item | Details |
+| --- | --- |
+| Goal | Compare E2B and Daytona before selecting a production provider. |
+| Files expected to change | Evaluation docs, benchmark scripts or test harnesses, provider risk review, cost model notes. |
+| Exit criteria | Measured startup latency, streaming behavior, filesystem controls, network controls, artifact export, cleanup guarantees, and pricing. |
+| Risks | Choosing a provider before proving isolation, cost, and operational fit. |
+| Verification steps | Provider security review, trial workloads, egress tests, cleanup tests, audit/event mapping tests. |
 
 ## Phase 6: Verification and Self-review Loop
 

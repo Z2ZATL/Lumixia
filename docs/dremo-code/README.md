@@ -23,6 +23,7 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [event-schema.md](./event-schema.md) | Proposed server-owned structured event stream model. |
 | [database-schema.md](./database-schema.md) | Proposed future `dremo_*` tables and RLS direction. |
 | [sandbox-security.md](./sandbox-security.md) | Sandbox threat model, isolation rules, and provider criteria. |
+| [sandbox-provider-decision.md](./sandbox-provider-decision.md) | Proposed sandbox provider decision, MVP path, and production boundary. |
 | [credit-billing-flow.md](./credit-billing-flow.md) | Trusted task credit reservation, charging, and refund model. |
 | [frontend-workspace.md](./frontend-workspace.md) | Proposed Dremo workspace UI and responsive requirements. |
 | [migration-plan.md](./migration-plan.md) | Phased path from Code Architect AI mock to Dremo Code. |
@@ -53,4 +54,4 @@ Dremo Code must be audit-safe from day one:
 
 ## Recommended Next PR
 
-The next PR should add an initial `dremo_*` schema migration and read-only RLS policies without changing the user-facing Code Architect AI branding. That PR should include SQL tests or manual verification steps proving that users can read only their own Dremo rows and cannot forge runtime events.
+The next PR should add a sandbox runner interface without executing commands. It should define provider interfaces, policy config shape, and event mapping only. It should not add Docker/E2B/Daytona integration code, arbitrary command execution, billing changes, or Code Architect AI rename work.
