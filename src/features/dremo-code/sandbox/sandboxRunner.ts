@@ -1,3 +1,5 @@
+import { validateSandboxCommandRequest } from './policyValidation';
+
 export type DremoSandboxProvider =
   | 'stub'
   | 'docker-local-dev'
@@ -49,6 +51,39 @@ export type DremoSandboxCommandResultStatus =
   | 'completed'
   | 'failed';
 
+export type DremoSandboxPolicyDecision =
+  | 'allow'
+  | 'deny'
+  | 'requires_approval';
+
+export type DremoSandboxPolicySeverity =
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'critical';
+
+export interface DremoSandboxPolicyViolation {
+  code: string;
+  message: string;
+  severity: DremoSandboxPolicySeverity;
+  field?: string;
+}
+
+export interface DremoSandboxPolicyWarning {
+  code: string;
+  message: string;
+  severity: DremoSandboxPolicySeverity;
+  field?: string;
+}
+
+export interface DremoSandboxPolicyValidationResult {
+  allowed: boolean;
+  decision: DremoSandboxPolicyDecision;
+  reasons: DremoSandboxPolicyViolation[];
+  warnings: DremoSandboxPolicyWarning[];
+  normalizedRequest?: Record<string, unknown>;
+}
+
 export interface DremoSandboxResourceLimits {
   maxCpu: number;
   maxMemoryMb: number;
@@ -62,7 +97,9 @@ export interface DremoSandboxPolicy extends DremoSandboxResourceLimits {
   networkPolicy: DremoSandboxNetworkPolicy;
   allowedCommands: readonly string[];
   deniedCommands: readonly string[];
+  approvalRequiredCommands: readonly string[];
   blockedPaths: readonly string[];
+  allowedEnvironmentKeys: readonly string[];
   envPolicy: DremoSandboxEnvironmentPolicy;
   cleanupPolicy: DremoSandboxCleanupPolicy;
 }
@@ -98,6 +135,21 @@ export interface DremoSandboxStatusRequest {
   taskId: string;
 }
 
+export interface DremoSandboxResourceRequest {
+  maxCpu?: number;
+  maxMemoryMb?: number;
+  wallClockTimeoutMs?: number;
+  maxStdoutBytes?: number;
+  maxStderrBytes?: number;
+  maxArtifactBytes?: number;
+}
+
+export interface DremoSandboxOutputInfo {
+  stdoutBytes?: number;
+  stderrBytes?: number;
+  artifactBytes?: number;
+}
+
 export interface DremoSandboxCommandRequest {
   sessionId: string;
   taskId: string;
@@ -105,6 +157,10 @@ export interface DremoSandboxCommandRequest {
   command: readonly string[];
   workingDirectory: string;
   reason: string;
+  paths?: readonly string[];
+  environment?: Readonly<Record<string, string>>;
+  resourceRequest?: DremoSandboxResourceRequest;
+  outputInfo?: DremoSandboxOutputInfo;
   approvedByApprovalId?: string | null;
   timeoutMs?: number;
   maxOutputBytes?: number;
@@ -124,6 +180,7 @@ export interface DremoSandboxCommandResult {
   completedAt: string | null;
   durationMs: number | null;
   truncated: boolean;
+  policyValidation?: DremoSandboxPolicyValidationResult;
 }
 
 export interface DremoSandboxRunner {
@@ -177,6 +234,23 @@ export function mapSandboxCommandResultToEventType(
   }
 }
 
+const NOOP_FALLBACK_POLICY: DremoSandboxPolicy = {
+  maxCpu: 0,
+  maxMemoryMb: 0,
+  wallClockTimeoutMs: 0,
+  maxStdoutBytes: 0,
+  maxStderrBytes: 0,
+  maxArtifactBytes: 0,
+  networkPolicy: 'deny_all',
+  allowedCommands: [],
+  deniedCommands: [],
+  approvalRequiredCommands: [],
+  blockedPaths: [],
+  allowedEnvironmentKeys: [],
+  envPolicy: 'empty',
+  cleanupPolicy: 'destroy_after_task',
+};
+
 export class DremoNoopSandboxRunner implements DremoSandboxRunner {
   private readonly sessions = new Map<string, DremoSandboxSession>();
 
@@ -214,20 +288,7 @@ export class DremoNoopSandboxRunner implements DremoSandboxRunner {
       userId: current?.userId ?? '',
       provider: current?.provider ?? 'stub',
       status: 'stopped',
-      policy: current?.policy ?? {
-        maxCpu: 0,
-        maxMemoryMb: 0,
-        wallClockTimeoutMs: 0,
-        maxStdoutBytes: 0,
-        maxStderrBytes: 0,
-        maxArtifactBytes: 0,
-        networkPolicy: 'deny_all',
-        allowedCommands: [],
-        deniedCommands: [],
-        blockedPaths: [],
-        envPolicy: 'empty',
-        cleanupPolicy: 'destroy_after_task',
-      },
+      policy: current?.policy ?? NOOP_FALLBACK_POLICY,
       createdAt: current?.createdAt ?? stoppedAt,
       startedAt: current?.startedAt ?? null,
       stoppedAt,
@@ -244,13 +305,23 @@ export class DremoNoopSandboxRunner implements DremoSandboxRunner {
   async requestCommand(
     request: DremoSandboxCommandRequest,
   ): Promise<DremoSandboxCommandResult> {
+    const policy =
+      this.sessions.get(request.sessionId)?.policy ?? NOOP_FALLBACK_POLICY;
+    const policyValidation = validateSandboxCommandRequest(policy, request);
+    const validationReason = policyValidation.reasons
+      .map((reason) => reason.message)
+      .join(' ');
+
     return {
       status: 'blocked',
       toolCallId: request.toolCallId,
       sessionId: request.sessionId,
       taskId: request.taskId,
       noExecution: true,
-      reason: 'Sandbox execution is not implemented in this interface-only PR.',
+      reason: policyValidation.allowed
+        ? 'Sandbox execution is not implemented yet.'
+        : validationReason ||
+          'Sandbox policy validation blocked this command request.',
       stdout: '',
       stderr: '',
       exitCode: null,
@@ -258,6 +329,7 @@ export class DremoNoopSandboxRunner implements DremoSandboxRunner {
       completedAt: new Date().toISOString(),
       durationMs: null,
       truncated: false,
+      policyValidation,
     };
   }
 
@@ -278,20 +350,7 @@ export class DremoNoopSandboxRunner implements DremoSandboxRunner {
       userId: '',
       provider: 'stub',
       status: 'not_requested',
-      policy: {
-        maxCpu: 0,
-        maxMemoryMb: 0,
-        wallClockTimeoutMs: 0,
-        maxStdoutBytes: 0,
-        maxStderrBytes: 0,
-        maxArtifactBytes: 0,
-        networkPolicy: 'deny_all',
-        allowedCommands: [],
-        deniedCommands: [],
-        blockedPaths: [],
-        envPolicy: 'empty',
-        cleanupPolicy: 'destroy_after_task',
-      },
+      policy: NOOP_FALLBACK_POLICY,
       createdAt: now,
       startedAt: null,
       stoppedAt: null,
