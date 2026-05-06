@@ -10,6 +10,8 @@ Repo scan note: `POST /tasks/:taskId/repo-scan` is currently a read-only stub co
 
 Final report note: `POST /tasks/:taskId/report/finalize` is currently a stub-only contract. It creates a `final_report` artifact metadata row and appends report/artifact events from existing task metadata and server-owned events only. It does not create storage files, call models, execute code, read repos, or charge credits.
 
+Task history note: `GET /tasks` and `GET /tasks/:taskId/summary` are read-only restore helpers for the internal Dremo Lab. They use the authenticated JWT owner and service-role server filtering; browser clients must not query `dremo_*` tables directly.
+
 All Dremo API routes must require a valid Supabase bearer token. The backend must derive `userId` from the JWT and must not trust a user id supplied in request bodies.
 
 ## Shared Rules
@@ -93,6 +95,51 @@ Ownership and security rules:
 | Credit reserve | Backend-owned. |
 | Repo access | Must verify user permission before cloning or reading private code. |
 
+## GET /dremo/tasks
+
+Purpose: list recent Dremo task summaries for task history and restore.
+
+Current stub behavior: returns owner-scoped task summary rows sorted by `createdAt` descending. The route supports `limit`, `status`, and `beforeCreatedAt` query parameters.
+
+Auth requirements: authenticated owner.
+
+Query parameters:
+
+| Parameter | Meaning |
+| --- | --- |
+| `limit` | Optional positive integer, capped by the backend. |
+| `status` | Optional Dremo task status filter. |
+| `beforeCreatedAt` | Optional ISO timestamp cursor for older history. |
+
+Response:
+
+```json
+{
+  "tasks": [
+    {
+      "id": "task_uuid",
+      "status": "planning",
+      "title": "Stub task",
+      "repoBranch": "main",
+      "creditState": "not_required",
+      "createdAt": "2026-05-06T00:00:00Z",
+      "updatedAt": "2026-05-06T00:00:00Z"
+    }
+  ]
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `invalid_limit` | `limit` was not a positive integer. |
+| `invalid_status` | `status` was not an allowed Dremo task status. |
+| `invalid_before_created_at` | Cursor timestamp was invalid. |
+| `task_history_lookup_failed` | History could not be loaded safely. |
+
+Ownership and security rules: the backend must always filter by `user_id` derived from the JWT. It must not trust a `userId` query parameter or reveal other users' task existence.
+
 ## GET /dremo/tasks/:taskId
 
 Purpose: fetch task summary and current state.
@@ -123,6 +170,44 @@ Error cases:
 | `unauthorized` | Missing or invalid JWT. |
 
 Ownership and security rules: never reveal whether another user's task exists.
+
+## GET /dremo/tasks/:taskId/summary
+
+Purpose: restore an existing task into the internal Dremo Lab without trusting browser state.
+
+Current stub behavior: returns the owned task, recent server-owned events, latest final report artifact metadata if present, artifact count, approval count, approval rows, and latest sandbox lifecycle status. The frontend may still call `/events` and `/artifacts` to hydrate the full timeline and artifact list.
+
+Auth requirements: authenticated owner.
+
+Response:
+
+```json
+{
+  "task": {
+    "id": "task_uuid",
+    "status": "planning",
+    "title": "Stub task"
+  },
+  "recentEvents": [{ "eventType": "task_created", "sequence": 1 }],
+  "latestFinalReportArtifact": null,
+  "artifactCount": 0,
+  "approvalCount": 0,
+  "approvals": [],
+  "sandboxSession": null
+}
+```
+
+Error cases:
+
+| Code | Meaning |
+| --- | --- |
+| `task_not_found` | Missing or not owned by current user. |
+| `events_fetch_failed` | Recent events could not be loaded. |
+| `artifacts_fetch_failed` | Artifact metadata could not be loaded. |
+| `approvals_fetch_failed` | Approval metadata could not be loaded. |
+| `sandbox_lookup_failed` | Sandbox lifecycle status could not be loaded. |
+
+Ownership and security rules: this is a read-only backend restore helper. It must not mutate task state, append events, expose tokens, or include storage download credentials.
 
 ## GET /dremo/tasks/:taskId/events
 

@@ -15,6 +15,7 @@ import type {
   DremoSandboxStatus,
   DremoTask,
   DremoTaskEvent,
+  DremoTaskSummary,
   DremoTaskStatus,
 } from '../types';
 
@@ -41,6 +42,16 @@ export interface DremoTaskResponse {
 export interface DremoTaskWithEventsResponse {
   task: DremoTask;
   events: DremoTaskEvent[];
+}
+
+export interface DremoTaskHistoryInput {
+  limit?: number;
+  status?: DremoTaskStatus;
+  beforeCreatedAt?: string;
+}
+
+export interface DremoTaskHistoryResponse {
+  tasks: DremoTaskSummary[];
 }
 
 export interface DremoEventsResponse {
@@ -103,6 +114,16 @@ export interface DremoFinalReportResponse {
 
 export interface DremoFinalizeReportResponse extends DremoFinalReportResponse {
   events: DremoTaskEvent[];
+}
+
+export interface DremoTaskSummaryResponse {
+  task: DremoTask;
+  recentEvents: DremoTaskEvent[];
+  latestFinalReportArtifact: DremoArtifact | null;
+  artifactCount: number;
+  approvalCount: number;
+  approvals: DremoApproval[];
+  sandboxSession: DremoSandboxSession | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -289,6 +310,27 @@ function mapDremoTask(value: unknown): DremoTask {
     modelId: toStringOrNull(value.modelId),
     creditState: toDremoCreditState(value.creditState),
     creditReservationId: toStringOrNull(value.creditReservationId),
+    createdAt: String(value.createdAt ?? ''),
+    updatedAt: String(value.updatedAt ?? ''),
+    completedAt: toStringOrNull(value.completedAt),
+    cancelledAt: toStringOrNull(value.cancelledAt),
+    failureReason: toStringOrNull(value.failureReason),
+  };
+}
+
+function mapDremoTaskSummary(value: unknown): DremoTaskSummary {
+  if (!isRecord(value)) {
+    throw new Error('The Dremo API returned an invalid task history payload.');
+  }
+
+  return {
+    id: String(value.id ?? ''),
+    userId: String(value.userId ?? ''),
+    status: toDremoTaskStatus(value.status),
+    title: toStringOrNull(value.title),
+    repoUrl: toStringOrNull(value.repoUrl),
+    repoBranch: toStringOrNull(value.repoBranch),
+    creditState: toDremoCreditState(value.creditState),
     createdAt: String(value.createdAt ?? ''),
     updatedAt: String(value.updatedAt ?? ''),
     completedAt: toStringOrNull(value.completedAt),
@@ -545,6 +587,33 @@ export async function createDremoTask(
   };
 }
 
+export async function listDremoTasks(
+  input: DremoTaskHistoryInput = {},
+): Promise<DremoTaskHistoryResponse> {
+  const query = new URLSearchParams();
+
+  if (typeof input.limit === 'number') {
+    query.set('limit', String(input.limit));
+  }
+
+  if (input.status) {
+    query.set('status', input.status);
+  }
+
+  if (input.beforeCreatedAt) {
+    query.set('beforeCreatedAt', input.beforeCreatedAt);
+  }
+
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  const payload = await requestDremoApi<DremoTaskHistoryResponse>(
+    `/tasks${suffix}`,
+  );
+
+  return {
+    tasks: (payload.tasks ?? []).map(mapDremoTaskSummary),
+  };
+}
+
 export async function getDremoTask(taskId: string): Promise<DremoTaskResponse> {
   const payload = await requestDremoApi<DremoTaskResponse>(
     `/tasks/${encodeURIComponent(taskId)}`,
@@ -552,6 +621,28 @@ export async function getDremoTask(taskId: string): Promise<DremoTaskResponse> {
 
   return {
     task: mapDremoTask(payload.task),
+  };
+}
+
+export async function getDremoTaskSummary(
+  taskId: string,
+): Promise<DremoTaskSummaryResponse> {
+  const payload = await requestDremoApi<DremoTaskSummaryResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/summary`,
+  );
+
+  return {
+    task: mapDremoTask(payload.task),
+    recentEvents: (payload.recentEvents ?? []).map(mapDremoTaskEvent),
+    latestFinalReportArtifact: payload.latestFinalReportArtifact
+      ? mapDremoArtifact(payload.latestFinalReportArtifact)
+      : null,
+    artifactCount: Number(payload.artifactCount ?? 0),
+    approvalCount: Number(payload.approvalCount ?? 0),
+    approvals: (payload.approvals ?? []).map(mapDremoApproval),
+    sandboxSession: payload.sandboxSession
+      ? mapDremoSandboxSession(payload.sandboxSession)
+      : null,
   };
 }
 

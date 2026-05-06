@@ -106,6 +106,39 @@ interface DremoEventDraft {
   payload?: Record<string, unknown>;
 }
 
+const DREMO_TASK_STATUSES: DremoTaskStatus[] = [
+  'created',
+  'queued',
+  'planning',
+  'awaiting_approval',
+  'running',
+  'verifying',
+  'repairing',
+  'completed',
+  'failed',
+  'cancelled',
+];
+
+const TASK_SELECT = [
+  'id',
+  'user_id',
+  'status',
+  'title',
+  'prompt',
+  'repo_url',
+  'repo_branch',
+  'sandbox_id',
+  'model_provider',
+  'model_id',
+  'credit_state',
+  'credit_reservation_id',
+  'created_at',
+  'updated_at',
+  'completed_at',
+  'cancelled_at',
+  'failure_reason',
+].join(', ');
+
 const SANDBOX_SESSION_SELECT = [
   'id',
   'task_id',
@@ -578,6 +611,62 @@ function parseAfterSequence(request: Request) {
   return parsed;
 }
 
+function isDremoTaskStatus(value: string): value is DremoTaskStatus {
+  return DREMO_TASK_STATUSES.includes(value as DremoTaskStatus);
+}
+
+function parseTaskHistoryQuery(request: Request) {
+  const searchParams = new URL(request.url).searchParams;
+  const rawLimit = searchParams.get('limit');
+  const rawStatus = searchParams.get('status');
+  const rawBeforeCreatedAt = searchParams.get('beforeCreatedAt');
+  let limit = 20;
+
+  if (rawLimit !== null && rawLimit.trim() !== '') {
+    const parsedLimit = Number(rawLimit);
+
+    if (!Number.isInteger(parsedLimit) || parsedLimit < 1) {
+      throw new DremoApiError(
+        'limit must be a positive integer.',
+        400,
+        'invalid_limit',
+      );
+    }
+
+    limit = Math.min(parsedLimit, 50);
+  }
+
+  const status = rawStatus?.trim();
+
+  if (status && !isDremoTaskStatus(status)) {
+    throw new DremoApiError(
+      'status is not a valid Dremo task status.',
+      400,
+      'invalid_status',
+    );
+  }
+
+  const beforeCreatedAt = rawBeforeCreatedAt?.trim();
+
+  if (beforeCreatedAt) {
+    const parsedDate = new Date(beforeCreatedAt);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new DremoApiError(
+        'beforeCreatedAt must be a valid ISO timestamp.',
+        400,
+        'invalid_before_created_at',
+      );
+    }
+  }
+
+  return {
+    limit,
+    status: status || null,
+    beforeCreatedAt: beforeCreatedAt || null,
+  };
+}
+
 async function requireDremoUser(request: Request) {
   try {
     return await requireAuthenticatedUser(request);
@@ -632,6 +721,24 @@ function mapTask(row: Record<string, unknown>) {
       row.credit_reservation_id === null
         ? null
         : String(row.credit_reservation_id),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    completedAt: row.completed_at === null ? null : String(row.completed_at),
+    cancelledAt: row.cancelled_at === null ? null : String(row.cancelled_at),
+    failureReason:
+      row.failure_reason === null ? null : String(row.failure_reason),
+  };
+}
+
+function mapTaskSummary(row: Record<string, unknown>) {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    status: String(row.status) as DremoTaskStatus,
+    title: row.title === null ? null : String(row.title),
+    repoUrl: row.repo_url === null ? null : String(row.repo_url),
+    repoBranch: row.repo_branch === null ? null : String(row.repo_branch),
+    creditState: String(row.credit_state) as DremoCreditState,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     completedAt: row.completed_at === null ? null : String(row.completed_at),
@@ -739,27 +846,7 @@ async function getOwnedTask(
 ) {
   const { data, error } = await serviceRole
     .from('dremo_tasks')
-    .select(
-      [
-        'id',
-        'user_id',
-        'status',
-        'title',
-        'prompt',
-        'repo_url',
-        'repo_branch',
-        'sandbox_id',
-        'model_provider',
-        'model_id',
-        'credit_state',
-        'credit_reservation_id',
-        'created_at',
-        'updated_at',
-        'completed_at',
-        'cancelled_at',
-        'failure_reason',
-      ].join(', '),
-    )
+    .select(TASK_SELECT)
     .eq('id', taskId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -774,6 +861,41 @@ async function getOwnedTask(
   }
 
   return asRecord(data);
+}
+
+async function listOwnedTasks(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  userId: string,
+  request: Request,
+) {
+  const { limit, status, beforeCreatedAt } = parseTaskHistoryQuery(request);
+  let query = serviceRole
+    .from('dremo_tasks')
+    .select(TASK_SELECT)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  if (beforeCreatedAt) {
+    query = query.lt('created_at', beforeCreatedAt);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Dremo task history lookup failed', error.message);
+    throw new DremoApiError(
+      'Unable to load Dremo task history.',
+      500,
+      'task_history_lookup_failed',
+    );
+  }
+
+  return (data ?? []).map((row) => mapTaskSummary(asRecord(row)));
 }
 
 async function fetchTaskEvents(
@@ -918,6 +1040,30 @@ async function fetchLatestFinalReportArtifact(
   }
 
   return data ? mapArtifact(asRecord(data)) : null;
+}
+
+async function fetchTaskApprovals(
+  serviceRole: ReturnType<typeof createServiceRoleClient>,
+  taskId: string,
+  userId: string,
+) {
+  const { data, error } = await serviceRole
+    .from('dremo_approvals')
+    .select(APPROVAL_SELECT)
+    .eq('task_id', taskId)
+    .eq('user_id', userId)
+    .order('requested_at', { ascending: false });
+
+  if (error) {
+    console.error('Dremo approvals fetch failed', error.message);
+    throw new DremoApiError(
+      'Unable to load Dremo approvals.',
+      500,
+      'approvals_fetch_failed',
+    );
+  }
+
+  return (data ?? []).map((row) => mapApproval(asRecord(row)));
 }
 
 async function appendTaskEvents(
@@ -1542,6 +1688,30 @@ async function getFinalReport(taskId: string, userId: string) {
   };
 }
 
+async function getTaskSummary(taskId: string, userId: string) {
+  const serviceRole = createServiceRoleClient();
+  const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
+  const [events, artifacts, approvals, sandboxRow] = await Promise.all([
+    fetchTaskEvents(serviceRole, taskId, userId, null),
+    fetchTaskArtifacts(serviceRole, taskId, userId),
+    fetchTaskApprovals(serviceRole, taskId, userId),
+    fetchLatestSandboxSession(serviceRole, taskId, userId),
+  ]);
+  const latestFinalReportArtifact =
+    artifacts.find((artifact) => artifact.artifactType === 'final_report') ??
+    null;
+
+  return {
+    task,
+    recentEvents: events.slice(-25),
+    latestFinalReportArtifact,
+    artifactCount: artifacts.length,
+    approvalCount: approvals.length,
+    approvals,
+    sandboxSession: sandboxRow ? mapSandboxSession(sandboxRow) : null,
+  };
+}
+
 async function requestToolStub(request: Request, taskId: string, userId: string) {
   const serviceRole = createServiceRoleClient();
   const task = mapTask(await getOwnedTask(serviceRole, taskId, userId));
@@ -1788,11 +1958,30 @@ serve(async (request) => {
       return jsonResponse(await createTask(request, user.id), {}, request);
     }
 
+    if (request.method === 'GET' && route.length === 1 && route[0] === 'tasks') {
+      return jsonResponse(
+        { tasks: await listOwnedTasks(serviceRole, user.id, request) },
+        {},
+        request,
+      );
+    }
+
     if (request.method === 'GET' && route.length === 2 && route[0] === 'tasks') {
       const taskId = requireTaskId(route[1]);
       const task = mapTask(await getOwnedTask(serviceRole, taskId, user.id));
 
       return jsonResponse({ task }, {}, request);
+    }
+
+    if (
+      request.method === 'GET' &&
+      route.length === 3 &&
+      route[0] === 'tasks' &&
+      route[2] === 'summary'
+    ) {
+      const taskId = requireTaskId(route[1]);
+
+      return jsonResponse(await getTaskSummary(taskId, user.id), {}, request);
     }
 
     if (

@@ -212,6 +212,21 @@ export interface DremoTask {
   failureReason: string | null;
 }
 
+export interface DremoTaskSummary {
+  id: string;
+  userId: string;
+  status: DremoTaskStatus;
+  title: string | null;
+  repoUrl: string | null;
+  repoBranch: string | null;
+  creditState: DremoCreditState;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  failureReason: string | null;
+}
+
 export interface DremoTaskEvent {
   id: string;
   taskId: string;
