@@ -60,10 +60,10 @@ Code Architect AI must remain the visible production name until Dremo has server
 | --- | --- |
 | Goal | Add a local/dev sandbox prototype after the provider decision record. Docker is allowed only for developer validation, not production multi-tenant execution. |
 | Files expected to change | Sandbox runner interface, local/dev policy config, provider adapter stubs, security policy docs, and later local Docker prototype code. |
-| Current status | PR #13 adds the TypeScript runner interface, static default policy, pure event mapping helpers, and a noop runner that blocks command requests. PR #14 adds pure validation helpers for command requests, paths, environment variables, resources, and output caps. |
-| Exit criteria | Interface exists before execution; first real local/dev prototype runs only allowlisted harmless commands with strict CPU, memory, timeout, output, artifact, network, and cleanup controls. |
+| Current status | PR #13 adds the TypeScript runner interface, static default policy, pure event mapping helpers, and a noop runner that blocks command requests. PR #14 adds pure validation helpers for command requests, paths, environment variables, resources, and output caps. PR #15 exposes browser-local policy smoke validation. PR #16 adds the Docker local-dev adapter skeleton/config without execution. |
+| Exit criteria | Interface and adapter boundary exist before execution; first real local/dev prototype runs only allowlisted harmless commands with strict CPU, memory, timeout, output, artifact, network, and cleanup controls. |
 | Risks | Secret leakage, weak isolation, runaway processes, excessive cost, or treating local Docker as production-ready. |
-| Verification steps | Confirm no production secrets in sandbox, command timeout tests, output truncation tests, blocked path tests, default-deny network tests, cleanup tests. |
+| Verification steps | Confirm skeleton contains no Docker invocation or process execution APIs. Future execution PR must add proof for no production secrets in sandbox, command timeout tests, output truncation tests, blocked path tests, default-deny network tests, cleanup tests, and manual security review. |
 
 ## Phase 5.5: Hosted Sandbox Evaluation
 

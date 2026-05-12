@@ -12,6 +12,8 @@ Policy validation note: PR #14 adds pure TypeScript policy validation helpers fo
 
 Smoke UI note: the internal `/dashboard/dremo-lab` route exposes those policy validation helpers for manual developer checks. This browser UI is local-only validation; it does not write Dremo events, call `dremo-api`, access the filesystem, use the network, or execute commands.
 
+Local-dev adapter skeleton note: PR #16 adds `DockerLocalDevSandboxRunner` and static local-dev config. The adapter reports `provider = "docker-local-dev"` and calls policy validation, but every command request remains blocked with `noExecution: true`. It does not call Docker, execute commands, read or write files, clone repositories, call models, or change billing.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -92,6 +94,19 @@ Current implementation note: `src/features/dremo-code/sandbox/policyValidation.t
 | Environment policy | Environment variables must be explicit; sensitive keys such as `*_KEY`, `*_SECRET`, `*_TOKEN`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `GITHUB_TOKEN` are denied. |
 | Resource caps | Requested CPU, memory, wall-clock timeout, stdout, stderr, and artifact caps must not exceed policy maximums. |
 | Output caps | Output byte counts must be finite, non-negative, and within policy limits. |
+
+## Local-dev Adapter Skeleton
+
+The Docker local-dev adapter skeleton is an adapter boundary, not a sandbox runtime. It exists to keep future Docker work behind explicit provider selection, static config, policy validation, and code review.
+
+| Area | Current PR #16 behavior |
+| --- | --- |
+| Provider | Reports `docker-local-dev` only as an adapter identity. |
+| Config | Static TypeScript config; disabled by default; no environment variable reads. |
+| Session lifecycle | Creates and stores in-memory stub session records only. |
+| Command handling | Calls `validateSandboxCommandRequest(...)`, then always returns `status = "blocked"` and `noExecution = true`. |
+| Runtime execution | Not implemented. No Docker CLI, process execution API, filesystem access, network calls, repo clone, model calls, or billing changes. |
+| Future requirement | Any real Docker execution requires a separate PR, manual security review, explicit developer opt-in, and proof that policy validation is enforced before runtime execution. |
 
 ## File Policy
 

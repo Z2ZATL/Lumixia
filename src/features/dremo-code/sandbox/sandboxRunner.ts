@@ -168,6 +168,7 @@ export interface DremoSandboxCommandRequest {
 
 export interface DremoSandboxCommandResult {
   status: DremoSandboxCommandResultStatus;
+  provider?: DremoSandboxProvider;
   toolCallId: string;
   sessionId: string;
   taskId: string;
