@@ -14,6 +14,8 @@ Smoke UI note: the internal `/dashboard/dremo-lab` route exposes those policy va
 
 Local-dev adapter skeleton note: PR #16 adds `DockerLocalDevSandboxRunner` and static local-dev config. The adapter reports `provider = "docker-local-dev"` and calls policy validation, but every command request remains blocked with `noExecution: true`. It does not call Docker, execute commands, read or write files, clone repositories, call models, or change billing.
 
+Docker execution checklist note: [docker-execution-security-checklist.md](./docker-execution-security-checklist.md) is a required gate before any PR enables real local-dev Docker execution. It defines threat model coverage, absolute blockers, command policy, mount policy, network policy, event/audit requirements, manual review, and rollback.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -107,6 +109,8 @@ The Docker local-dev adapter skeleton is an adapter boundary, not a sandbox runt
 | Command handling | Calls `validateSandboxCommandRequest(...)`, then always returns `status = "blocked"` and `noExecution = true`. |
 | Runtime execution | Not implemented. No Docker CLI, process execution API, filesystem access, network calls, repo clone, model calls, or billing changes. |
 | Future requirement | Any real Docker execution requires a separate PR, manual security review, explicit developer opt-in, and proof that policy validation is enforced before runtime execution. |
+
+Before that separate execution PR can merge, it must satisfy the Docker execution security checklist. The initial execution surface should be limited to version/identity commands, no shell chaining, no file writes, no network, explicit local-dev only, and immediate rollback through a disabled-by-default feature flag.
 
 ## File Policy
 
