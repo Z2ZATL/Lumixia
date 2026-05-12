@@ -9,12 +9,24 @@ This checklist must be completed before any PR enables real local-dev Docker exe
 | Area | Status |
 | --- | --- |
 | Current Docker adapter | `DockerLocalDevSandboxRunner` is skeleton-only. It validates policy and returns blocked results with `noExecution: true`. |
-| Real local-dev execution | Not implemented. Must be a separate PR with explicit manual security review. |
+| Real local-dev execution | Still not implemented in the browser bundle. PR #18 adds explicit local-dev gates and command classification, but Docker invocation remains deferred to a separate Node/worker process. |
 | Production execution | Out of scope. Production must use a managed isolated sandbox provider or dedicated worker pool after evaluation. |
 | Supabase Edge Functions | Remain orchestration/API only. They must not become arbitrary code execution runtimes. |
 | Code Architect AI rename | Still blocked until execution, events, sandboxing, and credits are server-owned and production-ready. |
 
 No PR may enable Docker execution until every required blocker, gate, and review item below has an owner and a passing verification result.
+
+PR #18 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Feature flag disabled by default | Implemented in static local-dev config. |
+| `allowRealExecution` false by default | Implemented in static local-dev config. |
+| Explicit local-dev environment name | Implemented as `environmentName = "local-dev"`. |
+| Tiny version/identity allowlist | Implemented as static `allowedVersionCommands`. |
+| Network/file writes/package install/git clone/shell chaining denied | Implemented as static config gates and pure command guards. |
+| Docker socket/home mount disabled | Implemented as static config gates. |
+| Real Docker invocation | Deferred. The current Vite/React `src/` tree is browser-bundled, so process execution APIs must not be added there. |
 
 ## 2. Threat Model
 
@@ -202,7 +214,7 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended PR #18: **Add local-dev Docker execution prototype behind disabled feature flag**.
+Recommended next PR: **Add separate local-dev Docker worker prototype behind disabled feature flag**.
 
 That PR should remain conservative:
 

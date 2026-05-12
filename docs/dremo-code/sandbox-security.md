@@ -112,6 +112,8 @@ The Docker local-dev adapter skeleton is an adapter boundary, not a sandbox runt
 
 Before that separate execution PR can merge, it must satisfy the Docker execution security checklist. The initial execution surface should be limited to version/identity commands, no shell chaining, no file writes, no network, explicit local-dev only, and immediate rollback through a disabled-by-default feature flag.
 
+PR #18 note: the local-dev Docker adapter now has explicit config gates and pure command guards for the version/identity allowlist, shell chaining, package installs, network commands, file writes, Docker/system commands, Docker socket mounts, and home mounts. It still does not invoke Docker because the adapter lives in browser-bundled `src/`; real execution must move to a separate local-dev Node/worker process.
+
 ## File Policy
 
 | Path class | Policy |
