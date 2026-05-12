@@ -21,7 +21,7 @@ Resolved direction: `sandbox-provider-decision.md` now defines Docker as local/d
 | --- | --- | --- |
 | E2B or Daytona for first hosted evaluation? | The production provider is not permanently selected, but the candidate set is narrowed. | Benchmark startup time, streaming, filesystem controls, egress policy, artifact export, pricing, and cleanup reliability. |
 | Should Lumixia self-host a sandbox worker pool later? | Self-hosting could improve control but increases security and operations burden. | Keep as fallback if managed sandbox providers cannot meet isolation, cost, or workflow requirements. |
-| What should the local Docker prototype include? | Local Docker is useful but must not become accidental production. | Start with runner interfaces and harmless allowlisted commands only. |
+| What should the local Docker prototype include? | Local Docker is useful but must not become accidental production. | Use `docker-execution-security-checklist.md` as the mandatory gate; start with version/identity commands only, no shell chaining, no file writes, and no network. |
 | What queue/job system should orchestrate long-running tasks? | Dremo tasks need durable progress, retries, cancellation, and recovery. | Evaluate Supabase-compatible queues, dedicated workers, or managed workflow systems. |
 | What network egress policy should be default? | Package installs may need network, but egress can leak data. | Default deny except package registries and approved destinations. |
 | How should command approvals be scoped? | Over-broad approvals can become unsafe. | Use single-action approvals first. |

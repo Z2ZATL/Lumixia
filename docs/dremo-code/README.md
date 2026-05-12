@@ -24,6 +24,7 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [database-schema.md](./database-schema.md) | Proposed future `dremo_*` tables and RLS direction. |
 | [sandbox-security.md](./sandbox-security.md) | Sandbox threat model, isolation rules, and provider criteria. |
 | [sandbox-provider-decision.md](./sandbox-provider-decision.md) | Proposed sandbox provider decision, MVP path, and production boundary. |
+| [docker-execution-security-checklist.md](./docker-execution-security-checklist.md) | Required gate before any local-dev Docker execution PR. |
 | [credit-billing-flow.md](./credit-billing-flow.md) | Trusted task credit reservation, charging, and refund model. |
 | [frontend-workspace.md](./frontend-workspace.md) | Proposed Dremo workspace UI and responsive requirements. |
 | [migration-plan.md](./migration-plan.md) | Phased path from Code Architect AI mock to Dremo Code. |
