@@ -3,10 +3,21 @@ export {
   DREMO_SANDBOX_POLICY_NOTES,
 } from './defaultSandboxPolicy';
 export {
+  DockerLocalDevSandboxRunner,
+  dockerLocalDevApprovalRequiredPackageInstallExample,
+  dockerLocalDevBlockedCommandExample,
+  dockerLocalDevDeniedDangerousCommandExample,
+} from './dockerLocalDevSandboxRunner';
+export { localDevSandboxConfig } from './localDevSandboxConfig';
+export {
   DremoNoopSandboxRunner,
   mapSandboxCommandResultToEventType,
   mapSandboxStatusToEventType,
 } from './sandboxRunner';
+export {
+  DremoSandboxRunnerFactoryError,
+  createDremoSandboxRunner,
+} from './sandboxRunnerFactory';
 export {
   approvalRequiredNpmInstallExample,
   deniedPathTraversalExample,
@@ -20,6 +31,8 @@ export {
   validateResourceRequest,
   validateSandboxCommandRequest,
 } from './policyValidation';
+export type { DremoLocalDevSandboxConfig } from './localDevSandboxConfig';
+export type { CreateDremoSandboxRunnerOptions } from './sandboxRunnerFactory';
 export type {
   DremoSandboxCleanupPolicy,
   DremoSandboxCommandRequest,
