@@ -36,6 +36,8 @@ The lab includes a Final Report Artifact Stub action. It calls `POST /tasks/:tas
 
 The lab also includes a Policy Validation Smoke section. It runs the pure TypeScript sandbox policy validator locally in the browser against preset or manually entered command requests. This is for developer decision testing only: it does not call `dremo-api`, write DB rows, create task events, access files, use the network, or execute commands.
 
+Local-dev Docker execution remains unavailable from the production UI. The Docker adapter lives behind disabled static gates and still returns blocked results from browser-bundled code. Real Docker invocation must be implemented in a separate local-dev worker process and must not be exposed through the Dremo Lab or Code Architect surfaces by default.
+
 ## Suggested Desktop Layout
 
 ```text

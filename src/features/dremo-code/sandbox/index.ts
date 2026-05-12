@@ -8,6 +8,15 @@ export {
   dockerLocalDevBlockedCommandExample,
   dockerLocalDevDeniedDangerousCommandExample,
 } from './dockerLocalDevSandboxRunner';
+export {
+  classifyLocalDevCommand,
+  isAllowedLocalDevVersionCommand,
+  rejectDockerCommand,
+  rejectFileWriteCommand,
+  rejectNetworkCommand,
+  rejectPackageInstall,
+  rejectShellChaining,
+} from './localDevCommandGuards';
 export { localDevSandboxConfig } from './localDevSandboxConfig';
 export {
   DremoNoopSandboxRunner,
@@ -31,6 +40,10 @@ export {
   validateResourceRequest,
   validateSandboxCommandRequest,
 } from './policyValidation';
+export type {
+  LocalDevCommandClassification,
+  LocalDevCommandRejection,
+} from './localDevCommandGuards';
 export type { DremoLocalDevSandboxConfig } from './localDevSandboxConfig';
 export type { CreateDremoSandboxRunnerOptions } from './sandboxRunnerFactory';
 export type {

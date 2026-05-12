@@ -9,13 +9,16 @@ export const DEFAULT_DREMO_SANDBOX_POLICY: DremoSandboxPolicy = {
   maxArtifactBytes: 10 * 1024 * 1024,
   networkPolicy: 'deny_all',
   allowedCommands: [
+    'echo',
     'pwd',
     'ls',
     'find',
     'git status',
     'git diff --stat',
+    'git --version',
     'npm --version',
     'node --version',
+    'python --version',
   ],
   deniedCommands: [
     'bash',
