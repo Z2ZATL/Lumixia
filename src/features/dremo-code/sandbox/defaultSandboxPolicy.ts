@@ -51,7 +51,7 @@ export const DEFAULT_DREMO_SANDBOX_POLICY: DremoSandboxPolicy = {
     '/etc',
     '/root',
     '/home',
-    '/var/run/docker.sock',
+    'docker.sock',
     'C:\\',
     '.env',
     '.env.local',

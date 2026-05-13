@@ -24,8 +24,7 @@ const DESTRUCTIVE_COMMAND_PATTERNS = [
   'wget | sh',
 ];
 
-const SENSITIVE_ENV_KEY_PATTERN =
-  /(^|_)(KEY|SECRET|TOKEN)$|SUPABASE_SERVICE_ROLE_KEY|STRIPE_SECRET_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|GITHUB_TOKEN/i;
+const SENSITIVE_ENV_KEY_PATTERN = /(^|_)(KEY|SECRET|TOKEN)$/i;
 
 const MULTILINE_PATTERN = /\r|\n/;
 const MAX_ENV_VALUE_BYTES = 4096;
@@ -303,7 +302,7 @@ export function validatePathPolicy(
     'secrets/**',
     '~/.ssh/**',
     '/etc/**',
-    '/var/run/docker.sock',
+    'docker.sock',
   ];
 
   for (const path of normalizedPaths) {

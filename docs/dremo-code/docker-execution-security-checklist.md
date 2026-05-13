@@ -28,6 +28,17 @@ PR #18 implementation status:
 | Docker socket/home mount disabled | Implemented as static config gates. |
 | Real Docker invocation | Deferred. The current Vite/React `src/` tree is browser-bundled, so process execution APIs must not be added there. |
 
+PR #19 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Worker boundary outside browser bundle | Implemented under `tools/local-dev-worker/`. |
+| Worker request/response contract | Implemented as local-dev-specific types with `noExecution: true`. |
+| Worker command guards | Implemented as pure TypeScript logic. |
+| Worker runner | Implemented as blocked/dry-run only; no command execution. |
+| Browser source safety scan | Implemented as `node tools/local-dev-worker/localDevWorkerSafetyScan.mjs`. |
+| Real Docker invocation | Still deferred to a future reviewed local-dev worker PR. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
