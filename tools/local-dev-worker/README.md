@@ -33,6 +33,9 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerContainerPlan.ts` | Pure plan object and `dockerRunPreview` array; it is never executed. |
 | `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
 | `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
+| `localDevWorkerDockerContainerSmokePolicy.ts` | Exact allowlist policy for the first local-dev no-network/no-mount container smoke command. |
+| `localDevWorkerDockerContainerSmokeAdapter.ts` | Reviewed local-dev adapter that may execute only the exact `alpine:3.20 echo hello` Docker smoke command. |
+| `localDevWorkerDockerContainerSmokeFixtures.ts` | Fixtures for the allowed smoke path and blocked Docker runtime variants. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -44,7 +47,7 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 
 | Non-goal | Reason |
 | --- | --- |
-| No Docker execution | Real Docker invocation requires a separate manual security review PR. |
+| No arbitrary Docker execution | Only the PR #26 exact local-dev smoke command may run after trusted review; arbitrary `docker run` remains denied. |
 | No process APIs in `src/` | Browser-bundled code must not add `child_process`, `spawn`, `exec`, `Deno.Command`, or Docker CLI calls. |
 | No production path | The worker is not imported from `src/` and is not exposed through Dremo Lab or production UI. |
 | No filesystem writes | Future writes require a task-scoped workspace policy and separate review. |
@@ -61,7 +64,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. The only allowed process API location is `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`; guard fixtures may still contain denied command strings by design.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, and `localDevWorkerDockerContainerSmokeAdapter.ts`. Guard fixtures may still contain denied command strings by design.
 
 ## Verification Scripts
 
@@ -72,17 +75,17 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands plus the readiness-only `docker version --format "{{json .}}"` under Docker-specific review; Docker CLI or daemon absence is treated as structured non-safety output. Container policy fixtures are plan-only. The scripts do not run containers, pull/build images, inspect runtime objects, mount Docker socket, read secrets, or write files.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26 exact smoke command `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
 
-## Current Execution Status After PR #25
+## Current Execution Status After PR #26
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Validation only; no execution. |
 | Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
 | Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
-| Container policy | Plan-only design gates exist for image allowlist, command allowlist, no-network/no-mount policies, and security policy. No `docker run` execution exists. |
-| Network | Disabled; no worker runtime calls. |
+| Container smoke | One exact reviewed local-dev smoke command may execute with `--pull=never`, `--network none`, no mounts, no shell, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
+| Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
 | Production UI | No path to execution. |
@@ -153,6 +156,7 @@ Required defaults:
 | `allowRealExecution` | `false` by default. |
 | Docker socket mount | `false`. |
 | Home mount | `false`. |
+| Workspace mount | `false`. |
 | Network | `false`. |
 | File writes | `false`. |
 | Production UI path | Not allowed. |

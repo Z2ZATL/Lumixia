@@ -2,19 +2,19 @@
 
 Status: required pre-execution gate.
 
-This checklist must be completed before any PR enables real local-dev Docker execution for Dremo Code.
+This checklist must be completed before any PR enables or expands real local-dev Docker execution for Dremo Code.
 
 ## 1. Decision Status
 
 | Area | Status |
 | --- | --- |
-| Current Docker adapter | `DockerLocalDevSandboxRunner` is skeleton-only. It validates policy and returns blocked results with `noExecution: true`. |
-| Real local-dev execution | Still not implemented in the browser bundle. PR #18 adds explicit local-dev gates and command classification, but Docker invocation remains deferred to a separate Node/worker process. |
+| Current Docker adapter | Browser-bundled `DockerLocalDevSandboxRunner` remains skeleton-only. It validates policy and returns blocked results with `noExecution: true`. |
+| Real local-dev execution | Implemented only in the out-of-bundle `tools/local-dev-worker` boundary for reviewed version/identity probes and the PR #26 exact container smoke command. It is not in the browser bundle. |
 | Production execution | Out of scope. Production must use a managed isolated sandbox provider or dedicated worker pool after evaluation. |
 | Supabase Edge Functions | Remain orchestration/API only. They must not become arbitrary code execution runtimes. |
 | Code Architect AI rename | Still blocked until execution, events, sandboxing, and credits are server-owned and production-ready. |
 
-No PR may enable Docker execution until every required blocker, gate, and review item below has an owner and a passing verification result.
+No PR may expand Docker execution until every required blocker, gate, and review item below has an owner and a passing verification result.
 
 PR #18 implementation status:
 
@@ -111,6 +111,19 @@ PR #25 implementation status:
 | Command policy | Allows only tiny plan-only commands; denies shells, package installs, network tools, file writes, destructive commands, and Docker commands inside containers. |
 | Runtime policy | Network, DNS, Docker socket, home mount, workspace mount, tmpfs, privileged mode, host namespace use, capability add, and root execution remain denied. |
 | Execution | No `docker run`, image pull/build, container start, inspect, cleanup, or mount behavior exists. |
+
+PR #26 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| First container smoke adapter | Implemented only in `tools/local-dev-worker/localDevWorkerDockerContainerSmokeAdapter.ts`. |
+| Exact smoke command | Allows only `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello`. |
+| Image pull | Blocked by required `--pull=never`; missing `alpine:3.20` is structured as image unavailable, not a safety failure. |
+| Network and DNS | Disabled with `--network none`; no network flags or network commands are allowed. |
+| Mounts | Docker socket, home, workspace, `--mount`, `-v`, and `--volume` remain denied. |
+| Shell and env | Shell execution remains denied; `execFile` uses `shell: false` and `env: {}`. |
+| Runtime expansion | Arbitrary `docker run`, `docker build`, `docker compose`, `docker pull`, `docker exec`, `docker cp`, and `docker login` remain denied. |
+| Browser boundary | `src/` remains process-free and does not import worker code. |
 
 ## 2. Threat Model
 
@@ -329,14 +342,14 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add first no-network/no-mount local-dev container smoke execution** only after explicit review, or further refine the workspace policy before execution.
+Recommended next PR: **Add cleanup/audit hardening for local-dev container smoke results** or further refine workspace/artifact policy before any broader execution.
 
-PR #24 fulfills readiness classification and PR #25 fulfills the design-gate layer. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, and PR #26 adds the first exact no-network/no-mount smoke command. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
-| Commands | If execution is added, allow only a tiny no-network/no-mount smoke command from the PR #25 plan policy. |
-| Denied commands | `docker version`, `docker info`, `docker run`, `docker build`, `docker compose`, `docker pull`, and socket/mount paths remain denied. |
+| Commands | Keep only the exact `alpine:3.20 echo hello` smoke command until audit/event/workspace policy is stronger. |
+| Denied commands | Arbitrary `docker run`, `docker build`, `docker compose`, `docker pull`, `docker exec`, `docker cp`, `docker login`, and socket/mount paths remain denied. |
 | Shell | No shell chaining and no arbitrary shell. |
 | Filesystem | No file writes. Temporary task-scoped workspace only. |
 | Network | No network. |

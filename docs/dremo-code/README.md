@@ -69,7 +69,9 @@ PR #24 adds Docker daemon readiness classification for local-dev only. It may at
 
 PR #25 adds the final pre-container design gates: image allowlist policy, container command policy, no-network/no-mount resource and security policies, a plan-only Docker run preview model, readiness gate fixtures, and self-check coverage. It still does not execute `docker run`, start containers, pull/build images, mount workspaces, enable network, or expose execution to browser/production paths.
 
-## Current Execution Status After PR #25
+PR #26 adds the first reviewed local-dev Docker container smoke execution. Only the exact `alpine:3.20` + `echo hello` command may run, and only through `tools/local-dev-worker` with `--pull=never`, `--network none`, no mounts, no shell, no host environment, bounded output, and trusted manual review. Docker/image unavailability is returned as structured output and is not a safety failure.
+
+## Current Execution Status After PR #26
 
 | Area | Status |
 | --- | --- |
@@ -77,12 +79,12 @@ PR #25 adds the final pre-container design gates: image allowlist policy, contai
 | Worker boundary | Local-dev-only adapter exists for reviewed version/identity commands. Default config blocks execution. |
 | Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
 | Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. `docker info`, `docker run`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
-| Container execution | Plan-only policy model exists. No container is started, no image is pulled/built, and no workspace mount exists. |
-| Network | No worker runtime calls. |
+| Container execution | One exact local-dev smoke path may run: `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello`. No arbitrary image, command, pull/build/compose/exec, mounts, network, shell, workspace access, or production/browser path exists. |
+| Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
 | Production UI | No path to worker execution. |
 
 ## Recommended Next PR
 
-Future PR #26 may add the first no-network/no-mount container smoke execution only after review, and it must keep the command/image allowlists tiny.
+Future PR #27 should not expand to arbitrary repo execution. Prefer cleanup/audit hardening, stronger artifact/workspace policy, or server-owned event mapping for local-dev worker results before adding any broader container command surface.
