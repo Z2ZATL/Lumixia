@@ -4,7 +4,7 @@ const result = runLocalDevWorkerDryRunSelfCheck();
 
 if (result.passed) {
   console.log(
-    `Dremo local-dev worker dry-run self-check passed (${result.checkedFixtures} fixtures).`,
+    `Dremo local-dev worker self-check passed (${result.checkedDryRunFixtures} dry-run fixtures, ${result.checkedExecutionReadinessFixtures} readiness fixtures).`,
   );
 } else {
   console.error('Dremo local-dev worker dry-run self-check failed.');

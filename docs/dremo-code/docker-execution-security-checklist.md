@@ -52,6 +52,17 @@ PR #20 implementation status:
 | Boundary scan | Expanded to fail if `src/` imports or references the local-dev worker implementation. |
 | Real Docker invocation | Still not implemented. |
 
+PR #21 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Capability manifest | Added disabled-by-default future execution capabilities for version, identity, and metadata commands. |
+| Manual review gate | Added pure TypeScript gate requiring `allowRealExecution`, completed review metadata, exact capability scope, local-dev source/environment, no production UI path, and no browser import path. |
+| Readiness evaluator | Added combined validation, guard, manifest, review, safety metadata, warning, and rejection output. |
+| Readiness fixtures | Added self-check coverage for eligible disabled defaults, missing review, theoretical reviewed eligibility, and unsafe commands. |
+| `noExecution` | Preserved on every readiness path. |
+| Real Docker invocation | Still not implemented. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -243,6 +254,16 @@ The next PR that attempts real execution must prove:
 | Resource bounds | Bounded timeout, stdout, stderr, CPU, and memory. |
 | Audit trace | Structured dry-run/execution trace survives into server-owned events later. |
 | Manual review | Security review completed before merge. |
+
+Current review gate model after PR #21:
+
+| Requirement | Modeled by |
+| --- | --- |
+| Exact capability scope | `manualSecurityReview.scope` must include the matched capability id. |
+| Reviewed by / reviewed at | Non-empty manual review metadata is required. |
+| Local-dev only | `source = dremo-local-dev-sandbox` and `expectedEnvironment = local-dev`. |
+| Browser isolation | Production UI path and `src/` import path are explicit blockers. |
+| Unsafe commands | Existing worker guards remain blockers for shell chaining, package installs, network commands, Docker runtime commands, file writes, secret access, home mounts, and Docker socket exposure. |
 
 ## 11. Rollback Plan
 

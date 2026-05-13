@@ -15,6 +15,11 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerTrace.ts` | Deterministic dry-run trace and safety metadata helpers. |
 | `localDevWorkerDryRunAdapter.ts` | Converts validated dry-run requests into the blocked/dry-run runner flow. |
 | `localDevWorkerFixtures.ts` | Deterministic accepted and rejected dry-run fixtures. |
+| `localDevWorkerExecutionCapability.ts` | Future execution capability type model. |
+| `localDevWorkerExecutionManifest.ts` | Disabled-by-default capability manifest for version, identity, and metadata commands. |
+| `localDevWorkerExecutionReviewGate.ts` | Pure manual review gate that rejects future execution unless every gate is satisfied. |
+| `localDevWorkerExecutionReadiness.ts` | Pure readiness evaluator that combines validation, guards, capability match, manual review, and safety metadata. |
+| `localDevWorkerExecutionReadinessFixtures.ts` | Deterministic readiness fixtures for safe and unsafe future execution cases. |
 | `localDevWorkerDryRunSelfCheck.ts` | TypeScript self-check harness for fixture expectations. |
 | `localDevWorkerDryRunSelfCheckRunner.ts` | Zero-dependency Node runner for executing the dry-run self-check. |
 | `localDevWorkerSafetyScan.mjs` | Dev safety scan that fails if forbidden process/Docker/network/filesystem APIs appear in browser-bundled sandbox source. |
@@ -64,6 +69,17 @@ These scripts typecheck the worker contract, validation, trace, fixtures, and se
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
 | Production UI | No path to execution. |
+
+## Execution Review Gates
+
+PR #21 adds a final pre-execution review layer:
+
+| Gate | Current behavior |
+| --- | --- |
+| Capability manifest | Lists version/identity/metadata commands that may be eligible in a future PR. Every capability is `defaultEnabled: false`, `allowedInProduction: false`, and `requiresManualReview: true`. |
+| Manual review gate | Requires explicit `allowRealExecution`, completed manual review metadata, exact capability scope, local-dev source/environment, and no unsafe command patterns. |
+| Readiness evaluator | Produces `readyForFutureExecution`, rejection codes, warnings, and safety metadata while preserving `noExecution: true`. |
+| Self-check | Verifies defaults block execution, manual review is required, unsafe commands are rejected, and theoretical eligibility still does not execute. |
 
 ## Future Execution Gate
 
