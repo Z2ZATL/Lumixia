@@ -1,6 +1,7 @@
 export type LocalDevWorkerExecutionMode =
   | 'disabled'
-  | 'reviewed-local-version-commands';
+  | 'reviewed-local-version-commands'
+  | 'reviewed-local-docker-version-probe';
 
 export interface LocalDevWorkerExecutionConfig {
   allowRealExecution: boolean;
@@ -15,7 +16,7 @@ export interface LocalDevWorkerExecutionConfig {
   allowShell: false;
   allowNetwork: false;
   allowFileWrites: false;
-  allowDockerCli: false;
+  allowDockerCli: boolean;
   allowDockerRuntime: false;
   allowDockerSocket: false;
   allowHomeMount: false;
@@ -63,4 +64,17 @@ export const LOCAL_DEV_WORKER_REVIEWED_VERSION_COMMAND_EXECUTION_CONFIG: LocalDe
     allowedCapabilityIds: [
       ...LOCAL_DEV_WORKER_NON_DOCKER_VERSION_CAPABILITY_IDS,
     ],
+  };
+
+export const LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG: LocalDevWorkerExecutionConfig =
+  {
+    ...LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG,
+    allowRealExecution: true,
+    executionMode: 'reviewed-local-docker-version-probe',
+    allowedCapabilityIds: [...LOCAL_DEV_WORKER_DOCKER_CAPABILITY_IDS],
+    blockedCapabilityIds: [],
+    allowDockerCli: true,
+    allowDockerRuntime: false,
+    allowDockerSocket: false,
+    allowHomeMount: false,
   };

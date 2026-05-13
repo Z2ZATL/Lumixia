@@ -77,6 +77,19 @@ PR #22 implementation status:
 | Docker | `docker --version`, `docker run`, `docker build`, and `docker compose` remain blocked until a Docker-specific review PR. |
 | Browser boundary | `src/` remains process-free and does not import worker code. |
 
+PR #23 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Docker CLI version probe | Implemented only as `docker --version` inside `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`. |
+| Docker probe policy | Implemented as a separate policy that requires command `docker`, args exactly `["--version"]`, and capability `capability.docker.version`. |
+| Docker reviewed config | Added separately from the non-Docker reviewed config; default config still blocks Docker. |
+| Docker daemon state | `docker version`, `docker info`, `docker inspect`, `docker context`, `docker volume`, `docker network`, and `docker system` remain denied. |
+| Docker runtime | `docker run`, `docker build`, `docker compose`, `docker-compose`, `docker pull`, `docker push`, `docker exec`, `docker cp`, and `docker login` remain denied. |
+| Docker socket and mounts | Docker socket references, home references, and mount flags remain denied. |
+| Containers | No container is started, pulled, inspected, mounted, or networked. |
+| Browser boundary | `src/` remains process-free and does not import worker code. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -294,13 +307,14 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add separate local-dev Docker worker prototype behind disabled feature flag**.
+Recommended next PR: **Add Docker daemon availability/readiness classification** or **write the container execution design review**.
 
-That PR should remain conservative:
+Do not jump directly to `docker run`. The next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
-| Commands | Only version/identity commands: `echo`, `pwd`, `node --version`, `npm --version`, `python --version`, `git --version`. |
+| Commands | Keep `docker --version` as the only Docker command attempted until a separate container execution review is complete. |
+| Denied commands | `docker version`, `docker info`, `docker run`, `docker build`, `docker compose`, `docker pull`, and socket/mount paths remain denied. |
 | Shell | No shell chaining and no arbitrary shell. |
 | Filesystem | No file writes. Temporary task-scoped workspace only. |
 | Network | No network. |

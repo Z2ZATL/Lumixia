@@ -20,9 +20,10 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerExecutionReviewGate.ts` | Pure manual review gate that rejects future execution unless every gate is satisfied. |
 | `localDevWorkerExecutionReadiness.ts` | Pure readiness evaluator that combines validation, guards, capability match, manual review, and safety metadata. |
 | `localDevWorkerExecutionReadinessFixtures.ts` | Deterministic readiness fixtures for safe and unsafe future execution cases. |
-| `localDevWorkerExecutionConfig.ts` | Disabled-by-default local execution config and reviewed non-Docker version-command test config. |
+| `localDevWorkerExecutionConfig.ts` | Disabled-by-default local execution config, reviewed non-Docker version-command config, and reviewed Docker version-probe config. |
+| `localDevWorkerDockerProbePolicy.ts` | Docker-specific policy that allows only `docker --version` and rejects daemon-state, runtime, socket, mount, and shell patterns. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
-| `localDevWorkerVersionExecutionAdapter.ts` | First manually gated local-dev adapter for non-Docker version/identity commands only. |
+| `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
 | `localDevWorkerDryRunSelfCheck.ts` | TypeScript self-check harness for fixture expectations. |
 | `localDevWorkerDryRunSelfCheckRunner.ts` | Zero-dependency Node runner for executing the dry-run self-check. |
@@ -60,15 +61,15 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the dry-run fixture self-check with `noExecution: true`, then run the browser-boundary safety scan. They do not execute commands, call Docker, read secrets, or write files.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands, including `docker --version` under Docker-specific review; Docker CLI absence is treated as a structured non-safety failure. The scripts do not run containers, query Docker daemon state, read secrets, or write files.
 
-## Current Execution Status After PR #20
+## Current Execution Status After PR #23
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Validation only; no execution. |
-| Worker boundary | Manually gated local-dev execution exists only for reviewed non-Docker version/identity commands. Default config blocks execution. |
-| Docker | Not invoked. |
+| Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
+| Docker | Only `docker --version` may be attempted under Docker-specific reviewed config. `docker version`, `docker info`, `docker run`, `docker build`, and `docker compose` remain denied. |
 | Network | Disabled; no worker runtime calls. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
@@ -83,21 +84,22 @@ PR #21 adds a final pre-execution review layer:
 | Capability manifest | Lists version/identity/metadata commands that may be eligible in a future PR. Every capability is `defaultEnabled: false`, `allowedInProduction: false`, and `requiresManualReview: true`. |
 | Manual review gate | Requires explicit `allowRealExecution`, completed manual review metadata, exact capability scope, local-dev source/environment, and no unsafe command patterns. |
 | Readiness evaluator | Produces `readyForFutureExecution`, rejection codes, warnings, and safety metadata while preserving `noExecution: true`. |
-| Self-check | Verifies defaults block execution, manual review is required, unsafe commands are rejected, Docker remains blocked, and reviewed non-Docker version commands stay bounded. |
+| Self-check | Verifies defaults block execution, manual review is required, unsafe commands are rejected, Docker runtime/daemon-state commands remain blocked, and reviewed version commands stay bounded. |
 
 ## Local-dev Version Execution Adapter
 
-PR #22 introduces the first real local-dev process execution path, but only inside `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`.
+PR #22 introduces the first real local-dev process execution path, and PR #23 adds the Docker CLI version probe. Both stay inside `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`.
 
 | Rule | Current behavior |
 | --- | --- |
 | Default config | `allowRealExecution: false`; all execution blocked. |
-| Reviewed config | Enables only non-Docker version/identity commands in local tooling fixtures. |
+| Reviewed non-Docker config | Enables only non-Docker version/identity commands in local tooling fixtures. |
+| Reviewed Docker probe config | Enables only `docker --version` with exact trusted review scope. |
 | Shell | `shell: false`; no shell interpolation. |
 | Environment | Empty environment; host environment is not inherited. |
 | Filesystem | No file writes; safe worker cwd only. |
 | Network | No network commands are allowed. |
-| Docker | `docker --version`, `docker run`, `docker build`, and `docker compose` remain blocked. |
+| Docker | `docker --version` may be attempted only by the Docker probe config. `docker version`, `docker info`, `docker run`, `docker build`, and `docker compose` remain blocked. |
 | Browser | `src/` must not import worker code. |
 
 ## Future Execution Gate
