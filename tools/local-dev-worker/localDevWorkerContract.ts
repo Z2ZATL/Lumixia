@@ -66,6 +66,7 @@ export const LOCAL_DEV_WORKER_ALLOWED_VERSION_COMMANDS = [
   'python --version',
   'git --version',
   'docker --version',
+  'docker version --format {{json .}}',
 ] as const;
 
 export const LOCAL_DEV_WORKER_BOUNDARY_NOTE =

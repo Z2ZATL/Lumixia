@@ -1,4 +1,6 @@
 import { createLocalDevWorkerDryRun } from './localDevWorkerDryRunAdapter.ts';
+import { classifyLocalDevWorkerDockerReadiness } from './localDevWorkerDockerReadinessAdapter.ts';
+import { localDevWorkerDockerReadinessFixtures } from './localDevWorkerDockerReadinessFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -10,6 +12,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDryRunFixtures: number;
   checkedExecutionReadinessFixtures: number;
   checkedVersionExecutionFixtures: number;
+  checkedDockerReadinessFixtures: number;
   failures: string[];
 }
 
@@ -201,12 +204,109 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerReadinessFixtures) {
+    const response = await classifyLocalDevWorkerDockerReadiness({
+      request: fixture.request,
+      config: fixture.config,
+      trustedManualReview: fixture.trustedManualReview,
+    });
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noContainerExecution === fixture.expectedNoContainerExecution,
+      `${fixture.name}: Docker readiness must preserve noContainerExecution.`,
+      failures,
+    );
+    assertCondition(
+      fixture.expectedReadinessStates.includes(response.readinessState),
+      `${fixture.name}: expected readinessState ${fixture.expectedReadinessStates.join(
+        ' or ',
+      )}, got ${response.readinessState}.`,
+      failures,
+    );
+    assertCondition(
+      !!response.commandAttempted === fixture.expectedCommandAttempted,
+      `${fixture.name}: expected commandAttempted presence ${fixture.expectedCommandAttempted}, got ${response.commandAttempted ?? 'none'}.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.containerStarted === false,
+      `${fixture.name}: containerStarted must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.imagePulled === false,
+      `${fixture.name}: imagePulled must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.imageBuilt === false,
+      `${fixture.name}: imageBuilt must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.dockerRuntimeAllowed === false,
+      `${fixture.name}: Docker runtime must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.dockerSocketMounted === false,
+      `${fixture.name}: Docker socket must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.homeMounted === false,
+      `${fixture.name}: home directory must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.shellAllowed === false,
+      `${fixture.name}: shell must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.hostEnvironmentInherited === false,
+      `${fixture.name}: host environment must not be inherited.`,
+      failures,
+    );
+    assertCondition(
+      Buffer.from(response.stdout, 'utf8').byteLength <=
+        fixture.config.maxStdoutBytes,
+      `${fixture.name}: stdout exceeded configured byte cap.`,
+      failures,
+    );
+    assertCondition(
+      Buffer.from(response.stderr, 'utf8').byteLength <=
+        fixture.config.maxStderrBytes,
+      `${fixture.name}: stderr exceeded configured byte cap.`,
+      failures,
+    );
+
+    if (
+      fixture.expectedCommandAttempted &&
+      ['cli_unavailable', 'daemon_unavailable', 'probe_failed'].includes(
+        response.readinessState,
+      )
+    ) {
+      continue;
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected Docker readiness rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
     checkedExecutionReadinessFixtures:
       localDevWorkerExecutionReadinessFixtures.length,
     checkedVersionExecutionFixtures: localDevWorkerVersionExecutionFixtures.length,
+    checkedDockerReadinessFixtures: localDevWorkerDockerReadinessFixtures.length,
     failures,
   };
 }
