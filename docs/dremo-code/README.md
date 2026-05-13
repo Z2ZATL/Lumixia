@@ -57,6 +57,20 @@ Dremo Code must be audit-safe from day one:
 
 `tools/local-dev-worker/` is the first out-of-bundle worker boundary for future local-dev Docker execution. It is not imported by `src/`, does not expose a browser or production UI execution path, and remains blocked/dry-run only until a separate security-reviewed worker PR enables local-dev execution.
 
+PR #20 extends that boundary with a dry-run adapter, dependency-free request validation, deterministic trace/audit metadata, fixture coverage, an executable TypeScript self-check harness, npm verification scripts, and a stronger safety scan. It still performs no real execution and preserves `noExecution: true`.
+
+## Current Execution Status After PR #20
+
+| Area | Status |
+| --- | --- |
+| Browser sandbox | Browser-safe policy validation only. No worker import and no execution. |
+| Worker boundary | Dry-run adapter and verification harness only. No execution. |
+| Docker | Not invoked. |
+| Network | No worker runtime calls. |
+| File writes | No worker runtime writes. |
+| Secrets | Not read or injected. |
+| Production UI | No path to worker execution. |
+
 ## Recommended Next PR
 
-The next PR should add a sandbox runner interface without executing commands. It should define provider interfaces, policy config shape, and event mapping only. It should not add Docker/E2B/Daytona integration code, arbitrary command execution, billing changes, or Code Architect AI rename work.
+The next real execution PR should remain local-dev only, disabled by default, manually security-reviewed, and limited to version/identity commands. Until that review is complete, Dremo must keep browser validation and worker dry-run behavior separate from any Docker/process invocation.

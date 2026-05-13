@@ -2,7 +2,11 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const forbiddenPatterns = [
+const browserSandboxForbiddenPatterns = [
+  { label: 'tools/local-dev-worker', pattern: /tools\/local-dev-worker/ },
+  { label: 'localDevWorkerRunner', pattern: /localDevWorkerRunner/ },
+  { label: 'localDevWorkerDryRunAdapter', pattern: /localDevWorkerDryRunAdapter/ },
+  { label: 'localDevWorkerContract tools path', pattern: /localDevWorkerContract/ },
   { label: 'child_process', pattern: /child_process/ },
   { label: 'Deno.Command', pattern: /Deno\.Command/ },
   { label: 'spawn(', pattern: /\bspawn\s*\(/ },
@@ -22,20 +26,28 @@ const forbiddenPatterns = [
   { label: 'XMLHttpRequest', pattern: /XMLHttpRequest/ },
 ];
 
+const srcBoundaryForbiddenPatterns = [
+  { label: 'tools/local-dev-worker', pattern: /tools\/local-dev-worker/ },
+  { label: 'localDevWorkerRunner', pattern: /localDevWorkerRunner/ },
+  { label: 'localDevWorkerDryRunAdapter', pattern: /localDevWorkerDryRunAdapter/ },
+  { label: 'localDevWorkerContract tools path', pattern: /localDevWorkerContract/ },
+];
+
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
   '..',
 );
-const scannedRoot = path.join(
+const browserSandboxRoot = path.join(
   repoRoot,
   'src',
   'features',
   'dremo-code',
   'sandbox',
 );
+const srcRoot = path.join(repoRoot, 'src');
 
-async function listTypeScriptFiles(directory) {
+async function listSourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
 
@@ -43,8 +55,11 @@ async function listTypeScriptFiles(directory) {
     const fullPath = path.join(directory, entry.name);
 
     if (entry.isDirectory()) {
-      files.push(...(await listTypeScriptFiles(fullPath)));
-    } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+      files.push(...(await listSourceFiles(fullPath)));
+    } else if (
+      entry.isFile() &&
+      (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))
+    ) {
       files.push(fullPath);
     }
   }
@@ -52,26 +67,49 @@ async function listTypeScriptFiles(directory) {
   return files;
 }
 
-const files = await listTypeScriptFiles(scannedRoot);
-const violations = [];
+async function scanFiles(files, patterns, scope) {
+  const violations = [];
 
-for (const file of files) {
-  const content = await readFile(file, 'utf8');
-  const lines = content.split(/\r?\n/);
+  for (const file of files) {
+    const content = await readFile(file, 'utf8');
+    const lines = content.split(/\r?\n/);
 
-  lines.forEach((line, index) => {
-    for (const forbidden of forbiddenPatterns) {
-      if (forbidden.pattern.test(line)) {
-        violations.push({
-          file: path.relative(repoRoot, file),
-          line: index + 1,
-          label: forbidden.label,
-          text: line.trim(),
-        });
+    lines.forEach((line, index) => {
+      for (const forbidden of patterns) {
+        if (forbidden.pattern.test(line)) {
+          violations.push({
+            scope,
+            file: path.relative(repoRoot, file),
+            line: index + 1,
+            label: forbidden.label,
+            text: line.trim(),
+          });
+        }
       }
-    }
-  });
+    });
+  }
+
+  return violations;
 }
+
+const browserSandboxFiles = await listSourceFiles(browserSandboxRoot);
+const srcFiles = await listSourceFiles(srcRoot);
+const violations = [
+  ...(await scanFiles(
+    browserSandboxFiles,
+    browserSandboxForbiddenPatterns,
+    'browser-bundled-sandbox',
+  )),
+  ...(await scanFiles(srcFiles, srcBoundaryForbiddenPatterns, 'src-boundary')),
+];
+
+console.log(
+  `Scanned browser sandbox root: ${path.relative(repoRoot, browserSandboxRoot)}`,
+);
+console.log(`Browser sandbox files scanned: ${browserSandboxFiles.length}`);
+console.log(`Scanned src root for worker imports: ${path.relative(repoRoot, srcRoot)}`);
+console.log(`Total src files scanned: ${srcFiles.length}`);
+console.log(`Violations found: ${violations.length}`);
 
 if (violations.length > 0) {
   console.error('Dremo browser-bundle sandbox safety scan failed.');
@@ -79,6 +117,6 @@ if (violations.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Dremo browser-bundle sandbox safety scan passed (${files.length} files).`,
+    'Dremo browser-bundle sandbox and worker-boundary safety scan passed.',
   );
 }

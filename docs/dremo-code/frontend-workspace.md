@@ -40,6 +40,8 @@ Local-dev Docker execution remains unavailable from the production UI. The Docke
 
 The local-dev worker boundary now lives under `tools/local-dev-worker/`, outside the Vite browser bundle. It remains blocked/dry-run only and is not imported by the frontend.
 
+PR #20 adds a worker-side dry-run adapter, request validation, trace metadata, fixtures, and verification scripts. This still does not create a browser-to-worker execution path; Dremo Lab remains a policy/API testing surface, not a command execution UI.
+
 ## Suggested Desktop Layout
 
 ```text
