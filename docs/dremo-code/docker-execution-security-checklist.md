@@ -117,11 +117,12 @@ PR #26 implementation status:
 | Gate | Status |
 | --- | --- |
 | First container smoke adapter | Implemented only in `tools/local-dev-worker/localDevWorkerDockerContainerSmokeAdapter.ts`. |
-| Exact smoke command | Allows only `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello`. |
+| Exact smoke command | Allows only `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello`. |
 | Image pull | Blocked by required `--pull=never`; missing `alpine:3.20` is structured as image unavailable, not a safety failure. |
 | Network and DNS | Disabled with `--network none`; no network flags or network commands are allowed. |
 | Mounts | Docker socket, home, workspace, `--mount`, `-v`, and `--volume` remain denied. |
 | Shell and env | Shell execution remains denied; `execFile` uses `shell: false` and `env: {}`. |
+| Non-root user | Required with exact `--user 65534:65534`; missing user, `--user 0`, `--user 0:0`, and root user values are blocked. |
 | Runtime expansion | Arbitrary `docker run`, `docker build`, `docker compose`, `docker pull`, `docker exec`, `docker cp`, and `docker login` remain denied. |
 | Browser boundary | `src/` remains process-free and does not import worker code. |
 
@@ -348,7 +349,7 @@ PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer,
 
 | Scope | Requirement |
 | --- | --- |
-| Commands | Keep only the exact `alpine:3.20 echo hello` smoke command until audit/event/workspace policy is stronger. |
+| Commands | Keep only the exact non-root `alpine:3.20 echo hello` smoke command until audit/event/workspace policy is stronger. |
 | Denied commands | Arbitrary `docker run`, `docker build`, `docker compose`, `docker pull`, `docker exec`, `docker cp`, `docker login`, and socket/mount paths remain denied. |
 | Shell | No shell chaining and no arbitrary shell. |
 | Filesystem | No file writes. Temporary task-scoped workspace only. |

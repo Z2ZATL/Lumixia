@@ -34,6 +34,7 @@ export interface LocalDevWorkerDockerContainerSmokeSafetyMetadata {
   fileWritesAllowed: false;
   shellAllowed: false;
   hostEnvironmentInherited: false;
+  runAsNonRoot: true;
 }
 
 export interface LocalDevWorkerDockerContainerSmokeResult {
@@ -88,6 +89,7 @@ function createSafetyMetadata(input: {
     fileWritesAllowed: false,
     shellAllowed: false,
     hostEnvironmentInherited: false,
+    runAsNonRoot: true,
   };
 }
 
@@ -421,5 +423,4 @@ export async function executeLocalDevWorkerDockerContainerSmoke(input: {
 }
 
 export const LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_NOTE =
-  'This adapter may execute only docker run for alpine:3.20 echo hello with --pull=never, no network, no mounts, no shell, and no host environment.';
-
+  'This adapter may execute only docker run for alpine:3.20 echo hello with --pull=never, --user 65534:65534, no network, no mounts, no shell, no root user, and no host environment.';

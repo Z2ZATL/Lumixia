@@ -34,7 +34,7 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
 | `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
 | `localDevWorkerDockerContainerSmokePolicy.ts` | Exact allowlist policy for the first local-dev no-network/no-mount container smoke command. |
-| `localDevWorkerDockerContainerSmokeAdapter.ts` | Reviewed local-dev adapter that may execute only the exact `alpine:3.20 echo hello` Docker smoke command. |
+| `localDevWorkerDockerContainerSmokeAdapter.ts` | Reviewed local-dev adapter that may execute only the exact non-root `alpine:3.20 echo hello` Docker smoke command. |
 | `localDevWorkerDockerContainerSmokeFixtures.ts` | Fixtures for the allowed smoke path and blocked Docker runtime variants. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
@@ -75,7 +75,7 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26 exact smoke command `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26 exact smoke command `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
 
 ## Current Execution Status After PR #26
 
@@ -84,7 +84,7 @@ These scripts typecheck the worker contract, validation, trace, fixtures, and se
 | Browser sandbox | Validation only; no execution. |
 | Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
 | Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
-| Container smoke | One exact reviewed local-dev smoke command may execute with `--pull=never`, `--network none`, no mounts, no shell, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
+| Container smoke | One exact reviewed local-dev smoke command may execute with `--pull=never`, `--network none`, `--user 65534:65534`, no mounts, no shell, no root user, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

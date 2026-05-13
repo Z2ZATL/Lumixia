@@ -31,6 +31,8 @@ export const LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS = [
   '0.5',
   '--pids-limit',
   '64',
+  '--user',
+  '65534:65534',
   'alpine:3.20',
   'echo',
   'hello',
@@ -41,6 +43,7 @@ const SHELL_TOKENS = ['sh', 'bash', 'zsh', 'powershell', 'pwsh', 'cmd', 'cmd.exe
 const MOUNT_FLAGS = new Set(['--mount', '-v', '--volume']);
 const ENV_FLAGS = new Set(['--env', '-e', '--env-file']);
 const PRIVILEGED_FLAGS = new Set(['--privileged', '--cap-add']);
+const ROOT_USER_VALUES = new Set(['0', '0:0', 'root', 'root:root']);
 const SOCKET_PATTERNS = ['docker.sock', '/var/run/docker.sock'];
 const HOME_PATTERNS = ['~', '$home', '%userprofile%', '/home/', '/users/'];
 const WORKSPACE_PATTERNS = ['/workspace/', 'c:\\users\\', 'documents\\coding project'];
@@ -84,6 +87,22 @@ function includesFlag(args: readonly string[], flags: ReadonlySet<string>) {
   });
 }
 
+function userValues(args: readonly string[]) {
+  const values: string[] = [];
+
+  args.forEach((arg, index) => {
+    const normalizedArg = normalize(arg);
+
+    if (normalizedArg === '--user') {
+      values.push(normalize(args[index + 1] ?? ''));
+    } else if (normalizedArg.startsWith('--user=')) {
+      values.push(normalizedArg.slice('--user='.length));
+    }
+  });
+
+  return values;
+}
+
 export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
   request: LocalDevWorkerCommandRequest;
   capabilityId?: string;
@@ -92,8 +111,9 @@ export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
   const command = normalize(input.request.command);
   const args = input.request.args;
   const fullCommand = commandText(input.request);
-  const image = args[16] ?? '';
-  const containerCommand = args.slice(17);
+  const image = args[18] ?? '';
+  const containerCommand = args.slice(19);
+  const requestedUserValues = userValues(args);
 
   if (input.capabilityId !== LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_ID) {
     rejections.push(
@@ -194,6 +214,27 @@ export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
       reject(
         'container_smoke_privileged_denied',
         'Privileged mode and capability additions remain denied.',
+      ),
+    );
+  }
+
+  if (
+    requestedUserValues.length !== 1 ||
+    requestedUserValues[0] !== '65534:65534'
+  ) {
+    rejections.push(
+      reject(
+        'container_smoke_non_root_user_required',
+        'Container smoke execution requires --user 65534:65534.',
+      ),
+    );
+  }
+
+  if (requestedUserValues.some((value) => ROOT_USER_VALUES.has(value))) {
+    rejections.push(
+      reject(
+        'container_smoke_root_user_denied',
+        'Container smoke execution must not run as root.',
       ),
     );
   }

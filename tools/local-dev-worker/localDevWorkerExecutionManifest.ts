@@ -111,6 +111,8 @@ export const LOCAL_DEV_WORKER_EXECUTION_CAPABILITIES = [
       '0.5',
       '--pids-limit',
       '64',
+      '--user',
+      '65534:65534',
       'alpine:3.20',
       'echo',
       'hello',

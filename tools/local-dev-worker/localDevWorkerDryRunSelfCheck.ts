@@ -461,6 +461,11 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       `${fixture.name}: host environment must not be inherited.`,
       failures,
     );
+    assertCondition(
+      response.safetyMetadata.runAsNonRoot === true,
+      `${fixture.name}: smoke container must run as non-root.`,
+      failures,
+    );
 
     if (fixture.expectedExecutionAttempted) {
       assertCondition(

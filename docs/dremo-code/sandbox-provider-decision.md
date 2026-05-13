@@ -28,7 +28,7 @@ Docker readiness note: PR #24 adds local-dev Docker daemon readiness classificat
 
 Container design-gate note: PR #25 adds local-dev container execution policy and plan models only. It defines future image, command, network, mount, resource, and security gates, plus a non-executed `dockerRunPreview`.
 
-Container smoke note: PR #26 adds the first reviewed local-dev container smoke execution path. It allows only the exact `alpine:3.20` + `echo hello` Docker run command with `--pull=never`, `--network none`, read-only root filesystem, dropped capabilities, no-new-privileges, memory/CPU/PID caps, no mounts, no shell, no host environment, and no browser/production path. It still does not allow arbitrary repo execution, workspace mounts, network, image pull/build, compose, exec/cp/login, or production sandbox use.
+Container smoke note: PR #26 adds the first reviewed local-dev container smoke execution path. It allows only the exact `alpine:3.20` + `echo hello` Docker run command with `--pull=never`, `--network none`, `--user 65534:65534`, read-only root filesystem, dropped capabilities, no-new-privileges, memory/CPU/PID caps, no mounts, no shell, no root user, no host environment, and no browser/production path. It still does not allow arbitrary repo execution, workspace mounts, network, image pull/build, compose, exec/cp/login, or production sandbox use.
 
 ## 1. Decision Summary
 
@@ -212,7 +212,7 @@ Before real execution, `tool_call_failed` should be added to the SQL event allow
 | Decision | Current position |
 | --- | --- |
 | E2B vs Daytona vs self-hosted worker | Open. Evaluate E2B and Daytona first, then compare custom workers if needed. |
-| Local Docker prototype scope | Partially resolved. `docker --version`, readiness-only `docker version --format "{{json .}}"`, and the exact PR #26 `alpine:3.20 echo hello` no-network/no-mount smoke command are allowed only under reviewed local-dev configs. Arbitrary container execution, socket access, mounts, image pull/build, network, workspace access, and repo execution remain open and require separate security-reviewed PRs. |
+| Local Docker prototype scope | Partially resolved. `docker --version`, readiness-only `docker version --format "{{json .}}"`, and the exact PR #26 non-root `alpine:3.20 echo hello` no-network/no-mount smoke command are allowed only under reviewed local-dev configs. Arbitrary container execution, socket access, mounts, image pull/build, network, workspace access, and repo execution remain open and require separate security-reviewed PRs. |
 | GitHub repo connect vs zip upload first | Open. GitHub connect is likely first, but credential handling must be designed. |
 | Network egress default deny vs allowlist | Proposed default deny. Provider enforcement details remain open. |
 | Artifact storage provider | Open. Supabase Storage is the first candidate, but signed URLs and quotas need design. |

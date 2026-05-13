@@ -141,6 +141,12 @@ function withoutArg(value: string): string[] {
   );
 }
 
+function withoutUser(): string[] {
+  return LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS.filter(
+    (arg) => arg !== '--user' && arg !== '65534:65534',
+  );
+}
+
 export const localDevWorkerDockerContainerSmokeFixtures = [
   attempted('reviewed-smoke-attempts'),
   blocked(
@@ -186,11 +192,30 @@ export const localDevWorkerDockerContainerSmokeFixtures = [
     ['src_import_path_denied'],
     { srcImportPath: true },
   ),
-  blocked('wrong-image-blocked', replaceArg(16, 'ubuntu:22.04'), [
+  blocked('missing-user-blocked', withoutUser(), [
+    'container_smoke_args_not_exact',
+    'container_smoke_non_root_user_required',
+  ]),
+  blocked('root-user-zero-blocked', replaceArg(17, '0'), [
+    'container_smoke_args_not_exact',
+    'container_smoke_non_root_user_required',
+    'container_smoke_root_user_denied',
+  ]),
+  blocked('root-user-zero-zero-blocked', replaceArg(17, '0:0'), [
+    'container_smoke_args_not_exact',
+    'container_smoke_non_root_user_required',
+    'container_smoke_root_user_denied',
+  ]),
+  blocked('root-user-name-blocked', replaceArg(17, 'root'), [
+    'container_smoke_args_not_exact',
+    'container_smoke_non_root_user_required',
+    'container_smoke_root_user_denied',
+  ]),
+  blocked('wrong-image-blocked', replaceArg(18, 'ubuntu:22.04'), [
     'container_smoke_args_not_exact',
     'container_smoke_image_not_allowed',
   ]),
-  blocked('latest-image-blocked', replaceArg(16, 'alpine:latest'), [
+  blocked('latest-image-blocked', replaceArg(18, 'alpine:latest'), [
     'container_smoke_args_not_exact',
     'container_smoke_image_not_allowed',
   ]),
@@ -241,12 +266,12 @@ export const localDevWorkerDockerContainerSmokeFixtures = [
     'container_smoke_args_not_exact',
     'container_smoke_privileged_denied',
   ]),
-  blocked('shell-command-blocked', replaceArg(17, 'sh'), [
+  blocked('shell-command-blocked', replaceArg(19, 'sh'), [
     'container_smoke_args_not_exact',
     'container_smoke_shell_denied',
   ]),
   blocked('sh-c-blocked', [
-    ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS.slice(0, 17),
+    ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS.slice(0, 19),
     'sh',
     '-c',
     'echo hello',

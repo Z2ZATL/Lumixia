@@ -79,7 +79,7 @@ PR #26 adds the first reviewed local-dev Docker container smoke execution. Only 
 | Worker boundary | Local-dev-only adapter exists for reviewed version/identity commands. Default config blocks execution. |
 | Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
 | Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. `docker info`, `docker run`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
-| Container execution | One exact local-dev smoke path may run: `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 alpine:3.20 echo hello`. No arbitrary image, command, pull/build/compose/exec, mounts, network, shell, workspace access, or production/browser path exists. |
+| Container execution | One exact local-dev smoke path may run: `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello`. No arbitrary image, command, pull/build/compose/exec, mounts, network, shell, root user, workspace access, or production/browser path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
