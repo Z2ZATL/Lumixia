@@ -2,7 +2,8 @@ export type LocalDevWorkerExecutionMode =
   | 'disabled'
   | 'reviewed-local-version-commands'
   | 'reviewed-local-docker-version-probe'
-  | 'reviewed-local-docker-readiness-probe';
+  | 'reviewed-local-docker-readiness-probe'
+  | 'reviewed-local-docker-container-smoke';
 
 export interface LocalDevWorkerExecutionConfig {
   allowRealExecution: boolean;
@@ -18,7 +19,7 @@ export interface LocalDevWorkerExecutionConfig {
   allowNetwork: false;
   allowFileWrites: false;
   allowDockerCli: boolean;
-  allowDockerRuntime: false;
+  allowDockerRuntime: boolean;
   allowDockerSocket: false;
   allowHomeMount: false;
 }
@@ -41,6 +42,10 @@ export const LOCAL_DEV_WORKER_DOCKER_READINESS_CAPABILITY_IDS = [
   'capability.docker.daemon.readiness',
 ] as const;
 
+export const LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_IDS = [
+  'capability.docker.container.smoke.echo',
+] as const;
+
 export const LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG: LocalDevWorkerExecutionConfig =
   {
     allowRealExecution: false,
@@ -53,6 +58,7 @@ export const LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG: LocalDevWorkerExecutionC
     blockedCapabilityIds: [
       ...LOCAL_DEV_WORKER_DOCKER_CAPABILITY_IDS,
       ...LOCAL_DEV_WORKER_DOCKER_READINESS_CAPABILITY_IDS,
+      ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_IDS,
     ],
     inheritHostEnvironment: false,
     allowShell: false,
@@ -101,6 +107,27 @@ export const LOCAL_DEV_WORKER_REVIEWED_DOCKER_READINESS_PROBE_CONFIG: LocalDevWo
     maxStderrBytes: 4096,
     allowDockerCli: true,
     allowDockerRuntime: false,
+    allowDockerSocket: false,
+    allowHomeMount: false,
+  };
+
+export const LOCAL_DEV_WORKER_REVIEWED_DOCKER_CONTAINER_SMOKE_CONFIG: LocalDevWorkerExecutionConfig =
+  {
+    ...LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG,
+    allowRealExecution: true,
+    executionMode: 'reviewed-local-docker-container-smoke',
+    allowedCapabilityIds: [
+      ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_IDS,
+    ],
+    blockedCapabilityIds: [
+      ...LOCAL_DEV_WORKER_DOCKER_CAPABILITY_IDS,
+      ...LOCAL_DEV_WORKER_DOCKER_READINESS_CAPABILITY_IDS,
+    ],
+    maxWallClockMs: 5000,
+    maxStdoutBytes: 4096,
+    maxStderrBytes: 4096,
+    allowDockerCli: true,
+    allowDockerRuntime: true,
     allowDockerSocket: false,
     allowHomeMount: false,
   };

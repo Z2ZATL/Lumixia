@@ -13,6 +13,7 @@ function capability(
   dockerRequired = false,
   riskLevel: LocalDevWorkerExecutionCapability['riskLevel'] = 'low',
   outputBytes = 2048,
+  timeoutMs = 3000,
 ): LocalDevWorkerExecutionCapability {
   return {
     capabilityId,
@@ -28,7 +29,7 @@ function capability(
     requiresManualReview: true,
     defaultEnabled: false,
     expectedOutputKind,
-    timeoutMs: 3000,
+    timeoutMs,
     maxStdoutBytes: outputBytes,
     maxStderrBytes: outputBytes,
   };
@@ -90,6 +91,39 @@ export const LOCAL_DEV_WORKER_EXECUTION_CAPABILITIES = [
   ),
   capability('capability.pwd.identity', 'pwd', [], 'identity', 'identity-string'),
   capability('capability.echo.metadata', 'echo', [], 'metadata', 'metadata-string'),
+  capability(
+    'capability.docker.container.smoke.echo',
+    'docker',
+    [
+      'run',
+      '--rm',
+      '--network',
+      'none',
+      '--pull=never',
+      '--read-only',
+      '--cap-drop',
+      'ALL',
+      '--security-opt',
+      'no-new-privileges',
+      '--memory',
+      '128m',
+      '--cpus',
+      '0.5',
+      '--pids-limit',
+      '64',
+      '--user',
+      '65534:65534',
+      'alpine:3.20',
+      'echo',
+      'hello',
+    ],
+    'smoke',
+    'metadata-string',
+    true,
+    'high',
+    4096,
+    5000,
+  ),
 ] as const satisfies readonly LocalDevWorkerExecutionCapability[];
 
 export function findLocalDevWorkerExecutionCapability(input: {

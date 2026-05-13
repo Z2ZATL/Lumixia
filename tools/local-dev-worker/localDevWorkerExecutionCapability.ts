@@ -3,7 +3,8 @@ export type LocalDevWorkerCapabilityRiskLevel = 'low' | 'medium' | 'high';
 export type LocalDevWorkerCapabilityCategory =
   | 'version'
   | 'identity'
-  | 'metadata';
+  | 'metadata'
+  | 'smoke';
 
 export type LocalDevWorkerExpectedOutputKind =
   | 'version-string'

@@ -3,6 +3,9 @@ import { classifyLocalDevWorkerDockerReadiness } from './localDevWorkerDockerRea
 import { localDevWorkerDockerReadinessFixtures } from './localDevWorkerDockerReadinessFixtures.ts';
 import { evaluateLocalDevWorkerDockerContainerReadinessGate } from './localDevWorkerDockerContainerReadinessGate.ts';
 import { localDevWorkerDockerContainerPolicyFixtures } from './localDevWorkerDockerContainerPolicyFixtures.ts';
+import { executeLocalDevWorkerDockerContainerSmoke } from './localDevWorkerDockerContainerSmokeAdapter.ts';
+import { localDevWorkerDockerContainerSmokeFixtures } from './localDevWorkerDockerContainerSmokeFixtures.ts';
+import { LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS } from './localDevWorkerDockerContainerSmokePolicy.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -16,6 +19,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedVersionExecutionFixtures: number;
   checkedDockerReadinessFixtures: number;
   checkedDockerContainerPolicyFixtures: number;
+  checkedDockerContainerSmokeFixtures: number;
   failures: string[];
 }
 
@@ -388,6 +392,127 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerContainerSmokeFixtures) {
+    const response = await executeLocalDevWorkerDockerContainerSmoke({
+      request: fixture.request,
+      dockerReadiness: fixture.dockerReadiness,
+      config: fixture.config,
+      trustedManualReview: fixture.trustedManualReview,
+    });
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noExecution === fixture.expectedNoExecution,
+      `${fixture.name}: expected noExecution ${fixture.expectedNoExecution}, got ${response.noExecution}.`,
+      failures,
+    );
+    assertCondition(
+      response.executionMode === fixture.expectedExecutionMode,
+      `${fixture.name}: expected executionMode ${fixture.expectedExecutionMode}, got ${response.executionMode}.`,
+      failures,
+    );
+    assertCondition(
+      response.executionAttempted === fixture.expectedExecutionAttempted,
+      `${fixture.name}: expected executionAttempted ${fixture.expectedExecutionAttempted}, got ${response.executionAttempted}.`,
+      failures,
+    );
+    assertCondition(
+      response.imagePulled === false,
+      `${fixture.name}: imagePulled must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.imageBuilt === false,
+      `${fixture.name}: imageBuilt must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.networkAllowed === false,
+      `${fixture.name}: networkAllowed must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.mountsAllowed === false,
+      `${fixture.name}: mountsAllowed must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.dockerSocketMounted === false,
+      `${fixture.name}: Docker socket must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.homeMounted === false,
+      `${fixture.name}: home must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.workspaceMounted === false,
+      `${fixture.name}: workspace must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.shellAllowed === false,
+      `${fixture.name}: shell must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.hostEnvironmentInherited === false,
+      `${fixture.name}: host environment must not be inherited.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.runAsNonRoot === true,
+      `${fixture.name}: smoke container must run as non-root.`,
+      failures,
+    );
+
+    if (fixture.expectedExecutionAttempted) {
+      assertCondition(
+        response.command === 'docker',
+        `${fixture.name}: smoke execution must use docker executable.`,
+        failures,
+      );
+      assertCondition(
+        JSON.stringify(response.args) ===
+          JSON.stringify(LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS),
+        `${fixture.name}: smoke args must match the exact reviewed allowlist.`,
+        failures,
+      );
+    }
+
+    if (response.ok) {
+      assertCondition(
+        response.stdout.includes('hello'),
+        `${fixture.name}: successful smoke output must include hello.`,
+        failures,
+      );
+      assertCondition(
+        response.containerStarted === fixture.expectedContainerStartedWhenOk,
+        `${fixture.name}: successful smoke should set containerStarted ${fixture.expectedContainerStartedWhenOk}.`,
+        failures,
+      );
+    }
+
+    if (
+      fixture.allowStructuredRuntimeUnavailable &&
+      (observedCodes.has('optional_docker_cli_unavailable') ||
+        observedCodes.has('docker_daemon_unavailable') ||
+        observedCodes.has('container_smoke_image_unavailable') ||
+        observedCodes.has('container_smoke_execution_failed'))
+    ) {
+      continue;
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected smoke rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -397,6 +522,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     checkedDockerReadinessFixtures: localDevWorkerDockerReadinessFixtures.length,
     checkedDockerContainerPolicyFixtures:
       localDevWorkerDockerContainerPolicyFixtures.length,
+    checkedDockerContainerSmokeFixtures:
+      localDevWorkerDockerContainerSmokeFixtures.length,
     failures,
   };
 }

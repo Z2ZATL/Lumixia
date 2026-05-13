@@ -32,6 +32,12 @@ export function createTrustedLocalDevManualReviewForCapabilities(
   };
 }
 
+export function createTrustedLocalDevManualReviewForContainerSmoke(): TrustedLocalDevManualSecurityReview {
+  return createTrustedLocalDevManualReviewForCapabilities([
+    'capability.docker.container.smoke.echo',
+  ]);
+}
+
 export function assertTrustedManualReviewSource(
   review: LocalDevWorkerManualSecurityReview | undefined,
 ): review is TrustedLocalDevManualSecurityReview {
