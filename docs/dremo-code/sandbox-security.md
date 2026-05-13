@@ -120,13 +120,15 @@ PR #20 note: the local-dev worker boundary now has a dry-run adapter, dependency
 
 PR #21 note: the worker boundary now has a disabled-by-default execution capability manifest, a pure manual review gate, and a readiness evaluator. This models the final review layer before a future execution PR, but it still does not invoke Docker, spawn processes, read secrets, call networks, write files, or expose execution through the browser.
 
-## Current Execution Status After PR #21
+PR #22 note: the first real local-dev process execution path exists only in `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`. It is disabled by default, requires trusted local manual review metadata, uses `shell: false`, passes an empty environment, bounds timeout/stdout/stderr, and only allows reviewed non-Docker version/identity commands. Docker CLI execution remains blocked.
+
+## Current Execution Status After PR #22
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Policy validation only; no worker import and no execution. |
-| Worker boundary | Dry-run adapter and verification harness only. |
-| Review gates | Capability and manual-review readiness are modeled only. No execution. |
+| Worker boundary | Reviewed local-dev non-Docker version command adapter exists; default config blocks execution. |
+| Review gates | Capability and manual-review readiness are enforced before execution. |
 | Docker | Not invoked. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |

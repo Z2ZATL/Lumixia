@@ -1,12 +1,15 @@
 import { createLocalDevWorkerDryRun } from './localDevWorkerDryRunAdapter.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
+import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
+import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
 import { localDevWorkerDryRunFixtures } from './localDevWorkerFixtures.ts';
 
 export interface LocalDevWorkerDryRunSelfCheckResult {
   passed: boolean;
   checkedDryRunFixtures: number;
   checkedExecutionReadinessFixtures: number;
+  checkedVersionExecutionFixtures: number;
   failures: string[];
 }
 
@@ -21,6 +24,12 @@ function assertCondition(
 }
 
 export function runLocalDevWorkerDryRunSelfCheck(): LocalDevWorkerDryRunSelfCheckResult {
+  throw new Error(
+    'runLocalDevWorkerDryRunSelfCheck is async now. Use runLocalDevWorkerDryRunSelfCheckAsync.',
+  );
+}
+
+export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevWorkerDryRunSelfCheckResult> {
   const failures: string[] = [];
 
   for (const fixture of localDevWorkerDryRunFixtures) {
@@ -98,14 +107,90 @@ export function runLocalDevWorkerDryRunSelfCheck(): LocalDevWorkerDryRunSelfChec
     }
   }
 
+  for (const fixture of localDevWorkerVersionExecutionFixtures) {
+    const response = await executeLocalDevWorkerVersionCommand({
+      request: fixture.request,
+      config: fixture.config,
+      trustedManualReview: fixture.trustedManualReview,
+    });
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noExecution === fixture.expectedNoExecution,
+      `${fixture.name}: version execution noExecution mismatch.`,
+      failures,
+    );
+    assertCondition(
+      response.executionMode === fixture.expectedExecutionMode,
+      `${fixture.name}: expected executionMode ${fixture.expectedExecutionMode}, got ${response.executionMode}.`,
+      failures,
+    );
+    assertCondition(
+      response.executionAttempted === fixture.expectedExecutionAttempted,
+      `${fixture.name}: expected executionAttempted ${fixture.expectedExecutionAttempted}, got ${response.executionAttempted}.`,
+      failures,
+    );
+
+    if (fixture.expectedCapabilityId && !fixture.allowCommandUnavailable) {
+      assertCondition(
+        response.capabilityId === fixture.expectedCapabilityId,
+        `${fixture.name}: expected capability ${fixture.expectedCapabilityId}, got ${response.capabilityId}.`,
+        failures,
+      );
+    }
+
+    if (fixture.expectedExecutionMode === 'executed') {
+      assertCondition(
+        response.durationMs >= 0,
+        `${fixture.name}: durationMs should be non-negative.`,
+        failures,
+      );
+      assertCondition(
+        Buffer.from(response.stdout, 'utf8').byteLength <=
+          fixture.config.maxStdoutBytes,
+        `${fixture.name}: stdout exceeded configured byte cap.`,
+        failures,
+      );
+      assertCondition(
+        Buffer.from(response.stderr, 'utf8').byteLength <=
+          fixture.config.maxStderrBytes,
+        `${fixture.name}: stderr exceeded configured byte cap.`,
+        failures,
+      );
+      assertCondition(
+        response.safetyMetadata.shellAllowed === false,
+        `${fixture.name}: shell must remain disabled.`,
+        failures,
+      );
+      assertCondition(
+        response.safetyMetadata.hostEnvironmentInherited === false,
+        `${fixture.name}: host environment must not be inherited.`,
+        failures,
+      );
+    }
+
+    if (
+      fixture.allowCommandUnavailable &&
+      observedCodes.has('optional_command_unavailable')
+    ) {
+      continue;
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected execution rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
     checkedExecutionReadinessFixtures:
       localDevWorkerExecutionReadinessFixtures.length,
+    checkedVersionExecutionFixtures: localDevWorkerVersionExecutionFixtures.length,
     failures,
   };
 }
-
-export const localDevWorkerDryRunSelfCheckSummary =
-  runLocalDevWorkerDryRunSelfCheck();
