@@ -38,6 +38,8 @@ The lab also includes a Policy Validation Smoke section. It runs the pure TypeSc
 
 Local-dev Docker execution remains unavailable from the production UI. The Docker adapter lives behind disabled static gates and still returns blocked results from browser-bundled code. Real Docker invocation must be implemented in a separate local-dev worker process and must not be exposed through the Dremo Lab or Code Architect surfaces by default.
 
+The local-dev worker boundary now lives under `tools/local-dev-worker/`, outside the Vite browser bundle. It remains blocked/dry-run only and is not imported by the frontend.
+
 ## Suggested Desktop Layout
 
 ```text

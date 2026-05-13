@@ -53,6 +53,10 @@ Dremo Code must be audit-safe from day one:
 | Artifacts | Backend controls artifact creation, retention, and access. |
 | Approvals | User decisions are captured through authenticated API calls. |
 
+## Local-dev Worker Boundary
+
+`tools/local-dev-worker/` is the first out-of-bundle worker boundary for future local-dev Docker execution. It is not imported by `src/`, does not expose a browser or production UI execution path, and remains blocked/dry-run only until a separate security-reviewed worker PR enables local-dev execution.
+
 ## Recommended Next PR
 
 The next PR should add a sandbox runner interface without executing commands. It should define provider interfaces, policy config shape, and event mapping only. It should not add Docker/E2B/Daytona integration code, arbitrary command execution, billing changes, or Code Architect AI rename work.
