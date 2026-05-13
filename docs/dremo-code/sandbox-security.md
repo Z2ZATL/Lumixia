@@ -20,6 +20,8 @@ Docker probe note: PR #23 allows only `docker --version` inside the local-dev wo
 
 Docker readiness note: PR #24 adds Docker daemon readiness classification only. It may run the exact local-dev command `docker version --format "{{json .}}"` to classify CLI/daemon availability, but it does not start containers, pull or build images, inspect runtime objects, mount Docker socket, mount home directories, use network commands, write files, or expose execution through browser/production paths.
 
+Container design-gate note: PR #25 adds policy models for future local-dev container execution: image allowlists, command allowlists, no-network/no-mount policies, resource limits, security policy, plan-only Docker run preview, and self-check fixtures. It still does not execute `docker run`, start containers, pull/build images, mount workspaces, enable network, write files, or expose execution through browser/production paths.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:

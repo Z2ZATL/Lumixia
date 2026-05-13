@@ -101,6 +101,17 @@ PR #24 implementation status:
 | Containers/images | No container is started, no image is pulled or built, and no runtime object is inspected. |
 | Browser boundary | `src/` remains process-free and does not import worker code. |
 
+PR #25 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Container policy types | Added image, resource, network, mount, and security policies for future container execution. |
+| Plan model | Added `dockerRunPreview` as a string-array preview only; it is never executed. |
+| Image policy | Allows only exact future images such as `alpine:3.20` and `node:20-alpine`; denies `latest`, untagged, private registry, arbitrary, digest, whitespace, and shell-metacharacter images. |
+| Command policy | Allows only tiny plan-only commands; denies shells, package installs, network tools, file writes, destructive commands, and Docker commands inside containers. |
+| Runtime policy | Network, DNS, Docker socket, home mount, workspace mount, tmpfs, privileged mode, host namespace use, capability add, and root execution remain denied. |
+| Execution | No `docker run`, image pull/build, container start, inspect, cleanup, or mount behavior exists. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -318,13 +329,13 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add Docker daemon availability/readiness classification** or **write the container execution design review**.
+Recommended next PR: **Add first no-network/no-mount local-dev container smoke execution** only after explicit review, or further refine the workspace policy before execution.
 
-PR #24 fulfills the readiness classification step. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification and PR #25 fulfills the design-gate layer. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
-| Commands | Keep `docker --version` and readiness-only `docker version --format "{{json .}}"` as the only Docker commands attempted until a separate container execution review is complete. |
+| Commands | If execution is added, allow only a tiny no-network/no-mount smoke command from the PR #25 plan policy. |
 | Denied commands | `docker version`, `docker info`, `docker run`, `docker build`, `docker compose`, `docker pull`, and socket/mount paths remain denied. |
 | Shell | No shell chaining and no arbitrary shell. |
 | Filesystem | No file writes. Temporary task-scoped workspace only. |
