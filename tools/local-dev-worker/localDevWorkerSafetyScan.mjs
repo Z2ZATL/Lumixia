@@ -8,6 +8,7 @@ const browserSandboxForbiddenPatterns = [
   { label: 'localDevWorkerDryRunAdapter', pattern: /localDevWorkerDryRunAdapter/ },
   { label: 'localDevWorkerContract tools path', pattern: /localDevWorkerContract/ },
   { label: 'child_process', pattern: /child_process/ },
+  { label: 'node:child_process', pattern: /node:child_process/ },
   { label: 'Deno.Command', pattern: /Deno\.Command/ },
   { label: 'spawn(', pattern: /\bspawn\s*\(/ },
   { label: 'exec(', pattern: /\bexec\s*\(/ },

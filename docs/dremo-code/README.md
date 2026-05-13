@@ -63,14 +63,16 @@ PR #21 adds the final pre-execution review layer: a disabled-by-default capabili
 
 PR #22 adds the first manually gated local-dev version command execution adapter. Execution is isolated to `tools/local-dev-worker`, disabled by default, not imported by `src/`, and limited to reviewed non-Docker version/identity commands. Docker CLI execution remains blocked.
 
-## Current Execution Status After PR #20
+PR #23 adds the first Docker-specific probe inside that same worker boundary. Only `docker --version` may be attempted, and only with the Docker-specific reviewed local-dev config and trusted review scope. It does not run containers, query daemon state, mount Docker socket, mount home directories, or expose execution through `src/`, Dremo Lab, production UI, Supabase functions, SQL, billing, or TerminalWorkspace.
+
+## Current Execution Status After PR #23
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Browser-safe policy validation only. No worker import and no execution. |
-| Worker boundary | Local-dev-only adapter exists for reviewed non-Docker version/identity commands. Default config blocks execution. |
+| Worker boundary | Local-dev-only adapter exists for reviewed version/identity commands. Default config blocks execution. |
 | Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
-| Docker | Not invoked. |
+| Docker | Only `docker --version` may be attempted under Docker-specific trusted local-dev review. `docker version`, `docker info`, `docker run`, `docker build`, and `docker compose` remain denied. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -78,4 +80,4 @@ PR #22 adds the first manually gated local-dev version command execution adapter
 
 ## Recommended Next PR
 
-The next execution PR should be Docker-specific only if it passes a separate review. `docker --version`, `docker run`, `docker build`, and `docker compose` remain blocked until then.
+The next Docker PR should not jump to `docker run`. Keep the next step to Docker daemon availability/readiness classification or a container execution design review only.

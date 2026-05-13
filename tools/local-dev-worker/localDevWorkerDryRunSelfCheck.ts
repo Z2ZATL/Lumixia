@@ -163,6 +163,21 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
         failures,
       );
       assertCondition(
+        response.safetyMetadata.dockerRuntimeAllowed === false,
+        `${fixture.name}: Docker runtime must remain disabled.`,
+        failures,
+      );
+      assertCondition(
+        response.safetyMetadata.dockerDaemonStateQueried === false,
+        `${fixture.name}: Docker daemon state must not be queried.`,
+        failures,
+      );
+      assertCondition(
+        response.safetyMetadata.dockerSocketMounted === false,
+        `${fixture.name}: Docker socket must not be mounted.`,
+        failures,
+      );
+      assertCondition(
         response.safetyMetadata.hostEnvironmentInherited === false,
         `${fixture.name}: host environment must not be inherited.`,
         failures,
@@ -171,7 +186,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
 
     if (
       fixture.allowCommandUnavailable &&
-      observedCodes.has('optional_command_unavailable')
+      (observedCodes.has('optional_command_unavailable') ||
+        observedCodes.has('optional_docker_cli_unavailable'))
     ) {
       continue;
     }

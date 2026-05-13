@@ -1,5 +1,6 @@
 import {
   LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG,
+  LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG,
   LOCAL_DEV_WORKER_REVIEWED_VERSION_COMMAND_EXECUTION_CONFIG,
   type LocalDevWorkerExecutionConfig,
 } from './localDevWorkerExecutionConfig.ts';
@@ -95,6 +96,50 @@ function executable(
   };
 }
 
+function dockerBlocked(
+  name: string,
+  command: string,
+  args: readonly string[],
+  expectedRejectionCodes: readonly string[],
+  overrides: Partial<LocalDevWorkerExecutionReadinessRequest> = {},
+  config: LocalDevWorkerExecutionConfig = LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG,
+  trustedManualReview: TrustedLocalDevManualSecurityReview | 'missing' =
+    trustedReview('capability.docker.version'),
+): LocalDevWorkerVersionExecutionFixture {
+  return blocked(
+    name,
+    command,
+    args,
+    expectedRejectionCodes,
+    'capability.docker.version',
+    overrides,
+    config,
+    trustedManualReview,
+  );
+}
+
+function dockerExecutable(
+  name: string,
+): LocalDevWorkerVersionExecutionFixture {
+  return {
+    name,
+    request: request(
+      name,
+      'docker',
+      ['--version'],
+      'capability.docker.version',
+    ),
+    config: LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG,
+    trustedManualReview: trustedReview('capability.docker.version'),
+    expectedExecutionMode: 'executed',
+    expectedNoExecution: false,
+    expectedExecutionAttempted: true,
+    expectedCapabilityId: 'capability.docker.version',
+    expectedRejectionCodes: [],
+    allowCommandUnavailable: true,
+  };
+}
+
 export const localDevWorkerVersionExecutionFixtures = [
   blocked(
     'default-config-blocks-node-version',
@@ -143,19 +188,162 @@ export const localDevWorkerVersionExecutionFixtures = [
     'missing',
   ),
   blocked(
-    'docker-version-blocked',
+    'default-config-blocks-docker-version',
     'docker',
     ['--version'],
-    ['docker_capability_blocked', 'capability_blocked_by_config'],
+    [
+      'execution_config_disabled',
+      'docker_probe_execution_mode_required',
+      'docker_cli_disabled',
+      'capability_blocked_by_config',
+    ],
+    'capability.docker.version',
+    {},
+    LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG,
+    trustedReview('capability.docker.version'),
+  ),
+  blocked(
+    'non-docker-config-blocks-docker-version',
+    'docker',
+    ['--version'],
+    ['docker_probe_execution_mode_required', 'docker_cli_disabled'],
     'capability.docker.version',
     {},
     LOCAL_DEV_WORKER_REVIEWED_VERSION_COMMAND_EXECUTION_CONFIG,
     trustedReview('capability.docker.version'),
   ),
-  blocked('docker-run-blocked', 'docker', ['run', 'alpine'], [
+  dockerBlocked(
+    'missing-trusted-review-blocks-docker-version',
+    'docker',
+    ['--version'],
+    [
+      'trusted_manual_review_missing',
+      'manual_review_incomplete',
+      'manual_review_missing_reviewer',
+      'manual_review_missing_reviewed_at',
+      'docker_probe_review_scope_not_exact',
+    ],
+    {},
+    LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG,
+    'missing',
+  ),
+  dockerBlocked(
+    'untrusted-request-review-blocks-docker-version',
+    'docker',
+    ['--version'],
+    [
+      'trusted_manual_review_missing',
+      'manual_review_incomplete',
+      'manual_review_missing_reviewer',
+      'manual_review_missing_reviewed_at',
+      'docker_probe_review_scope_not_exact',
+    ],
+    {
+      manualSecurityReview: {
+        completed: true,
+        reviewedBy: 'browser-payload',
+        reviewedAt: '2026-05-13T00:00:00Z',
+        scope: ['capability.docker.version'],
+      },
+    },
+    LOCAL_DEV_WORKER_REVIEWED_DOCKER_VERSION_PROBE_CONFIG,
+    'missing',
+  ),
+  dockerBlocked('docker-version-daemon-state-blocked', 'docker', ['version'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_daemon_state_command_denied',
+  ]),
+  dockerBlocked('docker-info-blocked', 'docker', ['info'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_daemon_state_command_denied',
+  ]),
+  dockerBlocked('docker-run-blocked', 'docker', ['run', 'alpine'], [
     'worker_docker_runtime_denied',
-    'worker_command_not_allowlisted',
-    'capability_not_found',
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-build-blocked', 'docker', ['build', '.'], [
+    'worker_docker_runtime_denied',
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-compose-subcommand-blocked', 'docker', ['compose', 'up'], [
+    'worker_docker_runtime_denied',
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-compose-binary-blocked', 'docker-compose', ['up'], [
+    'worker_docker_runtime_denied',
+    'docker_probe_command_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-pull-blocked', 'docker', ['pull', 'alpine'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-exec-blocked', 'docker', ['exec', 'container'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-login-blocked', 'docker', ['login'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_runtime_command_denied',
+  ]),
+  dockerBlocked('docker-inspect-blocked', 'docker', ['inspect', 'container'], [
+    'docker_probe_capability_not_allowed',
+    'docker_probe_args_not_exact',
+    'docker_daemon_state_command_denied',
+  ]),
+  dockerBlocked('docker-version-extra-arg-blocked', 'docker', ['--version', 'x'], [
+    'docker_probe_args_not_exact',
+  ]),
+  dockerBlocked('docker-version-shell-chain-blocked', 'docker', [
+    '--version',
+    '&&',
+    'pwd',
+  ], [
+    'worker_shell_chaining_denied',
+    'docker_probe_args_not_exact',
+    'docker_probe_shell_metacharacter_denied',
+  ]),
+  dockerBlocked(
+    'docker-version-production-ui-path-blocked',
+    'docker',
+    ['--version'],
+    ['production_ui_path_denied'],
+    { productionUiPath: true },
+  ),
+  dockerBlocked(
+    'docker-version-src-import-path-blocked',
+    'docker',
+    ['--version'],
+    ['src_import_path_denied'],
+    { srcImportPath: true },
+  ),
+  dockerBlocked('docker-socket-reference-blocked', 'docker', [
+    '--version',
+    '/var/run/docker.sock',
+  ], [
+    'worker_docker_socket_denied',
+    'docker_probe_args_not_exact',
+    'docker_socket_denied',
+  ]),
+  dockerBlocked('docker-home-mount-reference-blocked', 'docker', [
+    '--version',
+    '~/workspace',
+  ], [
+    'worker_home_mount_denied',
+    'docker_probe_args_not_exact',
+    'docker_mount_denied',
   ]),
   blocked('npm-install-blocked', 'npm', ['install'], [
     'worker_package_install_denied',
@@ -260,4 +448,5 @@ export const localDevWorkerVersionExecutionFixtures = [
   ),
   executable('pwd-identity-executes', 'pwd', [], 'capability.pwd.identity'),
   executable('echo-metadata-executes', 'echo', [], 'capability.echo.metadata'),
+  dockerExecutable('docker-version-probe-attempts'),
 ] as const satisfies readonly LocalDevWorkerVersionExecutionFixture[];

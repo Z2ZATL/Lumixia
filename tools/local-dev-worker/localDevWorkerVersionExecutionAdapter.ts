@@ -5,6 +5,7 @@ import {
   LOCAL_DEV_WORKER_DEFAULT_EXECUTION_CONFIG,
   type LocalDevWorkerExecutionConfig,
 } from './localDevWorkerExecutionConfig.ts';
+import { evaluateLocalDevWorkerDockerProbePolicy } from './localDevWorkerDockerProbePolicy.ts';
 import {
   evaluateLocalDevWorkerExecutionReadiness,
   type LocalDevWorkerExecutionReadinessRequest,
@@ -19,6 +20,9 @@ export interface LocalDevWorkerVersionExecutionSafetyMetadata {
   workerBoundary: 'outside-browser-bundle';
   allowRealExecution: boolean;
   dockerExecutionImplemented: false;
+  dockerCliAllowed: boolean;
+  dockerRuntimeAllowed: false;
+  dockerDaemonStateQueried: false;
   dockerSocketMounted: false;
   homeMounted: false;
   networkAllowed: false;
@@ -62,6 +66,9 @@ function createSafetyMetadata(
     workerBoundary: 'outside-browser-bundle',
     allowRealExecution: config.allowRealExecution,
     dockerExecutionImplemented: false,
+    dockerCliAllowed: config.allowDockerCli,
+    dockerRuntimeAllowed: false,
+    dockerDaemonStateQueried: false,
     dockerSocketMounted: false,
     homeMounted: false,
     networkAllowed: false,
@@ -179,11 +186,16 @@ function runExecFile(input: {
             : typedError
               ? null
               : 0;
-        const rejectionCodes =
+        const isOptionalCommandUnavailable =
           typedError?.code &&
-          OPTIONAL_COMMAND_NOT_FOUND_CODES.has(String(typedError.code))
-            ? ['optional_command_unavailable']
-            : [];
+          OPTIONAL_COMMAND_NOT_FOUND_CODES.has(String(typedError.code));
+        const rejectionCodes = isOptionalCommandUnavailable
+          ? [
+              input.capabilityId === 'capability.docker.version'
+                ? 'optional_docker_cli_unavailable'
+                : 'optional_command_unavailable',
+            ]
+          : [];
 
         resolve({
           ok: !typedError,
@@ -232,6 +244,13 @@ export async function executeLocalDevWorkerVersionCommand(input: {
   const readiness = evaluateLocalDevWorkerExecutionReadiness(readinessRequest);
   const capabilityId = readiness.matchedCapabilityId;
   const rejectionCodes = [...readiness.rejectionCodes];
+  const isDockerRequest = ['docker', 'docker-compose'].includes(
+    input.request.command.trim().toLowerCase(),
+  );
+  const dockerProbePolicy = evaluateLocalDevWorkerDockerProbePolicy({
+    request: input.request,
+    capabilityId,
+  });
 
   if (!assertTrustedManualReviewSource(input.trustedManualReview)) {
     rejectionCodes.push('trusted_manual_review_missing');
@@ -239,10 +258,6 @@ export async function executeLocalDevWorkerVersionCommand(input: {
 
   if (!config.allowRealExecution) {
     rejectionCodes.push('execution_config_disabled');
-  }
-
-  if (config.executionMode !== 'reviewed-local-version-commands') {
-    rejectionCodes.push('execution_mode_not_reviewed_local_version_commands');
   }
 
   if (config.inheritHostEnvironment) {
@@ -261,13 +276,48 @@ export async function executeLocalDevWorkerVersionCommand(input: {
     rejectionCodes.push('file_write_execution_denied');
   }
 
-  if (
-    config.allowDockerCli ||
-    config.allowDockerRuntime ||
-    readiness.matchedCapability?.dockerRequired ||
-    capabilityId === 'capability.docker.version'
-  ) {
-    rejectionCodes.push('docker_capability_blocked');
+  if (isDockerRequest) {
+    if (config.executionMode !== 'reviewed-local-docker-version-probe') {
+      rejectionCodes.push('docker_probe_execution_mode_required');
+    }
+
+    if (!config.allowDockerCli) {
+      rejectionCodes.push('docker_cli_disabled');
+    }
+
+    if (config.allowDockerRuntime) {
+      rejectionCodes.push('docker_runtime_execution_denied');
+    }
+
+    if (config.allowDockerSocket) {
+      rejectionCodes.push('docker_socket_execution_denied');
+    }
+
+    if (config.allowHomeMount) {
+      rejectionCodes.push('home_mount_execution_denied');
+    }
+
+    if (
+      !assertTrustedManualReviewSource(input.trustedManualReview) ||
+      input.trustedManualReview.scope.length !== 1 ||
+      input.trustedManualReview.scope[0] !== 'capability.docker.version'
+    ) {
+      rejectionCodes.push('docker_probe_review_scope_not_exact');
+    }
+
+    rejectionCodes.push(...dockerProbePolicy.rejectionCodes);
+  } else {
+    if (config.executionMode !== 'reviewed-local-version-commands') {
+      rejectionCodes.push('execution_mode_not_reviewed_local_version_commands');
+    }
+
+    if (
+      config.allowDockerCli ||
+      config.allowDockerRuntime ||
+      readiness.matchedCapability?.dockerRequired
+    ) {
+      rejectionCodes.push('docker_capability_blocked');
+    }
   }
 
   if (!capabilityId) {

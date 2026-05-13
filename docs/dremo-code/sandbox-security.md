@@ -16,6 +16,8 @@ Local-dev adapter skeleton note: PR #16 adds `DockerLocalDevSandboxRunner` and s
 
 Docker execution checklist note: [docker-execution-security-checklist.md](./docker-execution-security-checklist.md) is a required gate before any PR enables real local-dev Docker execution. It defines threat model coverage, absolute blockers, command policy, mount policy, network policy, event/audit requirements, manual review, and rollback.
 
+Docker probe note: PR #23 allows only `docker --version` inside the local-dev worker boundary, under a Docker-specific reviewed config and exact trusted review scope. It does not run containers, query Docker daemon state with `docker version` or `docker info`, mount Docker socket, mount the user home directory, use networks, write files, or expose execution through `src/`, Dremo Lab, production UI, Supabase functions, SQL, billing, or TerminalWorkspace.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
