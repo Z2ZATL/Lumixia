@@ -39,6 +39,19 @@ PR #19 implementation status:
 | Browser source safety scan | Implemented as `node tools/local-dev-worker/localDevWorkerSafetyScan.mjs`. |
 | Real Docker invocation | Still deferred to a future reviewed local-dev worker PR. |
 
+PR #20 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Dry-run adapter | Implemented under `tools/local-dev-worker/localDevWorkerDryRunAdapter.ts`; always preserves `noExecution: true`. |
+| Request validation | Implemented without new dependencies; validates shape, bounded strings, args, source, environment, and harness identity. |
+| Trace/audit metadata | Implemented with deterministic dry-run trace metadata and explicit safety flags. |
+| Fixture coverage | Added accepted-by-classification and rejected command fixtures. Accepted fixtures still expect `noExecution: true`. |
+| Self-check harness | Added TypeScript fixture self-check helper and zero-dependency Node runner; no commands are executed. |
+| Package verification scripts | Added `dremo:worker:typecheck`, `dremo:worker:safety`, and `dremo:worker:verify`. |
+| Boundary scan | Expanded to fail if `src/` imports or references the local-dev worker implementation. |
+| Real Docker invocation | Still not implemented. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -209,6 +222,27 @@ The future PR that enables Docker execution must include evidence for every item
 | Cleanup | Confirm container/session/workspace cleanup and stale session sweeper. |
 | Smoke tests | Confirm allowed version commands work and denied commands remain blocked. |
 | Rollback | Confirm feature flag can disable execution immediately. |
+
+## 10.1 Future Real Execution PR Checklist
+
+The next PR that attempts real execution must prove:
+
+| Check | Required proof |
+| --- | --- |
+| Worker boundary | Worker remains outside `src/`; no browser import path exists. |
+| Feature flags | Execution feature flag remains disabled by default and requires local opt-in. |
+| `allowRealExecution` | Remains false by default. |
+| Command scope | First execution path supports only version/identity checks. |
+| Shell policy | No shell chaining and no arbitrary shell. |
+| Package managers | No package install. |
+| Repository ingestion | No `git clone`. |
+| Network | No network. |
+| Docker socket | No Docker socket mount. |
+| Home mount | No user home mount. |
+| Secrets | No secrets or service role keys in args, env, files, logs, or artifacts. |
+| Resource bounds | Bounded timeout, stdout, stderr, CPU, and memory. |
+| Audit trace | Structured dry-run/execution trace survives into server-owned events later. |
+| Manual review | Security review completed before merge. |
 
 ## 11. Rollback Plan
 

@@ -11,6 +11,12 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerContract.ts` | Local-dev worker request/response contract for future Docker execution. |
 | `localDevWorkerGuards.ts` | Pure command guard logic for shell chaining, network commands, package installs, file writes, Docker runtime commands, home mounts, Docker socket exposure, and secret access patterns. |
 | `localDevWorkerRunner.ts` | Blocked/dry-run runner stub. It never executes commands and always returns `noExecution: true`. |
+| `localDevWorkerRequestValidation.ts` | Dependency-free request shape validation for dry-run worker requests. |
+| `localDevWorkerTrace.ts` | Deterministic dry-run trace and safety metadata helpers. |
+| `localDevWorkerDryRunAdapter.ts` | Converts validated dry-run requests into the blocked/dry-run runner flow. |
+| `localDevWorkerFixtures.ts` | Deterministic accepted and rejected dry-run fixtures. |
+| `localDevWorkerDryRunSelfCheck.ts` | TypeScript self-check harness for fixture expectations. |
+| `localDevWorkerDryRunSelfCheckRunner.ts` | Zero-dependency Node runner for executing the dry-run self-check. |
 | `localDevWorkerSafetyScan.mjs` | Dev safety scan that fails if forbidden process/Docker/network/filesystem APIs appear in browser-bundled sandbox source. |
 
 ## Non-goals
@@ -33,6 +39,31 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 ```
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It intentionally does not scan this `tools/` folder because the worker boundary documentation and guard strings mention denied command names by design.
+
+The scan also checks `src/` for imports or references to worker implementation files. The frontend must not import this worker boundary.
+
+## Verification Scripts
+
+```powershell
+npm run dremo:worker:typecheck
+npm run dremo:worker:selfcheck
+npm run dremo:worker:safety
+npm run dremo:worker:verify
+```
+
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the dry-run fixture self-check with `noExecution: true`, then run the browser-boundary safety scan. They do not execute commands, call Docker, read secrets, or write files.
+
+## Current Execution Status After PR #20
+
+| Area | Status |
+| --- | --- |
+| Browser sandbox | Validation only; no execution. |
+| Worker boundary | Dry-run only; no execution. |
+| Docker | Not invoked. |
+| Network | Disabled; no worker runtime calls. |
+| File writes | Disabled; no worker runtime writes. |
+| Secrets | Not read. |
+| Production UI | No path to execution. |
 
 ## Future Execution Gate
 

@@ -3,8 +3,8 @@ import {
   LOCAL_DEV_WORKER_SAFETY_METADATA,
   type LocalDevWorkerCommandRequest,
   type LocalDevWorkerCommandResponse,
-} from './localDevWorkerContract';
-import { classifyLocalDevWorkerCommand } from './localDevWorkerGuards';
+} from './localDevWorkerContract.ts';
+import { classifyLocalDevWorkerCommand } from './localDevWorkerGuards.ts';
 
 const REAL_EXECUTION_DEFERRED_REASON =
   'Real Docker execution is not implemented in this worker-boundary PR. A future manual security review PR must add the only process/Docker invocation path.';

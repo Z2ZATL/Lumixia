@@ -7,7 +7,11 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dremo:worker:safety": "node tools/local-dev-worker/localDevWorkerSafetyScan.mjs",
+    "dremo:worker:selfcheck": "node tools/local-dev-worker/localDevWorkerDryRunSelfCheckRunner.ts",
+    "dremo:worker:typecheck": "tsc --noEmit --strict --target ES2020 --module ESNext --moduleResolution bundler --allowImportingTsExtensions tools/local-dev-worker/localDevWorkerContract.ts tools/local-dev-worker/localDevWorkerGuards.ts tools/local-dev-worker/localDevWorkerRunner.ts tools/local-dev-worker/localDevWorkerRequestValidation.ts tools/local-dev-worker/localDevWorkerTrace.ts tools/local-dev-worker/localDevWorkerDryRunAdapter.ts tools/local-dev-worker/localDevWorkerFixtures.ts tools/local-dev-worker/localDevWorkerDryRunSelfCheck.ts tools/local-dev-worker/localDevWorkerDryRunSelfCheckRunner.ts",
+    "dremo:worker:verify": "npm run dremo:worker:typecheck && npm run dremo:worker:selfcheck && npm run dremo:worker:safety"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

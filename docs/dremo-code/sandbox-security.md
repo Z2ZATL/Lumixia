@@ -116,6 +116,20 @@ PR #18 note: the local-dev Docker adapter now has explicit config gates and pure
 
 PR #19 note: `tools/local-dev-worker/` creates that local-dev worker boundary outside the browser bundle. It includes a worker-specific contract, pure guards, a blocked/dry-run runner, and a safety scan that prevents process/Docker APIs from entering `src/features/dremo-code/sandbox`. Real Docker execution is still not implemented.
 
+PR #20 note: the local-dev worker boundary now has a dry-run adapter, dependency-free request validation, deterministic trace/audit metadata, accepted/rejected fixtures, an executable TypeScript self-check harness, npm verification scripts, and an expanded boundary scan that checks `src/` does not import worker implementation files. The worker remains dry-run only and every response preserves `noExecution: true`.
+
+## Current Execution Status After PR #20
+
+| Area | Status |
+| --- | --- |
+| Browser sandbox | Policy validation only; no worker import and no execution. |
+| Worker boundary | Dry-run adapter and verification harness only. |
+| Docker | Not invoked. |
+| Network | No worker runtime calls. |
+| File writes | No worker runtime writes. |
+| Secrets | Not read, injected, logged, or traced. |
+| Production UI | No path to worker execution. |
+
 ## File Policy
 
 | Path class | Policy |

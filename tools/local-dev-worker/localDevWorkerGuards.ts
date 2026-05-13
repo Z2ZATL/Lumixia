@@ -3,7 +3,7 @@ import {
   type LocalDevWorkerCommandClassification,
   type LocalDevWorkerCommandRejection,
   type LocalDevWorkerCommandRequest,
-} from './localDevWorkerContract';
+} from './localDevWorkerContract.ts';
 
 const SHELL_CHAINING_TOKENS = [';', '&&', '||', '|', '>', '>>', '<', '`', '$('];
 const PACKAGE_INSTALL_PATTERNS = [
@@ -107,7 +107,9 @@ function matchCommandText(
     (pattern) =>
       normalizedCommand === pattern ||
       normalizedCommand.startsWith(`${pattern} `) ||
-      normalizedCommand.includes(` ${pattern} `),
+      normalizedCommand.includes(` ${pattern} `) ||
+      normalizedCommand.endsWith(` ${pattern}`) ||
+      normalizedCommand.includes(pattern),
   );
 }
 
