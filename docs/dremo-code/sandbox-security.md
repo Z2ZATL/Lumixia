@@ -118,12 +118,15 @@ PR #19 note: `tools/local-dev-worker/` creates that local-dev worker boundary ou
 
 PR #20 note: the local-dev worker boundary now has a dry-run adapter, dependency-free request validation, deterministic trace/audit metadata, accepted/rejected fixtures, an executable TypeScript self-check harness, npm verification scripts, and an expanded boundary scan that checks `src/` does not import worker implementation files. The worker remains dry-run only and every response preserves `noExecution: true`.
 
-## Current Execution Status After PR #20
+PR #21 note: the worker boundary now has a disabled-by-default execution capability manifest, a pure manual review gate, and a readiness evaluator. This models the final review layer before a future execution PR, but it still does not invoke Docker, spawn processes, read secrets, call networks, write files, or expose execution through the browser.
+
+## Current Execution Status After PR #21
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Policy validation only; no worker import and no execution. |
 | Worker boundary | Dry-run adapter and verification harness only. |
+| Review gates | Capability and manual-review readiness are modeled only. No execution. |
 | Docker | Not invoked. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |

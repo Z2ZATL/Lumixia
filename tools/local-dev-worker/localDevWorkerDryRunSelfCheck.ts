@@ -1,9 +1,12 @@
 import { createLocalDevWorkerDryRun } from './localDevWorkerDryRunAdapter.ts';
+import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
+import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { localDevWorkerDryRunFixtures } from './localDevWorkerFixtures.ts';
 
 export interface LocalDevWorkerDryRunSelfCheckResult {
   passed: boolean;
-  checkedFixtures: number;
+  checkedDryRunFixtures: number;
+  checkedExecutionReadinessFixtures: number;
   failures: string[];
 }
 
@@ -62,9 +65,44 @@ export function runLocalDevWorkerDryRunSelfCheck(): LocalDevWorkerDryRunSelfChec
     }
   }
 
+  for (const fixture of localDevWorkerExecutionReadinessFixtures) {
+    const response = evaluateLocalDevWorkerExecutionReadiness(fixture.request);
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noExecution === fixture.expectedNoExecution,
+      `${fixture.name}: readiness noExecution mismatch.`,
+      failures,
+    );
+    assertCondition(
+      response.readyForFutureExecution ===
+        fixture.expectedReadyForFutureExecution,
+      `${fixture.name}: expected readyForFutureExecution ${fixture.expectedReadyForFutureExecution}, got ${response.readyForFutureExecution}.`,
+      failures,
+    );
+
+    if (fixture.expectedMatchedCapabilityId) {
+      assertCondition(
+        response.matchedCapabilityId === fixture.expectedMatchedCapabilityId,
+        `${fixture.name}: expected matched capability ${fixture.expectedMatchedCapabilityId}, got ${response.matchedCapabilityId}.`,
+        failures,
+      );
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected readiness rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
-    checkedFixtures: localDevWorkerDryRunFixtures.length,
+    checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
+    checkedExecutionReadinessFixtures:
+      localDevWorkerExecutionReadinessFixtures.length,
     failures,
   };
 }

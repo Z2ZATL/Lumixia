@@ -59,12 +59,15 @@ Dremo Code must be audit-safe from day one:
 
 PR #20 extends that boundary with a dry-run adapter, dependency-free request validation, deterministic trace/audit metadata, fixture coverage, an executable TypeScript self-check harness, npm verification scripts, and a stronger safety scan. It still performs no real execution and preserves `noExecution: true`.
 
+PR #21 adds the final pre-execution review layer: a disabled-by-default capability manifest, a pure manual review gate, a readiness evaluator, readiness fixtures, and self-check coverage for future execution eligibility. It still performs no real execution and keeps `noExecution: true`.
+
 ## Current Execution Status After PR #20
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Browser-safe policy validation only. No worker import and no execution. |
 | Worker boundary | Dry-run adapter and verification harness only. No execution. |
+| Review gates | Capability and manual-review readiness are modeled only. No execution. |
 | Docker | Not invoked. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |
@@ -73,4 +76,4 @@ PR #20 extends that boundary with a dry-run adapter, dependency-free request val
 
 ## Recommended Next PR
 
-The next real execution PR should remain local-dev only, disabled by default, manually security-reviewed, and limited to version/identity commands. Until that review is complete, Dremo must keep browser validation and worker dry-run behavior separate from any Docker/process invocation.
+The next real execution PR may add the first local-dev version-command execution adapter only after manual security review. It must remain disabled by default, local-dev only, and limited to version/identity commands.
