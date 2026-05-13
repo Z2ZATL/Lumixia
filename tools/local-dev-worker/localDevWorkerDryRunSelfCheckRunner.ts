@@ -1,10 +1,10 @@
-import { runLocalDevWorkerDryRunSelfCheck } from './localDevWorkerDryRunSelfCheck.ts';
+import { runLocalDevWorkerDryRunSelfCheckAsync } from './localDevWorkerDryRunSelfCheck.ts';
 
-const result = runLocalDevWorkerDryRunSelfCheck();
+const result = await runLocalDevWorkerDryRunSelfCheckAsync();
 
 if (result.passed) {
   console.log(
-    `Dremo local-dev worker self-check passed (${result.checkedDryRunFixtures} dry-run fixtures, ${result.checkedExecutionReadinessFixtures} readiness fixtures).`,
+    `Dremo local-dev worker self-check passed (${result.checkedDryRunFixtures} dry-run fixtures, ${result.checkedExecutionReadinessFixtures} readiness fixtures, ${result.checkedVersionExecutionFixtures} version execution fixtures).`,
   );
 } else {
   console.error('Dremo local-dev worker dry-run self-check failed.');

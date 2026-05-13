@@ -61,13 +61,15 @@ PR #20 extends that boundary with a dry-run adapter, dependency-free request val
 
 PR #21 adds the final pre-execution review layer: a disabled-by-default capability manifest, a pure manual review gate, a readiness evaluator, readiness fixtures, and self-check coverage for future execution eligibility. It still performs no real execution and keeps `noExecution: true`.
 
+PR #22 adds the first manually gated local-dev version command execution adapter. Execution is isolated to `tools/local-dev-worker`, disabled by default, not imported by `src/`, and limited to reviewed non-Docker version/identity commands. Docker CLI execution remains blocked.
+
 ## Current Execution Status After PR #20
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Browser-safe policy validation only. No worker import and no execution. |
-| Worker boundary | Dry-run adapter and verification harness only. No execution. |
-| Review gates | Capability and manual-review readiness are modeled only. No execution. |
+| Worker boundary | Local-dev-only adapter exists for reviewed non-Docker version/identity commands. Default config blocks execution. |
+| Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
 | Docker | Not invoked. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |
@@ -76,4 +78,4 @@ PR #21 adds the final pre-execution review layer: a disabled-by-default capabili
 
 ## Recommended Next PR
 
-The next real execution PR may add the first local-dev version-command execution adapter only after manual security review. It must remain disabled by default, local-dev only, and limited to version/identity commands.
+The next execution PR should be Docker-specific only if it passes a separate review. `docker --version`, `docker run`, `docker build`, and `docker compose` remain blocked until then.

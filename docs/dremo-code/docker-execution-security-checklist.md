@@ -63,6 +63,20 @@ PR #21 implementation status:
 | `noExecution` | Preserved on every readiness path. |
 | Real Docker invocation | Still not implemented. |
 
+PR #22 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| First process execution path | Implemented only in `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`. |
+| Default execution | Disabled by default through `allowRealExecution: false`. |
+| Manual review | Trusted local review helper is required; browser/user review payloads are not trusted. |
+| Allowed commands | Reviewed non-Docker version/identity commands only: `node --version`, `npm --version`, `pnpm --version`, `python --version`, `git --version`, `pwd`, and `echo`. |
+| Shell | `shell: false`; no shell interpolation. |
+| Environment | Empty/minimal execution environment; host env is not inherited. |
+| Output/time bounds | Wall-clock, stdout, and stderr caps are applied. |
+| Docker | `docker --version`, `docker run`, `docker build`, and `docker compose` remain blocked until a Docker-specific review PR. |
+| Browser boundary | `src/` remains process-free and does not import worker code. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |

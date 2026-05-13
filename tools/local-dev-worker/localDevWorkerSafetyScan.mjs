@@ -33,6 +33,20 @@ const srcBoundaryForbiddenPatterns = [
   { label: 'localDevWorkerContract tools path', pattern: /localDevWorkerContract/ },
 ];
 
+const workerProcessApiForbiddenPatterns = [
+  { label: 'child_process', pattern: /child_process/ },
+  { label: 'node:child_process', pattern: /node:child_process/ },
+  { label: 'spawn(', pattern: /\bspawn\s*\(/ },
+  { label: 'exec(', pattern: /\bexec\s*\(/ },
+  { label: 'execFile(', pattern: /\bexecFile\s*\(/ },
+  { label: 'fork(', pattern: /\bfork\s*\(/ },
+  { label: 'Deno.Command', pattern: /Deno\.Command/ },
+];
+
+const reviewedWorkerProcessApiAllowlist = new Set([
+  path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
+]);
+
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -46,6 +60,7 @@ const browserSandboxRoot = path.join(
   'sandbox',
 );
 const srcRoot = path.join(repoRoot, 'src');
+const workerRoot = path.join(repoRoot, 'tools', 'local-dev-worker');
 
 async function listSourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -94,6 +109,11 @@ async function scanFiles(files, patterns, scope) {
 
 const browserSandboxFiles = await listSourceFiles(browserSandboxRoot);
 const srcFiles = await listSourceFiles(srcRoot);
+const workerFiles = await listSourceFiles(workerRoot);
+const workerProcessApiFiles = workerFiles.filter(
+  (file) =>
+    !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
+);
 const violations = [
   ...(await scanFiles(
     browserSandboxFiles,
@@ -101,6 +121,11 @@ const violations = [
     'browser-bundled-sandbox',
   )),
   ...(await scanFiles(srcFiles, srcBoundaryForbiddenPatterns, 'src-boundary')),
+  ...(await scanFiles(
+    workerProcessApiFiles,
+    workerProcessApiForbiddenPatterns,
+    'worker-process-api-boundary',
+  )),
 ];
 
 console.log(
@@ -109,6 +134,12 @@ console.log(
 console.log(`Browser sandbox files scanned: ${browserSandboxFiles.length}`);
 console.log(`Scanned src root for worker imports: ${path.relative(repoRoot, srcRoot)}`);
 console.log(`Total src files scanned: ${srcFiles.length}`);
+console.log(
+  `Worker files scanned for process API boundary: ${workerProcessApiFiles.length}`,
+);
+console.log(
+  'Allowed process API file: tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts',
+);
 console.log(`Violations found: ${violations.length}`);
 
 if (violations.length > 0) {
