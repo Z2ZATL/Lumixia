@@ -46,6 +46,7 @@ const workerProcessApiForbiddenPatterns = [
 
 const reviewedWorkerProcessApiAllowlist = new Set([
   path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
+  path.normalize('tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts'),
 ]);
 
 const repoRoot = path.resolve(
@@ -140,6 +141,9 @@ console.log(
 );
 console.log(
   'Allowed process API file: tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts',
+);
+console.log(
+  'Allowed process API file: tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts',
 );
 console.log(`Violations found: ${violations.length}`);
 

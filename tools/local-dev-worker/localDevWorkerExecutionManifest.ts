@@ -11,12 +11,14 @@ function capability(
   category: LocalDevWorkerExecutionCapability['category'],
   expectedOutputKind: LocalDevWorkerExecutionCapability['expectedOutputKind'],
   dockerRequired = false,
+  riskLevel: LocalDevWorkerExecutionCapability['riskLevel'] = 'low',
+  outputBytes = 2048,
 ): LocalDevWorkerExecutionCapability {
   return {
     capabilityId,
     command,
     args,
-    riskLevel: 'low',
+    riskLevel,
     category,
     networkRequired: false,
     fileWriteRequired: false,
@@ -27,8 +29,8 @@ function capability(
     defaultEnabled: false,
     expectedOutputKind,
     timeoutMs: 3000,
-    maxStdoutBytes: 2048,
-    maxStderrBytes: 2048,
+    maxStdoutBytes: outputBytes,
+    maxStderrBytes: outputBytes,
   };
 }
 
@@ -75,6 +77,16 @@ export const LOCAL_DEV_WORKER_EXECUTION_CAPABILITIES = [
     'version',
     'version-string',
     true,
+  ),
+  capability(
+    'capability.docker.daemon.readiness',
+    'docker',
+    ['version', '--format', '{{json .}}'],
+    'metadata',
+    'metadata-string',
+    true,
+    'medium',
+    4096,
   ),
   capability('capability.pwd.identity', 'pwd', [], 'identity', 'identity-string'),
   capability('capability.echo.metadata', 'echo', [], 'metadata', 'metadata-string'),

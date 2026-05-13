@@ -90,6 +90,17 @@ PR #23 implementation status:
 | Containers | No container is started, pulled, inspected, mounted, or networked. |
 | Browser boundary | `src/` remains process-free and does not import worker code. |
 
+PR #24 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Docker readiness classifier | Implemented only as `docker version --format "{{json .}}"` inside `tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts`. |
+| Readiness result model | Added structured states for `cli_unavailable`, `daemon_unavailable`, `daemon_available`, `probe_blocked`, and `probe_failed`. |
+| Readiness policy | Requires exact args and denies `docker info`, `docker inspect`, `docker system`, `docker network`, `docker volume`, `docker context`, runtime commands, image/container commands, socket paths, mounts, and shell metacharacters. |
+| Docker Desktop off | Treated as `daemon_unavailable`, not a safety failure. |
+| Containers/images | No container is started, no image is pulled or built, and no runtime object is inspected. |
+| Browser boundary | `src/` remains process-free and does not import worker code. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -309,11 +320,11 @@ If local-dev Docker execution behaves unexpectedly:
 
 Recommended next PR: **Add Docker daemon availability/readiness classification** or **write the container execution design review**.
 
-Do not jump directly to `docker run`. The next Docker step should stay conservative:
+PR #24 fulfills the readiness classification step. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
-| Commands | Keep `docker --version` as the only Docker command attempted until a separate container execution review is complete. |
+| Commands | Keep `docker --version` and readiness-only `docker version --format "{{json .}}"` as the only Docker commands attempted until a separate container execution review is complete. |
 | Denied commands | `docker version`, `docker info`, `docker run`, `docker build`, `docker compose`, `docker pull`, and socket/mount paths remain denied. |
 | Shell | No shell chaining and no arbitrary shell. |
 | Filesystem | No file writes. Temporary task-scoped workspace only. |

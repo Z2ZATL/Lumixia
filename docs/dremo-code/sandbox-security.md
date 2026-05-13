@@ -18,6 +18,8 @@ Docker execution checklist note: [docker-execution-security-checklist.md](./dock
 
 Docker probe note: PR #23 allows only `docker --version` inside the local-dev worker boundary, under a Docker-specific reviewed config and exact trusted review scope. It does not run containers, query Docker daemon state with `docker version` or `docker info`, mount Docker socket, mount the user home directory, use networks, write files, or expose execution through `src/`, Dremo Lab, production UI, Supabase functions, SQL, billing, or TerminalWorkspace.
 
+Docker readiness note: PR #24 adds Docker daemon readiness classification only. It may run the exact local-dev command `docker version --format "{{json .}}"` to classify CLI/daemon availability, but it does not start containers, pull or build images, inspect runtime objects, mount Docker socket, mount home directories, use network commands, write files, or expose execution through browser/production paths.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:

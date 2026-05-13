@@ -22,6 +22,11 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerExecutionReadinessFixtures.ts` | Deterministic readiness fixtures for safe and unsafe future execution cases. |
 | `localDevWorkerExecutionConfig.ts` | Disabled-by-default local execution config, reviewed non-Docker version-command config, and reviewed Docker version-probe config. |
 | `localDevWorkerDockerProbePolicy.ts` | Docker-specific policy that allows only `docker --version` and rejects daemon-state, runtime, socket, mount, and shell patterns. |
+| `localDevWorkerDockerDaemonReadinessPolicy.ts` | Docker readiness policy that allows only `docker version --format "{{json .}}"` and rejects runtime, object-inspection, socket, mount, and shell patterns. |
+| `localDevWorkerDockerReadiness.ts` | Structured Docker readiness result and safety metadata types. |
+| `localDevWorkerDockerReadinessAdapter.ts` | Reviewed local-dev readiness adapter for classifying Docker CLI/daemon availability without container execution. |
+| `localDevWorkerDockerReadinessFixtures.ts` | Fixtures for allowed readiness classification and denied Docker runtime/daemon-state/object commands. |
+| `localDevWorkerDockerVersionParser.ts` | Defensive parser for Docker JSON version output. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -61,15 +66,15 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands, including `docker --version` under Docker-specific review; Docker CLI absence is treated as a structured non-safety failure. The scripts do not run containers, query Docker daemon state, read secrets, or write files.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands plus the readiness-only `docker version --format "{{json .}}"` under Docker-specific review; Docker CLI or daemon absence is treated as structured non-safety output. The scripts do not run containers, pull/build images, inspect runtime objects, mount Docker socket, read secrets, or write files.
 
-## Current Execution Status After PR #23
+## Current Execution Status After PR #24
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Validation only; no execution. |
 | Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
-| Docker | Only `docker --version` may be attempted under Docker-specific reviewed config. `docker version`, `docker info`, `docker run`, `docker build`, and `docker compose` remain denied. |
+| Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
 | Network | Disabled; no worker runtime calls. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
@@ -99,8 +104,22 @@ PR #22 introduces the first real local-dev process execution path, and PR #23 ad
 | Environment | Empty environment; host environment is not inherited. |
 | Filesystem | No file writes; safe worker cwd only. |
 | Network | No network commands are allowed. |
-| Docker | `docker --version` may be attempted only by the Docker probe config. `docker version`, `docker info`, `docker run`, `docker build`, and `docker compose` remain blocked. |
+| Docker | `docker --version` may be attempted only by the Docker probe config. `docker version --format "{{json .}}"` may be attempted only by the Docker readiness config. `docker info`, `docker run`, `docker build`, `docker compose`, `docker image`, and `docker container` remain blocked. |
 | Browser | `src/` must not import worker code. |
+
+## Docker Readiness Classifier
+
+PR #24 adds readiness classification only. The adapter can report:
+
+| State | Meaning |
+| --- | --- |
+| `cli_unavailable` | Docker CLI is not available on the contributor machine. |
+| `daemon_unavailable` | Docker CLI is present but the daemon/Desktop is not reachable. |
+| `daemon_available` | Docker returned client/server metadata for the exact readiness command. |
+| `probe_blocked` | Policy, review, source, environment, or path gates blocked the probe before execution. |
+| `probe_failed` | The exact probe failed in an unexpected but structured way. |
+
+This is not a sandbox runtime. It does not start containers, pull or build images, inspect containers/images, mount anything, or expose a browser-to-worker bridge.
 
 ## Future Execution Gate
 
