@@ -67,7 +67,9 @@ PR #23 adds the first Docker-specific probe inside that same worker boundary. On
 
 PR #24 adds Docker daemon readiness classification for local-dev only. It may attempt `docker version --format "{{json .}}"` under a separate reviewed readiness config to classify `cli_unavailable`, `daemon_unavailable`, or `daemon_available`. It still does not start containers, pull or build images, inspect runtime objects, mount Docker socket, mount home directories, use network commands, or expose execution to browser or production paths.
 
-## Current Execution Status After PR #24
+PR #25 adds the final pre-container design gates: image allowlist policy, container command policy, no-network/no-mount resource and security policies, a plan-only Docker run preview model, readiness gate fixtures, and self-check coverage. It still does not execute `docker run`, start containers, pull/build images, mount workspaces, enable network, or expose execution to browser/production paths.
+
+## Current Execution Status After PR #25
 
 | Area | Status |
 | --- | --- |
@@ -75,6 +77,7 @@ PR #24 adds Docker daemon readiness classification for local-dev only. It may at
 | Worker boundary | Local-dev-only adapter exists for reviewed version/identity commands. Default config blocks execution. |
 | Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
 | Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. `docker info`, `docker run`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
+| Container execution | Plan-only policy model exists. No container is started, no image is pulled/built, and no workspace mount exists. |
 | Network | No worker runtime calls. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -82,4 +85,4 @@ PR #24 adds Docker daemon readiness classification for local-dev only. It may at
 
 ## Recommended Next PR
 
-The next Docker PR should still not jump directly to arbitrary `docker run`. Keep the next step to container execution design review, workspace policy, and a no-network/no-mount container plan.
+Future PR #26 may add the first no-network/no-mount container smoke execution only after review, and it must keep the command/image allowlists tiny.

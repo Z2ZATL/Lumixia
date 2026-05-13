@@ -27,6 +27,12 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerReadinessAdapter.ts` | Reviewed local-dev readiness adapter for classifying Docker CLI/daemon availability without container execution. |
 | `localDevWorkerDockerReadinessFixtures.ts` | Fixtures for allowed readiness classification and denied Docker runtime/daemon-state/object commands. |
 | `localDevWorkerDockerVersionParser.ts` | Defensive parser for Docker JSON version output. |
+| `localDevWorkerDockerContainerPolicy.ts` | Future container execution policy types for images, resources, network, mounts, and security. |
+| `localDevWorkerDockerImagePolicy.ts` | Conservative future image allowlist policy; no image pull happens. |
+| `localDevWorkerDockerContainerCommandPolicy.ts` | Plan-only command allowlist/denylist for future first container smoke tests. |
+| `localDevWorkerDockerContainerPlan.ts` | Pure plan object and `dockerRunPreview` array; it is never executed. |
+| `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
+| `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -66,15 +72,16 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands plus the readiness-only `docker version --format "{{json .}}"` under Docker-specific review; Docker CLI or daemon absence is treated as structured non-safety output. The scripts do not run containers, pull/build images, inspect runtime objects, mount Docker socket, read secrets, or write files.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt only reviewed local version/identity commands plus the readiness-only `docker version --format "{{json .}}"` under Docker-specific review; Docker CLI or daemon absence is treated as structured non-safety output. Container policy fixtures are plan-only. The scripts do not run containers, pull/build images, inspect runtime objects, mount Docker socket, read secrets, or write files.
 
-## Current Execution Status After PR #24
+## Current Execution Status After PR #25
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Validation only; no execution. |
 | Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
 | Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
+| Container policy | Plan-only design gates exist for image allowlist, command allowlist, no-network/no-mount policies, and security policy. No `docker run` execution exists. |
 | Network | Disabled; no worker runtime calls. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
@@ -120,6 +127,19 @@ PR #24 adds readiness classification only. The adapter can report:
 | `probe_failed` | The exact probe failed in an unexpected but structured way. |
 
 This is not a sandbox runtime. It does not start containers, pull or build images, inspect containers/images, mount anything, or expose a browser-to-worker bridge.
+
+## Docker Container Design Gates
+
+PR #25 adds plan-only policy gates for future local-dev container smoke execution.
+
+| Gate | Current behavior |
+| --- | --- |
+| Images | Only exact future references such as `alpine:3.20` and `node:20-alpine` are allowlisted. `latest`, untagged, private registry, digest, arbitrary, and shell-metacharacter images are denied. |
+| Commands | Plan-only allowlist covers `echo`, `pwd`, `node --version`, and `python --version`. Shells, package installs, network tools, file writes, destructive commands, and Docker commands inside the container are denied. |
+| Network | `networkMode = none`; DNS and network remain disabled. |
+| Mounts | Docker socket, home, workspace bind mount, and tmpfs remain disabled. |
+| Security | Privileged, host network, host PID/IPC, capability add, root user, and missing no-new-privileges are denied. |
+| Plan | `dockerRunPreview` is a string-array preview only. It is never passed to `execFile`. |
 
 ## Future Execution Gate
 

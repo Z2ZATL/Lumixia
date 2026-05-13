@@ -1,6 +1,8 @@
 import { createLocalDevWorkerDryRun } from './localDevWorkerDryRunAdapter.ts';
 import { classifyLocalDevWorkerDockerReadiness } from './localDevWorkerDockerReadinessAdapter.ts';
 import { localDevWorkerDockerReadinessFixtures } from './localDevWorkerDockerReadinessFixtures.ts';
+import { evaluateLocalDevWorkerDockerContainerReadinessGate } from './localDevWorkerDockerContainerReadinessGate.ts';
+import { localDevWorkerDockerContainerPolicyFixtures } from './localDevWorkerDockerContainerPolicyFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -13,6 +15,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedExecutionReadinessFixtures: number;
   checkedVersionExecutionFixtures: number;
   checkedDockerReadinessFixtures: number;
+  checkedDockerContainerPolicyFixtures: number;
   failures: string[];
 }
 
@@ -300,6 +303,91 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerContainerPolicyFixtures) {
+    const response = evaluateLocalDevWorkerDockerContainerReadinessGate(
+      fixture.input,
+    );
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noExecution === true,
+      `${fixture.name}: container policy gate must preserve noExecution.`,
+      failures,
+    );
+    assertCondition(
+      response.containerStarted === false,
+      `${fixture.name}: containerStarted must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.imagePulled === false,
+      `${fixture.name}: imagePulled must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.dockerRunExecuted === false,
+      `${fixture.name}: dockerRunExecuted must remain false.`,
+      failures,
+    );
+    assertCondition(
+      response.readyForFutureContainerExecution ===
+        fixture.expectedReadyForFutureContainerExecution,
+      `${fixture.name}: expected readyForFutureContainerExecution ${fixture.expectedReadyForFutureContainerExecution}, got ${response.readyForFutureContainerExecution}.`,
+      failures,
+    );
+    assertCondition(
+      !!response.plan === fixture.expectedPlan,
+      `${fixture.name}: expected plan presence ${fixture.expectedPlan}, got ${!!response.plan}.`,
+      failures,
+    );
+
+    if (response.plan) {
+      assertCondition(
+        response.plan.noExecution === true,
+        `${fixture.name}: plan must preserve noExecution.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.executionMode === 'plan-only',
+        `${fixture.name}: plan executionMode must be plan-only.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.networkPolicy.allowNetwork === false,
+        `${fixture.name}: plan network must remain disabled.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.mountPolicy.allowDockerSocketMount === false,
+        `${fixture.name}: plan must not allow Docker socket mount.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.mountPolicy.allowHomeMount === false,
+        `${fixture.name}: plan must not allow home mount.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.mountPolicy.allowWorkspaceMount === false,
+        `${fixture.name}: plan must not allow workspace mount yet.`,
+        failures,
+      );
+      assertCondition(
+        response.plan.securityPolicy.allowPrivileged === false,
+        `${fixture.name}: plan must not allow privileged mode.`,
+        failures,
+      );
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected container policy rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -307,6 +395,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerExecutionReadinessFixtures.length,
     checkedVersionExecutionFixtures: localDevWorkerVersionExecutionFixtures.length,
     checkedDockerReadinessFixtures: localDevWorkerDockerReadinessFixtures.length,
+    checkedDockerContainerPolicyFixtures:
+      localDevWorkerDockerContainerPolicyFixtures.length,
     failures,
   };
 }
