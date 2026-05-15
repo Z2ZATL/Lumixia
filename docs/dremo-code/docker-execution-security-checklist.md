@@ -126,6 +126,16 @@ PR #26 implementation status:
 | Runtime expansion | Arbitrary `docker run`, `docker build`, `docker compose`, `docker pull`, `docker exec`, `docker cp`, and `docker login` remain denied. |
 | Browser boundary | `src/` remains process-free and does not import worker code. |
 
+PR #27 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Smoke result normalization | Added stable outcomes for success, Docker CLI unavailable, daemon unavailable, local image unavailable, timeout, policy blocked, execution failed, and unexpected output. |
+| Output sanitizer | Added pure stdout/stderr normalization, byte caps, secret-like redaction, home path redaction, and `.env` reference redaction before audit summaries. |
+| Audit record | Added local-dev smoke audit records with command preview, sanitized output previews, rejection codes, timing, and safety metadata. |
+| Cleanup risk | Added `none_expected`, `unknown_after_timeout`, `not_applicable_blocked`, and `not_applicable_cli_or_daemon_unavailable` classifications. No cleanup command is executed. |
+| Runtime expansion | No new Docker command, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -343,9 +353,9 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add cleanup/audit hardening for local-dev container smoke results** or further refine workspace/artifact policy before any broader execution.
+Recommended next PR: **Add deterministic container naming plus exact cleanup command review** or further refine workspace/artifact policy before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, and PR #26 adds the first exact no-network/no-mount smoke command. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, and PR #27 adds audit normalization plus cleanup-risk metadata. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
