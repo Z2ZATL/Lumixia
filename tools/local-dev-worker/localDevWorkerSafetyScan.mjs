@@ -89,6 +89,15 @@ const cleanupAdapterForbiddenPatterns = [
   { label: "runtime pull arg", pattern: /['"]pull['"]/ },
 ];
 
+const reportFormatterForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'docker run', pattern: /docker\s+run/i },
+  { label: 'docker rm', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
 const reviewedWorkerProcessApiAllowlist = new Set([
   path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
   path.normalize('tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts'),
@@ -166,6 +175,12 @@ const workerFiles = await listSourceFiles(workerRoot);
 const lifecycleFiles = workerFiles.filter((file) =>
   path.basename(file).includes('Lifecycle'),
 );
+const reportFormatterFiles = workerFiles.filter((file) =>
+  [
+    'localDevWorkerDockerSmokeLifecycleReport.ts',
+    'localDevWorkerDockerSmokeLifecycleReportPolicy.ts',
+  ].includes(path.basename(file)),
+);
 const workerProcessApiFiles = workerFiles.filter(
   (file) =>
     !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
@@ -202,6 +217,11 @@ const violations = [
     cleanupAdapterForbiddenPatterns,
     'worker-cleanup-adapter-boundary',
   )),
+  ...(await scanFiles(
+    reportFormatterFiles,
+    reportFormatterForbiddenPatterns,
+    'worker-report-formatter-boundary',
+  )),
 ];
 
 console.log(
@@ -215,6 +235,9 @@ console.log(
 );
 console.log(
   `Lifecycle files included in process API boundary scan: ${lifecycleFiles.length}`,
+);
+console.log(
+  `Report formatter files scanned for process APIs and new Docker commands: ${reportFormatterFiles.length}`,
 );
 console.log(
   `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFilesWithoutCleanup.length}`,
