@@ -24,6 +24,9 @@ const browserSandboxForbiddenPatterns = [
   { label: 'docker inspect', pattern: /docker\s+inspect\b/i },
   { label: 'docker ps', pattern: /docker\s+ps\b/i },
   { label: 'docker rm', pattern: /docker\s+rm\b/i },
+  { label: 'docker stop', pattern: /docker\s+stop\b/i },
+  { label: 'docker kill', pattern: /docker\s+kill\b/i },
+  { label: 'docker prune', pattern: /docker\s+(?:container|system)\s+prune\b/i },
   { label: 'docker image', pattern: /docker\s+image\b/i },
   { label: 'docker container', pattern: /docker\s+container\b/i },
   { label: '/var/run/docker.sock', pattern: /\/var\/run\/docker\.sock/ },
@@ -51,6 +54,20 @@ const workerProcessApiForbiddenPatterns = [
   { label: 'execFile(', pattern: /\bexecFile\s*\(/ },
   { label: 'fork(', pattern: /\bfork\s*\(/ },
   { label: 'Deno.Command', pattern: /Deno\.Command/ },
+];
+
+const workerCleanupExecutionForbiddenPatterns = [
+  { label: 'docker rm', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect', pattern: /docker\s+inspect\b/i },
+  { label: 'docker stop', pattern: /docker\s+stop\b/i },
+  { label: 'docker kill', pattern: /docker\s+kill\b/i },
+  { label: 'docker prune', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+  { label: "cleanup rm arg", pattern: /['"]rm['"]/ },
+  { label: "cleanup ps arg", pattern: /['"]ps['"]/ },
+  { label: "cleanup inspect arg", pattern: /['"]inspect['"]/ },
+  { label: "cleanup stop arg", pattern: /['"]stop['"]/ },
+  { label: "cleanup kill arg", pattern: /['"]kill['"]/ },
 ];
 
 const reviewedWorkerProcessApiAllowlist = new Set([
@@ -126,6 +143,9 @@ const workerProcessApiFiles = workerFiles.filter(
   (file) =>
     !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
 );
+const reviewedProcessApiFiles = workerFiles.filter((file) =>
+  reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
+);
 const violations = [
   ...(await scanFiles(
     browserSandboxFiles,
@@ -138,6 +158,11 @@ const violations = [
     workerProcessApiForbiddenPatterns,
     'worker-process-api-boundary',
   )),
+  ...(await scanFiles(
+    reviewedProcessApiFiles,
+    workerCleanupExecutionForbiddenPatterns,
+    'worker-cleanup-execution-boundary',
+  )),
 ];
 
 console.log(
@@ -148,6 +173,9 @@ console.log(`Scanned src root for worker imports: ${path.relative(repoRoot, srcR
 console.log(`Total src files scanned: ${srcFiles.length}`);
 console.log(
   `Worker files scanned for process API boundary: ${workerProcessApiFiles.length}`,
+);
+console.log(
+  `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFiles.length}`,
 );
 console.log(
   'Allowed process API file: tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts',

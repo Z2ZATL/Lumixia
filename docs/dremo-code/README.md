@@ -69,21 +69,23 @@ PR #24 adds Docker daemon readiness classification for local-dev only. It may at
 
 PR #25 adds the final pre-container design gates: image allowlist policy, container command policy, no-network/no-mount resource and security policies, a plan-only Docker run preview model, readiness gate fixtures, and self-check coverage. It still does not execute `docker run`, start containers, pull/build images, mount workspaces, enable network, or expose execution to browser/production paths.
 
-PR #26 adds the first reviewed local-dev Docker container smoke execution. Only the exact `alpine:3.20` + `echo hello` command may run, and only through `tools/local-dev-worker` with `--pull=never`, `--network none`, no mounts, no shell, no host environment, bounded output, and trusted manual review. Docker/image unavailability is returned as structured output and is not a safety failure.
+PR #26 adds the first reviewed local-dev Docker container smoke execution. Only the exact `alpine:3.20` + `echo hello` command may run, and only through `tools/local-dev-worker` with `--pull=never`, `--network none`, no mounts, no shell, no host environment, bounded output, and trusted manual review. PR #28 adds the static container name and allowlisted labels to that exact command. Docker/image unavailability is returned as structured output and is not a safety failure.
 
 PR #27 hardens that smoke path with audit normalization, stable outcome categories, output sanitization/redaction, audit-safe summaries, cleanup-risk metadata, and self-check fixtures. It does not add any new Docker command, cleanup execution, image, network, mount, workspace, browser, or production capability.
 
-## Current Execution Status After PR #27
+PR #28 adds deterministic smoke container identity and cleanup review planning. The exact smoke command now includes static `--name lumixia-dremo-smoke-echo` and allowlisted `lumixia.dremo.*` labels, and the future cleanup preview is modeled as `docker rm -f lumixia-dremo-smoke-echo` without execution.
+
+## Current Execution Status After PR #28
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Browser-safe policy validation only. No worker import and no execution. |
 | Worker boundary | Local-dev-only adapter exists for reviewed version/identity commands. Default config blocks execution. |
 | Review gates | Capability and manual-review readiness gate execution before the adapter can run. |
-| Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. `docker info`, `docker run`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
-| Container execution | One exact local-dev smoke path may run: `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello`. No arbitrary image, command, pull/build/compose/exec, mounts, network, shell, root user, workspace access, or production/browser path exists. |
+| Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. Arbitrary `docker run`, `docker info`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
+| Container execution | One exact local-dev smoke path may run with static `--name`, allowlisted labels, `--network none`, `--pull=never`, read-only root filesystem, dropped capabilities, no-new-privileges, resource caps, `--user 65534:65534`, `alpine:3.20`, and `echo hello`. No arbitrary image, command, metadata, pull/build/compose/exec, mounts, network, shell, root user, workspace access, or production/browser path exists. |
 | Audit normalization | Smoke results normalize to stable outcomes such as success, Docker CLI unavailable, daemon unavailable, local image unavailable, timeout, policy blocked, execution failed, or unexpected output. |
-| Cleanup risk | Timeout is classified as `unknown_after_timeout`; blocked and CLI/daemon unavailable paths are not applicable. No cleanup command is executed yet. |
+| Cleanup planning | Timeout is classified as `unknown_after_timeout`; deterministic cleanup preview exists, but no cleanup command is executed yet. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -91,4 +93,4 @@ PR #27 hardens that smoke path with audit normalization, stable outcome categori
 
 ## Recommended Next PR
 
-Future PR #28 should focus on deterministic container naming plus exact cleanup command review, or server-owned event mapping for local-dev worker results. It should not expand to arbitrary repo execution.
+Future PR #29 may add exact cleanup execution only after review. It should not expand to arbitrary repo execution.

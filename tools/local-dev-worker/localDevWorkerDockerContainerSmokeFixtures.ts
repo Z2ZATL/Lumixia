@@ -192,30 +192,39 @@ export const localDevWorkerDockerContainerSmokeFixtures = [
     ['src_import_path_denied'],
     { srcImportPath: true },
   ),
+  blocked('arbitrary-container-name-blocked', replaceArg(3, 'user-task-name'), [
+    'container_smoke_args_not_exact',
+    'container_smoke_name_not_allowed',
+  ]),
+  blocked(
+    'arbitrary-container-label-blocked',
+    replaceArg(5, 'lumixia.dremo.local-dev=false'),
+    ['container_smoke_args_not_exact', 'container_smoke_label_not_allowed'],
+  ),
   blocked('missing-user-blocked', withoutUser(), [
     'container_smoke_args_not_exact',
     'container_smoke_non_root_user_required',
   ]),
-  blocked('root-user-zero-blocked', replaceArg(17, '0'), [
+  blocked('root-user-zero-blocked', replaceArg(27, '0'), [
     'container_smoke_args_not_exact',
     'container_smoke_non_root_user_required',
     'container_smoke_root_user_denied',
   ]),
-  blocked('root-user-zero-zero-blocked', replaceArg(17, '0:0'), [
+  blocked('root-user-zero-zero-blocked', replaceArg(27, '0:0'), [
     'container_smoke_args_not_exact',
     'container_smoke_non_root_user_required',
     'container_smoke_root_user_denied',
   ]),
-  blocked('root-user-name-blocked', replaceArg(17, 'root'), [
+  blocked('root-user-name-blocked', replaceArg(27, 'root'), [
     'container_smoke_args_not_exact',
     'container_smoke_non_root_user_required',
     'container_smoke_root_user_denied',
   ]),
-  blocked('wrong-image-blocked', replaceArg(18, 'ubuntu:22.04'), [
+  blocked('wrong-image-blocked', replaceArg(28, 'ubuntu:22.04'), [
     'container_smoke_args_not_exact',
     'container_smoke_image_not_allowed',
   ]),
-  blocked('latest-image-blocked', replaceArg(18, 'alpine:latest'), [
+  blocked('latest-image-blocked', replaceArg(28, 'alpine:latest'), [
     'container_smoke_args_not_exact',
     'container_smoke_image_not_allowed',
   ]),
@@ -223,15 +232,15 @@ export const localDevWorkerDockerContainerSmokeFixtures = [
     'container_smoke_args_not_exact',
     'container_smoke_pull_never_required',
   ]),
-  blocked('pull-always-blocked', replaceArg(4, '--pull=always'), [
+  blocked('pull-always-blocked', replaceArg(14, '--pull=always'), [
     'container_smoke_args_not_exact',
     'container_smoke_pull_never_required',
   ]),
-  blocked('network-bridge-blocked', replaceArg(3, 'bridge'), [
+  blocked('network-bridge-blocked', replaceArg(13, 'bridge'), [
     'container_smoke_args_not_exact',
     'container_smoke_network_none_required',
   ]),
-  blocked('network-host-blocked', replaceArg(3, 'host'), [
+  blocked('network-host-blocked', replaceArg(13, 'host'), [
     'container_smoke_args_not_exact',
     'container_smoke_network_none_required',
   ]),
@@ -266,12 +275,12 @@ export const localDevWorkerDockerContainerSmokeFixtures = [
     'container_smoke_args_not_exact',
     'container_smoke_privileged_denied',
   ]),
-  blocked('shell-command-blocked', replaceArg(19, 'sh'), [
+  blocked('shell-command-blocked', replaceArg(29, 'sh'), [
     'container_smoke_args_not_exact',
     'container_smoke_shell_denied',
   ]),
   blocked('sh-c-blocked', [
-    ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS.slice(0, 19),
+    ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS.slice(0, 29),
     'sh',
     '-c',
     'echo hello',

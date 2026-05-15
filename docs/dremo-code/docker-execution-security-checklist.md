@@ -117,7 +117,7 @@ PR #26 implementation status:
 | Gate | Status |
 | --- | --- |
 | First container smoke adapter | Implemented only in `tools/local-dev-worker/localDevWorkerDockerContainerSmokeAdapter.ts`. |
-| Exact smoke command | Allows only `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello`. |
+| Exact smoke command | Allows only the reviewed command with static `--name lumixia-dremo-smoke-echo`, the allowlisted `lumixia.dremo.*` labels, `--network none`, `--pull=never`, read-only root filesystem, dropped capabilities, no-new-privileges, memory/CPU/PID caps, `--user 65534:65534`, `alpine:3.20`, and `echo hello`. |
 | Image pull | Blocked by required `--pull=never`; missing `alpine:3.20` is structured as image unavailable, not a safety failure. |
 | Network and DNS | Disabled with `--network none`; no network flags or network commands are allowed. |
 | Mounts | Docker socket, home, workspace, `--mount`, `-v`, and `--volume` remain denied. |
@@ -135,6 +135,16 @@ PR #27 implementation status:
 | Audit record | Added local-dev smoke audit records with command preview, sanitized output previews, rejection codes, timing, and safety metadata. |
 | Cleanup risk | Added `none_expected`, `unknown_after_timeout`, `not_applicable_blocked`, and `not_applicable_cli_or_daemon_unavailable` classifications. No cleanup command is executed. |
 | Runtime expansion | No new Docker command, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
+
+PR #28 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Container identity | Added deterministic name `lumixia-dremo-smoke-echo`; no user, branch, repo, task, request, or path input is allowed in the name. |
+| Labels | Added static allowlisted labels for local-dev, kind, capability, and cleanup review status. Arbitrary labels remain denied. |
+| Cleanup plan | Added plan-only preview `docker rm -f lumixia-dremo-smoke-echo`; `noExecution` remains true and cleanup execution is not implemented. |
+| Cleanup policy | Added review policy blocking arbitrary targets, container IDs, wildcards, multiple targets, prune, `docker ps`, `docker inspect`, stop/kill, shell metacharacters, whitespace injection, and path-like targets. |
+| Runtime expansion | No cleanup command execution, arbitrary Docker command, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
 
 ## 2. Threat Model
 
@@ -353,9 +363,9 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add deterministic container naming plus exact cleanup command review** or further refine workspace/artifact policy before any broader execution.
+Recommended next PR: **Add exact cleanup command execution after review** or further refine workspace/artifact policy before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, and PR #27 adds audit normalization plus cleanup-risk metadata. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, and PR #28 adds deterministic naming plus cleanup planning. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
