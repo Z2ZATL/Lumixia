@@ -70,10 +70,34 @@ const workerCleanupExecutionForbiddenPatterns = [
   { label: "cleanup kill arg", pattern: /['"]kill['"]/ },
 ];
 
+const cleanupAdapterForbiddenPatterns = [
+  { label: 'docker ps', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect', pattern: /docker\s+inspect\b/i },
+  { label: 'docker stop', pattern: /docker\s+stop\b/i },
+  { label: 'docker kill', pattern: /docker\s+kill\b/i },
+  { label: 'docker prune', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+  { label: "cleanup ps arg", pattern: /['"]ps['"]/ },
+  { label: "cleanup inspect arg", pattern: /['"]inspect['"]/ },
+  { label: "cleanup stop arg", pattern: /['"]stop['"]/ },
+  { label: "cleanup kill arg", pattern: /['"]kill['"]/ },
+  { label: "cleanup prune arg", pattern: /['"]prune['"]/ },
+  { label: "runtime run arg", pattern: /['"]run['"]/ },
+  { label: "runtime build arg", pattern: /['"]build['"]/ },
+  { label: "runtime compose arg", pattern: /['"]compose['"]/ },
+  { label: "runtime exec arg", pattern: /['"]exec['"]/ },
+  { label: "runtime cp arg", pattern: /['"]cp['"]/ },
+  { label: "runtime pull arg", pattern: /['"]pull['"]/ },
+];
+
 const reviewedWorkerProcessApiAllowlist = new Set([
   path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
   path.normalize('tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts'),
   path.normalize('tools/local-dev-worker/localDevWorkerDockerContainerSmokeAdapter.ts'),
+  path.normalize('tools/local-dev-worker/localDevWorkerDockerCleanupAdapter.ts'),
+]);
+
+const cleanupAdapterAllowlist = new Set([
+  path.normalize('tools/local-dev-worker/localDevWorkerDockerCleanupAdapter.ts'),
 ]);
 
 const repoRoot = path.resolve(
@@ -146,6 +170,13 @@ const workerProcessApiFiles = workerFiles.filter(
 const reviewedProcessApiFiles = workerFiles.filter((file) =>
   reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
 );
+const cleanupAdapterFiles = reviewedProcessApiFiles.filter((file) =>
+  cleanupAdapterAllowlist.has(path.normalize(path.relative(repoRoot, file))),
+);
+const reviewedProcessApiFilesWithoutCleanup = reviewedProcessApiFiles.filter(
+  (file) =>
+    !cleanupAdapterAllowlist.has(path.normalize(path.relative(repoRoot, file))),
+);
 const violations = [
   ...(await scanFiles(
     browserSandboxFiles,
@@ -159,9 +190,14 @@ const violations = [
     'worker-process-api-boundary',
   )),
   ...(await scanFiles(
-    reviewedProcessApiFiles,
+    reviewedProcessApiFilesWithoutCleanup,
     workerCleanupExecutionForbiddenPatterns,
     'worker-cleanup-execution-boundary',
+  )),
+  ...(await scanFiles(
+    cleanupAdapterFiles,
+    cleanupAdapterForbiddenPatterns,
+    'worker-cleanup-adapter-boundary',
   )),
 ];
 
@@ -175,7 +211,10 @@ console.log(
   `Worker files scanned for process API boundary: ${workerProcessApiFiles.length}`,
 );
 console.log(
-  `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFiles.length}`,
+  `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFilesWithoutCleanup.length}`,
+);
+console.log(
+  `Reviewed cleanup adapter files scanned for arbitrary cleanup/runtime commands: ${cleanupAdapterFiles.length}`,
 );
 console.log(
   'Allowed process API file: tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts',
@@ -185,6 +224,9 @@ console.log(
 );
 console.log(
   'Allowed process API file: tools/local-dev-worker/localDevWorkerDockerContainerSmokeAdapter.ts',
+);
+console.log(
+  'Allowed process API file: tools/local-dev-worker/localDevWorkerDockerCleanupAdapter.ts',
 );
 console.log(`Violations found: ${violations.length}`);
 

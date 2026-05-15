@@ -1,6 +1,6 @@
 # Dremo Local-dev Worker Boundary
 
-Status: local-dev worker boundary with narrowly reviewed smoke execution only.
+Status: local-dev worker boundary with narrowly reviewed smoke and cleanup execution only.
 
 This directory is intentionally outside `src/` so future local-dev Docker execution work cannot be imported into the Vite/React browser bundle by accident.
 
@@ -34,9 +34,11 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
 | `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
 | `localDevWorkerDockerContainerIdentity.ts` | Static smoke container name and allowlisted labels; no user input is accepted. |
-| `localDevWorkerDockerCleanupPolicy.ts` | Plan-only cleanup policy that allows only the future exact cleanup shape and rejects arbitrary targets/prune/ps/inspect/stop/kill. |
+| `localDevWorkerDockerCleanupPolicy.ts` | Exact cleanup policy that allows only `docker rm -f lumixia-dremo-smoke-echo` and rejects arbitrary targets/prune/ps/inspect/stop/kill. |
 | `localDevWorkerDockerCleanupPlan.ts` | Deterministic cleanup preview for `docker rm -f lumixia-dremo-smoke-echo`; it is not executed. |
 | `localDevWorkerDockerCleanupFixtures.ts` | Fixtures for exact cleanup preview and blocked cleanup targets. |
+| `localDevWorkerDockerCleanupAdapter.ts` | Reviewed local-dev adapter that may execute only `docker rm -f lumixia-dremo-smoke-echo`. |
+| `localDevWorkerDockerCleanupExecutionFixtures.ts` | Fixtures for exact cleanup execution and blocked arbitrary cleanup targets. |
 | `localDevWorkerDockerContainerSmokePolicy.ts` | Exact allowlist policy for the first local-dev no-network/no-mount container smoke command. |
 | `localDevWorkerDockerContainerSmokeAdapter.ts` | Reviewed local-dev adapter that may execute only the exact non-root `alpine:3.20 echo hello` Docker smoke command. |
 | `localDevWorkerDockerContainerSmokeFixtures.ts` | Fixtures for the allowed smoke path and blocked Docker runtime variants. |
@@ -55,7 +57,7 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 
 | Non-goal | Reason |
 | --- | --- |
-| No arbitrary Docker execution | Only the PR #26 exact local-dev smoke command may run after trusted review; arbitrary `docker run` remains denied. |
+| No arbitrary Docker execution | Only the PR #26 exact local-dev smoke command and PR #29 exact cleanup command may run after trusted review; arbitrary `docker run` and arbitrary cleanup remain denied. |
 | No process APIs in `src/` | Browser-bundled code must not add `child_process`, `spawn`, `exec`, `Deno.Command`, or Docker CLI calls. |
 | No production path | The worker is not imported from `src/` and is not exposed through Dremo Lab or production UI. |
 | No filesystem writes | Future writes require a task-scoped workspace policy and separate review. |
@@ -72,7 +74,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, and `localDevWorkerDockerContainerSmokeAdapter.ts`. Guard fixtures may still contain denied command strings by design.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Guard fixtures may still contain denied command strings by design.
 
 ## Verification Scripts
 
@@ -83,9 +85,9 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26/PR #28 exact smoke command with static `--name`, allowlisted labels, `--network none`, `--pull=never`, `--user 65534:65534`, `alpine:3.20`, and `echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
-## Current Execution Status After PR #28
+## Current Execution Status After PR #29
 
 | Area | Status |
 | --- | --- |
@@ -94,7 +96,7 @@ These scripts typecheck the worker contract, validation, trace, fixtures, and se
 | Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
 | Container smoke | One exact reviewed local-dev smoke command may execute with static `--name`, allowlisted labels, `--pull=never`, `--network none`, `--user 65534:65534`, no mounts, no shell, no root user, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
 | Audit normalization | Smoke results produce stable outcomes, sanitized stdout/stderr previews, and cleanup-risk metadata. |
-| Cleanup | Deterministic cleanup preview exists for `docker rm -f lumixia-dremo-smoke-echo`, but no cleanup command is executed. Timeout risk is classified for future review. |
+| Cleanup | One exact reviewed local-dev cleanup command may execute: `docker rm -f lumixia-dremo-smoke-echo`. Missing target is structured and acceptable. No arbitrary target, container ID, wildcard, multiple target, ps/inspect/stop/kill, or prune path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

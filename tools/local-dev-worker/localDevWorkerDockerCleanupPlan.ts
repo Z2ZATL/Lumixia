@@ -36,8 +36,8 @@ export function createLocalDevWorkerDockerCleanupPlan(): LocalDevWorkerDockerCle
     requiredLabels: LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS,
     rejectionCodes: policy.rejectionCodes,
     warnings: [
-      'Cleanup command execution is not implemented in this PR.',
-      'Future cleanup must verify labels before execution.',
+      'This plan object never executes cleanup by itself.',
+      'Exact cleanup execution is implemented separately behind the reviewed cleanup adapter.',
     ],
     cleanupRiskAddressed: policy.allowed,
   };
