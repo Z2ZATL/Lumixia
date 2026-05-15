@@ -98,6 +98,16 @@ const reportFormatterForbiddenPatterns = [
   { label: 'docker prune', pattern: /docker\s+(?:container|system)\s+prune\b/i },
 ];
 
+const cliWrapperForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'src import', pattern: /from\s+['"].*src\// },
+  { label: 'docker run command string', pattern: /docker\s+run/i },
+  { label: 'docker rm command string', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps command string', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect command string', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
 const reviewedWorkerProcessApiAllowlist = new Set([
   path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
   path.normalize('tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts'),
@@ -181,6 +191,13 @@ const reportFormatterFiles = workerFiles.filter((file) =>
     'localDevWorkerDockerSmokeLifecycleReportPolicy.ts',
   ].includes(path.basename(file)),
 );
+const cliWrapperFiles = workerFiles.filter((file) =>
+  [
+    'localDevWorkerDockerSmokeLifecycleCli.ts',
+    'localDevWorkerDockerSmokeLifecycleCliRequests.ts',
+    'localDevWorkerDockerSmokeLifecycleCliFixtures.ts',
+  ].includes(path.basename(file)),
+);
 const workerProcessApiFiles = workerFiles.filter(
   (file) =>
     !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
@@ -222,6 +239,11 @@ const violations = [
     reportFormatterForbiddenPatterns,
     'worker-report-formatter-boundary',
   )),
+  ...(await scanFiles(
+    cliWrapperFiles,
+    cliWrapperForbiddenPatterns,
+    'worker-lifecycle-cli-boundary',
+  )),
 ];
 
 console.log(
@@ -238,6 +260,9 @@ console.log(
 );
 console.log(
   `Report formatter files scanned for process APIs and new Docker commands: ${reportFormatterFiles.length}`,
+);
+console.log(
+  `Lifecycle CLI wrapper files scanned for process APIs and new Docker command strings: ${cliWrapperFiles.length}`,
 );
 console.log(
   `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFilesWithoutCleanup.length}`,

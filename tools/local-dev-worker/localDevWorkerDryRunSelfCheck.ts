@@ -12,7 +12,10 @@ import {
   validateLocalDevWorkerDockerContainerIdentity,
 } from './localDevWorkerDockerContainerIdentity.ts';
 import { createLocalDevWorkerDockerCleanupPlan } from './localDevWorkerDockerCleanupPlan.ts';
-import { evaluateLocalDevWorkerDockerCleanupPolicy } from './localDevWorkerDockerCleanupPolicy.ts';
+import {
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_CLEANUP_COMMAND,
+  evaluateLocalDevWorkerDockerCleanupPolicy,
+} from './localDevWorkerDockerCleanupPolicy.ts';
 import { localDevWorkerDockerCleanupFixtures } from './localDevWorkerDockerCleanupFixtures.ts';
 import { executeLocalDevWorkerDockerSmokeCleanup } from './localDevWorkerDockerCleanupAdapter.ts';
 import { localDevWorkerDockerCleanupExecutionFixtures } from './localDevWorkerDockerCleanupExecutionFixtures.ts';
@@ -26,8 +29,22 @@ import {
   formatLocalDevWorkerDockerSmokeLifecycleMarkdown,
 } from './localDevWorkerDockerSmokeLifecycleReport.ts';
 import { localDevWorkerDockerSmokeLifecycleReportFixtures } from './localDevWorkerDockerSmokeLifecycleReportFixtures.ts';
+import {
+  createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureJsonSummary,
+  createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureMarkdown,
+  createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureResult,
+} from './localDevWorkerDockerSmokeLifecycleCliFixtures.ts';
+import {
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_LIFECYCLE_CLI_READINESS_ARGS,
+  createLocalDevWorkerDockerSmokeLifecycleCliCleanupRequest,
+  createLocalDevWorkerDockerSmokeLifecycleCliInput,
+  createLocalDevWorkerDockerSmokeLifecycleCliReadinessRequest,
+  createLocalDevWorkerDockerSmokeLifecycleCliSmokeRequest,
+} from './localDevWorkerDockerSmokeLifecycleCliRequests.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
+import { findLocalDevWorkerExecutionCapability } from './localDevWorkerExecutionManifest.ts';
+import { assertTrustedManualReviewSource } from './localDevWorkerTrustedReview.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
 import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
 import { localDevWorkerDryRunFixtures } from './localDevWorkerFixtures.ts';
@@ -45,6 +62,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerCleanupExecutionFixtures: number;
   checkedDockerSmokeLifecycleFixtures: number;
   checkedDockerSmokeLifecycleReportFixtures: number;
+  checkedDockerSmokeLifecycleCliFixtures: number;
   failures: string[];
 }
 
@@ -1240,6 +1258,185 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  const cliReadinessRequest =
+    createLocalDevWorkerDockerSmokeLifecycleCliReadinessRequest();
+  const cliSmokeRequest =
+    createLocalDevWorkerDockerSmokeLifecycleCliSmokeRequest();
+  const cliCleanupRequest =
+    createLocalDevWorkerDockerSmokeLifecycleCliCleanupRequest();
+  const cliLifecycleInput = createLocalDevWorkerDockerSmokeLifecycleCliInput({
+    lifecycleId: 'self-check-cli-lifecycle',
+  });
+  const cliDryReportResult =
+    createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureResult();
+  const cliDryMarkdown =
+    createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureMarkdown();
+  const repeatedCliDryMarkdown =
+    createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureMarkdown();
+  const cliDryJson =
+    createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureJsonSummary();
+  const repeatedCliDryJson =
+    createLocalDevWorkerDockerSmokeLifecycleDryReportFixtureJsonSummary();
+  const parsedCliDryJson = JSON.parse(cliDryJson) as {
+    lifecycleId: string;
+    outcome: string;
+    safetySummary: {
+      noNewDockerCapabilities: boolean;
+      arbitraryDockerRunAllowed: boolean;
+      arbitraryCleanupAllowed: boolean;
+      productionUiPath: boolean;
+      srcImportPath: boolean;
+    };
+  };
+  const forbiddenCliReportPatterns = [
+    /API_KEY=/i,
+    /TOKEN=/i,
+    /SECRET=/i,
+    /SERVICE_ROLE/i,
+    /SUPABASE_SERVICE_ROLE/i,
+    /C:\\Users\\/i,
+    /\/home\//i,
+    /\/Users\//i,
+    /\.env/i,
+  ];
+
+  assertCondition(
+    cliDryMarkdown === repeatedCliDryMarkdown,
+    'CLI dry-report markdown must be deterministic.',
+    failures,
+  );
+  assertCondition(
+    cliDryJson === repeatedCliDryJson,
+    'CLI dry-report JSON summary must be deterministic.',
+    failures,
+  );
+  assertCondition(
+    cliDryMarkdown.includes(
+      '# Dremo Local-dev Docker Smoke Lifecycle Report',
+    ),
+    'CLI dry-report markdown must include the lifecycle report heading.',
+    failures,
+  );
+  assertCondition(
+    parsedCliDryJson.lifecycleId === cliDryReportResult.lifecycleId &&
+      parsedCliDryJson.outcome === cliDryReportResult.outcome,
+    'CLI dry-report JSON must preserve deterministic lifecycle identifiers.',
+    failures,
+  );
+  assertCondition(
+    parsedCliDryJson.safetySummary.noNewDockerCapabilities === true,
+    'CLI dry-report JSON must preserve noNewDockerCapabilities true.',
+    failures,
+  );
+  assertCondition(
+    parsedCliDryJson.safetySummary.arbitraryDockerRunAllowed === false &&
+      parsedCliDryJson.safetySummary.arbitraryCleanupAllowed === false,
+    'CLI dry-report JSON must keep arbitrary Docker run and cleanup denied.',
+    failures,
+  );
+  assertCondition(
+    parsedCliDryJson.safetySummary.productionUiPath === false &&
+      parsedCliDryJson.safetySummary.srcImportPath === false,
+    'CLI dry-report JSON must keep production and src paths disabled.',
+    failures,
+  );
+
+  for (const forbidden of forbiddenCliReportPatterns) {
+    assertCondition(
+      !forbidden.test(cliDryMarkdown),
+      `CLI dry-report markdown matched forbidden pattern ${forbidden}.`,
+      failures,
+    );
+    assertCondition(
+      !forbidden.test(cliDryJson),
+      `CLI dry-report JSON matched forbidden pattern ${forbidden}.`,
+      failures,
+    );
+  }
+
+  assertCondition(
+    cliReadinessRequest.command === 'docker' &&
+      JSON.stringify(cliReadinessRequest.args) ===
+        JSON.stringify(LOCAL_DEV_WORKER_DOCKER_SMOKE_LIFECYCLE_CLI_READINESS_ARGS),
+    'CLI readiness request must use the exact reviewed readiness probe shape.',
+    failures,
+  );
+  assertCondition(
+    cliSmokeRequest.command === 'docker' &&
+      JSON.stringify(cliSmokeRequest.args) ===
+        JSON.stringify(LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS),
+    'CLI smoke request must use the exact reviewed smoke command shape.',
+    failures,
+  );
+  assertCondition(
+    cliCleanupRequest.command === 'docker' &&
+      JSON.stringify(['docker', ...cliCleanupRequest.args]) ===
+        JSON.stringify(LOCAL_DEV_WORKER_DOCKER_SMOKE_CLEANUP_COMMAND),
+    'CLI cleanup request must use the exact reviewed cleanup command shape.',
+    failures,
+  );
+
+  for (const request of [
+    cliReadinessRequest,
+    cliSmokeRequest,
+    cliCleanupRequest,
+  ]) {
+    assertCondition(
+      request.source === 'dremo-local-dev-sandbox',
+      `${request.requestId}: CLI request source must stay local-dev sandbox.`,
+      failures,
+    );
+    assertCondition(
+      request.expectedEnvironment === 'local-dev',
+      `${request.requestId}: CLI request environment must stay local-dev.`,
+      failures,
+    );
+    assertCondition(
+      request.productionUiPath === false && request.srcImportPath === false,
+      `${request.requestId}: CLI request must not expose production UI or src import paths.`,
+      failures,
+    );
+    assertCondition(
+      assertTrustedManualReviewSource(request.manualSecurityReview),
+      `${request.requestId}: CLI request manual review must come from trusted local worker helpers.`,
+      failures,
+    );
+  }
+
+  assertCondition(
+    assertTrustedManualReviewSource(
+      cliLifecycleInput.readiness.trustedManualReview,
+    ) &&
+      assertTrustedManualReviewSource(
+        cliLifecycleInput.smoke.trustedManualReview,
+      ) &&
+      assertTrustedManualReviewSource(
+        cliLifecycleInput.cleanup.trustedManualReview,
+      ),
+    'CLI lifecycle input must use trusted local review helpers for all stages.',
+    failures,
+  );
+  assertCondition(
+    cliLifecycleInput.readiness.config?.executionMode ===
+      'reviewed-local-docker-readiness-probe' &&
+      cliLifecycleInput.smoke.config?.executionMode ===
+        'reviewed-local-docker-container-smoke' &&
+      cliLifecycleInput.cleanup.config?.executionMode ===
+        'reviewed-local-docker-smoke-cleanup',
+    'CLI lifecycle input must use only the reviewed readiness, smoke, and cleanup configs.',
+    failures,
+  );
+  assertCondition(
+    findLocalDevWorkerExecutionCapability(cliReadinessRequest)?.capabilityId ===
+      'capability.docker.daemon.readiness' &&
+      findLocalDevWorkerExecutionCapability(cliSmokeRequest)?.capabilityId ===
+        'capability.docker.container.smoke.echo' &&
+      findLocalDevWorkerExecutionCapability(cliCleanupRequest)?.capabilityId ===
+        'capability.docker.smoke.cleanup.exact',
+    'CLI lifecycle factory must match only existing reviewed capabilities.',
+    failures,
+  );
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -1261,6 +1458,7 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerSmokeLifecycleFixtures.length,
     checkedDockerSmokeLifecycleReportFixtures:
       localDevWorkerDockerSmokeLifecycleReportFixtures.length,
+    checkedDockerSmokeLifecycleCliFixtures: 1,
     failures,
   };
 }
