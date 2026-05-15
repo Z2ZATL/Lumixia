@@ -163,6 +163,9 @@ async function scanFiles(files, patterns, scope) {
 const browserSandboxFiles = await listSourceFiles(browserSandboxRoot);
 const srcFiles = await listSourceFiles(srcRoot);
 const workerFiles = await listSourceFiles(workerRoot);
+const lifecycleFiles = workerFiles.filter((file) =>
+  path.basename(file).includes('Lifecycle'),
+);
 const workerProcessApiFiles = workerFiles.filter(
   (file) =>
     !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
@@ -209,6 +212,9 @@ console.log(`Scanned src root for worker imports: ${path.relative(repoRoot, srcR
 console.log(`Total src files scanned: ${srcFiles.length}`);
 console.log(
   `Worker files scanned for process API boundary: ${workerProcessApiFiles.length}`,
+);
+console.log(
+  `Lifecycle files included in process API boundary scan: ${lifecycleFiles.length}`,
 );
 console.log(
   `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFilesWithoutCleanup.length}`,

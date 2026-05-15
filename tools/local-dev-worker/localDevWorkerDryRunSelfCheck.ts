@@ -18,6 +18,8 @@ import { executeLocalDevWorkerDockerSmokeCleanup } from './localDevWorkerDockerC
 import { localDevWorkerDockerCleanupExecutionFixtures } from './localDevWorkerDockerCleanupExecutionFixtures.ts';
 import { createLocalDevWorkerDockerSmokeAuditRecord } from './localDevWorkerDockerSmokeAudit.ts';
 import { localDevWorkerDockerSmokeAuditFixtures } from './localDevWorkerDockerSmokeAuditFixtures.ts';
+import { runLocalDevWorkerDockerSmokeLifecycle } from './localDevWorkerDockerSmokeLifecycle.ts';
+import { localDevWorkerDockerSmokeLifecycleFixtures } from './localDevWorkerDockerSmokeLifecycleFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -35,6 +37,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerSmokeAuditFixtures: number;
   checkedDockerCleanupFixtures: number;
   checkedDockerCleanupExecutionFixtures: number;
+  checkedDockerSmokeLifecycleFixtures: number;
   failures: string[];
 }
 
@@ -905,6 +908,168 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerSmokeLifecycleFixtures) {
+    const scenario = fixture.createScenario();
+    const response = await runLocalDevWorkerDockerSmokeLifecycle(scenario.input);
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.outcome === fixture.expectedOutcome,
+      `${fixture.name}: expected lifecycle outcome ${fixture.expectedOutcome}, got ${response.outcome}.`,
+      failures,
+    );
+    assertCondition(
+      JSON.stringify(response.stages) === JSON.stringify(fixture.expectedStages),
+      `${fixture.name}: expected stages ${fixture.expectedStages.join(
+        ' -> ',
+      )}, got ${response.stages.join(' -> ')}.`,
+      failures,
+    );
+    assertCondition(
+      JSON.stringify(scenario.calls) === JSON.stringify(fixture.expectedCalls),
+      `${fixture.name}: expected adapter calls ${fixture.expectedCalls.join(
+        ' -> ',
+      )}, got ${scenario.calls.join(' -> ')}.`,
+      failures,
+    );
+    assertCondition(
+      response.cleanupAttempted === fixture.expectedCleanupAttempted,
+      `${fixture.name}: expected cleanupAttempted ${fixture.expectedCleanupAttempted}, got ${response.cleanupAttempted}.`,
+      failures,
+    );
+    assertCondition(
+      response.cleanupRequired === fixture.expectedCleanupRequired,
+      `${fixture.name}: expected cleanupRequired ${fixture.expectedCleanupRequired}, got ${response.cleanupRequired}.`,
+      failures,
+    );
+    assertCondition(
+      !!response.smoke === fixture.expectedSmokePresent,
+      `${fixture.name}: expected smoke presence ${fixture.expectedSmokePresent}, got ${!!response.smoke}.`,
+      failures,
+    );
+    assertCondition(
+      !!response.cleanup === fixture.expectedCleanupPresent,
+      `${fixture.name}: expected cleanup presence ${fixture.expectedCleanupPresent}, got ${!!response.cleanup}.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.noNewDockerCapabilities === true,
+      `${fixture.name}: lifecycle must declare noNewDockerCapabilities true.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.arbitraryDockerRunAllowed === false,
+      `${fixture.name}: arbitrary Docker run must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.arbitraryCleanupAllowed === false,
+      `${fixture.name}: arbitrary cleanup must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.imagePullAllowed === false,
+      `${fixture.name}: image pulls must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.networkAllowed === false,
+      `${fixture.name}: network must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.mountsAllowed === false,
+      `${fixture.name}: mounts must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.workspaceMounted === false,
+      `${fixture.name}: workspace must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.dockerSocketMounted === false,
+      `${fixture.name}: Docker socket must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.homeMounted === false,
+      `${fixture.name}: home must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.shellAllowed === false,
+      `${fixture.name}: shell must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.hostEnvironmentInherited === false,
+      `${fixture.name}: host environment must not be inherited.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.productionUiPath === false,
+      `${fixture.name}: lifecycle must not expose a production UI path.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.srcImportPath === false,
+      `${fixture.name}: lifecycle must not expose a src import path.`,
+      failures,
+    );
+
+    if (response.smoke) {
+      assertCondition(
+        JSON.stringify(response.smoke.args) ===
+          JSON.stringify(LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS),
+        `${fixture.name}: lifecycle smoke args must stay exact.`,
+        failures,
+      );
+      assertCondition(
+        response.smoke.imagePulled === false,
+        `${fixture.name}: lifecycle smoke must not pull images.`,
+        failures,
+      );
+      assertCondition(
+        response.smoke.networkAllowed === false,
+        `${fixture.name}: lifecycle smoke must not allow network.`,
+        failures,
+      );
+      assertCondition(
+        response.auditRecord === response.smoke.auditRecord,
+        `${fixture.name}: lifecycle auditRecord should come from the smoke result.`,
+        failures,
+      );
+    }
+
+    if (response.cleanup) {
+      assertCondition(
+        JSON.stringify(response.cleanup.args) ===
+          JSON.stringify(['rm', '-f', LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME]),
+        `${fixture.name}: lifecycle cleanup args must stay exact.`,
+        failures,
+      );
+      assertCondition(
+        response.cleanup.safetyMetadata.arbitraryTargetAllowed === false,
+        `${fixture.name}: lifecycle cleanup must not allow arbitrary targets.`,
+        failures,
+      );
+      assertCondition(
+        response.cleanup.safetyMetadata.wildcardAllowed === false,
+        `${fixture.name}: lifecycle cleanup must not allow wildcard targets.`,
+        failures,
+      );
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected lifecycle rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -922,6 +1087,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerCleanupFixtures.length,
     checkedDockerCleanupExecutionFixtures:
       localDevWorkerDockerCleanupExecutionFixtures.length,
+    checkedDockerSmokeLifecycleFixtures:
+      localDevWorkerDockerSmokeLifecycleFixtures.length,
     failures,
   };
 }

@@ -46,6 +46,9 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerOutputSanitizer.ts` | Pure stdout/stderr redaction, line-ending normalization, and byte-cap enforcement for worker audit summaries. |
 | `localDevWorkerDockerSmokeAudit.ts` | Audit-safe smoke record model with sanitized previews and cleanup-risk metadata. |
 | `localDevWorkerDockerSmokeAuditFixtures.ts` | Fixtures for result normalization, redaction, truncation, and cleanup-risk expectations. |
+| `localDevWorkerDockerSmokeLifecyclePolicy.ts` | Cleanup decision, outcome classification, and allowed stage transition helpers for the exact smoke lifecycle. |
+| `localDevWorkerDockerSmokeLifecycle.ts` | Local-dev orchestrator that composes readiness, exact smoke, audit, and exact cleanup using existing reviewed adapters. |
+| `localDevWorkerDockerSmokeLifecycleFixtures.ts` | Dependency-injected lifecycle fixtures that avoid requiring Docker while checking ordering and cleanup decisions. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -74,7 +77,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Guard fixtures may still contain denied command strings by design.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Guard fixtures may still contain denied command strings by design.
 
 ## Verification Scripts
 
@@ -85,9 +88,9 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
-## Current Execution Status After PR #29
+## Current Execution Status After PR #30
 
 | Area | Status |
 | --- | --- |
@@ -97,6 +100,7 @@ These scripts typecheck the worker contract, validation, trace, fixtures, and se
 | Container smoke | One exact reviewed local-dev smoke command may execute with static `--name`, allowlisted labels, `--pull=never`, `--network none`, `--user 65534:65534`, no mounts, no shell, no root user, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
 | Audit normalization | Smoke results produce stable outcomes, sanitized stdout/stderr previews, and cleanup-risk metadata. |
 | Cleanup | One exact reviewed local-dev cleanup command may execute: `docker rm -f lumixia-dremo-smoke-echo`. Missing target is structured and acceptable. No arbitrary target, container ID, wildcard, multiple target, ps/inspect/stop/kill, or prune path exists. |
+| Lifecycle | The worker can orchestrate readiness -> exact smoke -> audit -> exact cleanup with existing adapters only. No new command, process API file, network, mount, or browser path is added. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
@@ -155,6 +159,20 @@ PR #25 adds plan-only policy gates for future local-dev container smoke executio
 | Mounts | Docker socket, home, workspace bind mount, and tmpfs remain disabled. |
 | Security | Privileged, host network, host PID/IPC, capability add, root user, and missing no-new-privileges are denied. |
 | Plan | `dockerRunPreview` is a string-array preview only. It is never passed to `execFile`. |
+
+## Docker Smoke Lifecycle Orchestrator
+
+PR #30 composes the reviewed local-dev Docker pieces without adding a new command capability.
+
+| Stage | Behavior |
+| --- | --- |
+| Readiness | Calls the existing readiness adapter first. If the daemon is unavailable, smoke and cleanup are skipped. |
+| Smoke | Calls the existing exact smoke adapter only after readiness reports `daemon_available`. |
+| Audit | Reuses the smoke result audit record and normalized outcome metadata. |
+| Cleanup | Calls the existing exact cleanup adapter only when policy says cleanup is required after smoke success, failure attempt, or timeout. |
+| Self-check | Uses dependency-injected fake adapters so lifecycle verification does not depend on Docker Desktop, local images, or stale containers. |
+
+The lifecycle module does not import `child_process`, does not call `execFile`, does not construct arbitrary Docker commands, and does not broaden cleanup targets.
 
 ## Future Execution Gate
 
