@@ -6,6 +6,8 @@ import { localDevWorkerDockerContainerPolicyFixtures } from './localDevWorkerDoc
 import { executeLocalDevWorkerDockerContainerSmoke } from './localDevWorkerDockerContainerSmokeAdapter.ts';
 import { localDevWorkerDockerContainerSmokeFixtures } from './localDevWorkerDockerContainerSmokeFixtures.ts';
 import { LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS } from './localDevWorkerDockerContainerSmokePolicy.ts';
+import { createLocalDevWorkerDockerSmokeAuditRecord } from './localDevWorkerDockerSmokeAudit.ts';
+import { localDevWorkerDockerSmokeAuditFixtures } from './localDevWorkerDockerSmokeAuditFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -20,6 +22,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerReadinessFixtures: number;
   checkedDockerContainerPolicyFixtures: number;
   checkedDockerContainerSmokeFixtures: number;
+  checkedDockerSmokeAuditFixtures: number;
   failures: string[];
 }
 
@@ -466,6 +469,26 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       `${fixture.name}: smoke container must run as non-root.`,
       failures,
     );
+    assertCondition(
+      response.cleanupRisk === response.auditRecord.cleanupRisk,
+      `${fixture.name}: cleanupRisk should mirror audit record cleanupRisk.`,
+      failures,
+    );
+    assertCondition(
+      response.outcome === response.auditRecord.outcome,
+      `${fixture.name}: outcome should mirror audit record outcome.`,
+      failures,
+    );
+    assertCondition(
+      response.sanitizedStdout === response.auditRecord.stdoutPreview,
+      `${fixture.name}: sanitizedStdout should mirror audit stdoutPreview.`,
+      failures,
+    );
+    assertCondition(
+      response.sanitizedStderr === response.auditRecord.stderrPreview,
+      `${fixture.name}: sanitizedStderr should mirror audit stderrPreview.`,
+      failures,
+    );
 
     if (fixture.expectedExecutionAttempted) {
       assertCondition(
@@ -513,6 +536,115 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerSmokeAuditFixtures) {
+    const auditRecord = createLocalDevWorkerDockerSmokeAuditRecord(
+      fixture.input,
+      fixture.options,
+    );
+
+    assertCondition(
+      auditRecord.outcome === fixture.expectedOutcome,
+      `${fixture.name}: expected outcome ${fixture.expectedOutcome}, got ${auditRecord.outcome}.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.cleanupRisk === fixture.expectedCleanupRisk,
+      `${fixture.name}: expected cleanupRisk ${fixture.expectedCleanupRisk}, got ${auditRecord.cleanupRisk}.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.commandPreview[0] === 'docker',
+      `${fixture.name}: command preview must start with docker.`,
+      failures,
+    );
+    assertCondition(
+      JSON.stringify(auditRecord.commandPreview.slice(1)) ===
+        JSON.stringify(LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS),
+      `${fixture.name}: audit command preview must preserve the exact reviewed smoke args.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.imagePulled === false,
+      `${fixture.name}: audit must preserve imagePulled false.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.imageBuilt === false,
+      `${fixture.name}: audit must preserve imageBuilt false.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.networkAllowed === false,
+      `${fixture.name}: audit must preserve networkAllowed false.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.mountsAllowed === false,
+      `${fixture.name}: audit must preserve mountsAllowed false.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.shellAllowed === false,
+      `${fixture.name}: audit must preserve shellAllowed false.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.hostEnvironmentInherited === false,
+      `${fixture.name}: audit must preserve hostEnvironmentInherited false.`,
+      failures,
+    );
+
+    if (fixture.options?.maxStdoutBytes !== undefined) {
+      assertCondition(
+        Buffer.from(auditRecord.stdoutPreview, 'utf8').byteLength <=
+          fixture.options.maxStdoutBytes,
+        `${fixture.name}: stdout preview exceeded configured byte cap.`,
+        failures,
+      );
+    }
+
+    if (fixture.options?.maxStderrBytes !== undefined) {
+      assertCondition(
+        Buffer.from(auditRecord.stderrPreview, 'utf8').byteLength <=
+          fixture.options.maxStderrBytes,
+        `${fixture.name}: stderr preview exceeded configured byte cap.`,
+        failures,
+      );
+    }
+
+    for (const expected of fixture.expectedStdoutIncludes ?? []) {
+      assertCondition(
+        auditRecord.stdoutPreview.includes(expected),
+        `${fixture.name}: expected stdout preview to include ${expected}.`,
+        failures,
+      );
+    }
+
+    for (const expected of fixture.expectedStderrIncludes ?? []) {
+      assertCondition(
+        auditRecord.stderrPreview.includes(expected),
+        `${fixture.name}: expected stderr preview to include ${expected}.`,
+        failures,
+      );
+    }
+
+    for (const forbidden of fixture.forbiddenStdoutPatterns ?? []) {
+      assertCondition(
+        !forbidden.test(auditRecord.stdoutPreview),
+        `${fixture.name}: stdout preview still matched forbidden pattern ${forbidden}.`,
+        failures,
+      );
+    }
+
+    for (const forbidden of fixture.forbiddenStderrPatterns ?? []) {
+      assertCondition(
+        !forbidden.test(auditRecord.stderrPreview),
+        `${fixture.name}: stderr preview still matched forbidden pattern ${forbidden}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -524,6 +656,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerContainerPolicyFixtures.length,
     checkedDockerContainerSmokeFixtures:
       localDevWorkerDockerContainerSmokeFixtures.length,
+    checkedDockerSmokeAuditFixtures:
+      localDevWorkerDockerSmokeAuditFixtures.length,
     failures,
   };
 }

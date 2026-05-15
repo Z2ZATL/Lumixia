@@ -10,6 +10,12 @@ import {
   LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_ID,
   evaluateLocalDevWorkerDockerContainerSmokePolicy,
 } from './localDevWorkerDockerContainerSmokePolicy.ts';
+import {
+  type LocalDevWorkerDockerSmokeAuditRecord,
+  type LocalDevWorkerDockerSmokeCleanupRisk,
+  createLocalDevWorkerDockerSmokeAuditRecord,
+} from './localDevWorkerDockerSmokeAudit.ts';
+import type { LocalDevWorkerDockerSmokeOutcome } from './localDevWorkerDockerSmokeResultNormalizer.ts';
 import type { LocalDevWorkerDockerReadinessResult } from './localDevWorkerDockerReadiness.ts';
 import type { LocalDevWorkerExecutionReadinessRequest } from './localDevWorkerExecutionReadiness.ts';
 import { findLocalDevWorkerExecutionCapability } from './localDevWorkerExecutionManifest.ts';
@@ -56,6 +62,11 @@ export interface LocalDevWorkerDockerContainerSmokeResult {
   timedOut: boolean;
   durationMs: number;
   rejectionCodes: string[];
+  outcome: LocalDevWorkerDockerSmokeOutcome;
+  sanitizedStdout: string;
+  sanitizedStderr: string;
+  cleanupRisk: LocalDevWorkerDockerSmokeCleanupRisk;
+  auditRecord: LocalDevWorkerDockerSmokeAuditRecord;
   safetyMetadata: LocalDevWorkerDockerContainerSmokeSafetyMetadata;
 }
 
@@ -123,15 +134,15 @@ function createResult(input: {
   rejectionCodes: readonly string[];
   containerStarted: boolean;
 }): LocalDevWorkerDockerContainerSmokeResult {
-  return {
+  const resultBase = {
     ok: input.ok,
     noExecution: input.noExecution,
     executionAttempted: input.executionAttempted,
     containerStarted: input.containerStarted,
-    imagePulled: false,
-    imageBuilt: false,
-    networkAllowed: false,
-    mountsAllowed: false,
+    imagePulled: false as false,
+    imageBuilt: false as false,
+    networkAllowed: false as false,
+    mountsAllowed: false as false,
     executionMode: input.executionMode,
     capabilityId: input.capabilityId,
     command: input.command,
@@ -146,6 +157,19 @@ function createResult(input: {
       config: input.config,
       containerStarted: input.containerStarted,
     }),
+  };
+  const auditRecord = createLocalDevWorkerDockerSmokeAuditRecord(resultBase, {
+    maxStdoutBytes: input.config.maxStdoutBytes,
+    maxStderrBytes: input.config.maxStderrBytes,
+  });
+
+  return {
+    ...resultBase,
+    outcome: auditRecord.outcome,
+    sanitizedStdout: auditRecord.stdoutPreview,
+    sanitizedStderr: auditRecord.stderrPreview,
+    cleanupRisk: auditRecord.cleanupRisk,
+    auditRecord,
   };
 }
 
