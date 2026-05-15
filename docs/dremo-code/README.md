@@ -79,7 +79,9 @@ PR #29 adds the first reviewed local-dev cleanup execution path. It may attempt 
 
 PR #30 adds a local-dev Docker smoke lifecycle orchestrator that composes the already-reviewed readiness classifier, exact smoke command, audit normalization, and exact cleanup command. It adds no new Docker command capability, no new process API file, and the self-check uses dependency-injected fake adapters so Docker Desktop, `alpine:3.20`, and a cleanup target are not required.
 
-## Current Execution Status After PR #30
+PR #31 adds lifecycle report formatting utilities for future CLI/UI/audit display. Reports are generated from existing lifecycle results only, re-sanitize stdout/stderr previews, map outcomes to stable next actions, and do not add Docker execution, cleanup execution, browser integration, production UI, Supabase, SQL, or billing behavior.
+
+## Current Execution Status After PR #31
 
 | Area | Status |
 | --- | --- |
@@ -91,6 +93,7 @@ PR #30 adds a local-dev Docker smoke lifecycle orchestrator that composes the al
 | Audit normalization | Smoke results normalize to stable outcomes such as success, Docker CLI unavailable, daemon unavailable, local image unavailable, timeout, policy blocked, execution failed, or unexpected output. |
 | Cleanup | One exact reviewed local-dev cleanup command may run: `docker rm -f lumixia-dremo-smoke-echo`. Arbitrary names, container IDs, wildcards, multiple targets, `docker ps`, `docker inspect`, `docker stop`, `docker kill`, and prune remain denied. |
 | Lifecycle orchestration | Local-dev worker can compose readiness -> exact smoke -> audit -> exact cleanup using existing reviewed adapters only. Dependency-injected self-checks cover ordering and cleanup decisions without requiring Docker. |
+| Lifecycle reports | Worker can format existing lifecycle results into sanitized Markdown and deterministic JSON summaries for future local tooling. No browser or production path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -98,4 +101,4 @@ PR #30 adds a local-dev Docker smoke lifecycle orchestrator that composes the al
 
 ## Recommended Next PR
 
-Future PR #31 should focus on lifecycle telemetry/report formatting for local-dev worker results. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.
+Future PR #32 should remain reporting/telemetry-oriented or add a local CLI wrapper around existing reports. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.

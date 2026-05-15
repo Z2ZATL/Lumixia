@@ -20,6 +20,12 @@ import { createLocalDevWorkerDockerSmokeAuditRecord } from './localDevWorkerDock
 import { localDevWorkerDockerSmokeAuditFixtures } from './localDevWorkerDockerSmokeAuditFixtures.ts';
 import { runLocalDevWorkerDockerSmokeLifecycle } from './localDevWorkerDockerSmokeLifecycle.ts';
 import { localDevWorkerDockerSmokeLifecycleFixtures } from './localDevWorkerDockerSmokeLifecycleFixtures.ts';
+import {
+  createLocalDevWorkerDockerSmokeLifecycleReport,
+  formatLocalDevWorkerDockerSmokeLifecycleJsonSummary,
+  formatLocalDevWorkerDockerSmokeLifecycleMarkdown,
+} from './localDevWorkerDockerSmokeLifecycleReport.ts';
+import { localDevWorkerDockerSmokeLifecycleReportFixtures } from './localDevWorkerDockerSmokeLifecycleReportFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
@@ -38,6 +44,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerCleanupFixtures: number;
   checkedDockerCleanupExecutionFixtures: number;
   checkedDockerSmokeLifecycleFixtures: number;
+  checkedDockerSmokeLifecycleReportFixtures: number;
   failures: string[];
 }
 
@@ -1070,6 +1077,169 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerSmokeLifecycleReportFixtures) {
+    const report = createLocalDevWorkerDockerSmokeLifecycleReport(fixture.result);
+    const markdown = formatLocalDevWorkerDockerSmokeLifecycleMarkdown(report);
+    const repeatedMarkdown =
+      formatLocalDevWorkerDockerSmokeLifecycleMarkdown(report);
+    const jsonSummary =
+      formatLocalDevWorkerDockerSmokeLifecycleJsonSummary(report);
+    const repeatedJsonSummary =
+      formatLocalDevWorkerDockerSmokeLifecycleJsonSummary(report);
+    const parsedJson = JSON.parse(jsonSummary) as typeof report;
+
+    assertCondition(
+      report.kind === 'local-dev-docker-smoke-lifecycle-report',
+      `${fixture.name}: report kind mismatch.`,
+      failures,
+    );
+    assertCondition(
+      report.localDevOnly === true,
+      `${fixture.name}: report must be local-dev only.`,
+      failures,
+    );
+    assertCondition(
+      report.outcome === fixture.expectedOutcome,
+      `${fixture.name}: expected report outcome ${fixture.expectedOutcome}, got ${report.outcome}.`,
+      failures,
+    );
+    assertCondition(
+      report.nextRecommendedAction === fixture.expectedNextRecommendedAction,
+      `${fixture.name}: nextRecommendedAction drifted.`,
+      failures,
+    );
+    assertCondition(
+      markdown === repeatedMarkdown,
+      `${fixture.name}: markdown formatting must be deterministic.`,
+      failures,
+    );
+    assertCondition(
+      jsonSummary === repeatedJsonSummary,
+      `${fixture.name}: JSON formatting must be deterministic.`,
+      failures,
+    );
+    assertCondition(
+      parsedJson.reportId === report.reportId &&
+        parsedJson.lifecycleId === report.lifecycleId &&
+        parsedJson.outcome === report.outcome,
+      `${fixture.name}: JSON summary must parse back to stable report identifiers.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.noNewDockerCapabilities === true,
+      `${fixture.name}: report must preserve noNewDockerCapabilities true.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.arbitraryDockerRunAllowed === false,
+      `${fixture.name}: report must keep arbitrary Docker run denied.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.arbitraryCleanupAllowed === false,
+      `${fixture.name}: report must keep arbitrary cleanup denied.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.imagePullAllowed === false,
+      `${fixture.name}: report must keep image pull denied.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.networkAllowed === false,
+      `${fixture.name}: report must keep network denied.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.mountsAllowed === false,
+      `${fixture.name}: report must keep mounts denied.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.workspaceMounted === false,
+      `${fixture.name}: report must keep workspace unmounted.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.dockerSocketMounted === false,
+      `${fixture.name}: report must keep Docker socket unmounted.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.homeMounted === false,
+      `${fixture.name}: report must keep home unmounted.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.shellAllowed === false,
+      `${fixture.name}: report must keep shell disabled.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.hostEnvironmentInherited === false,
+      `${fixture.name}: report must keep host environment uninherited.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.productionUiPath === false,
+      `${fixture.name}: report must keep production UI path false.`,
+      failures,
+    );
+    assertCondition(
+      report.safetySummary.srcImportPath === false,
+      `${fixture.name}: report must keep src import path false.`,
+      failures,
+    );
+
+    for (const expected of fixture.expectedMarkdownIncludes) {
+      assertCondition(
+        markdown.includes(expected),
+        `${fixture.name}: expected markdown to include ${expected}.`,
+        failures,
+      );
+    }
+
+    for (const forbidden of fixture.forbiddenMarkdownPatterns) {
+      assertCondition(
+        !forbidden.test(markdown),
+        `${fixture.name}: markdown matched forbidden pattern ${forbidden}.`,
+        failures,
+      );
+    }
+
+    for (const forbidden of fixture.forbiddenJsonPatterns) {
+      assertCondition(
+        !forbidden.test(jsonSummary),
+        `${fixture.name}: JSON summary matched forbidden pattern ${forbidden}.`,
+        failures,
+      );
+    }
+
+    if (
+      fixture.expectedSmokeStdoutMaxBytes !== undefined &&
+      report.smokeSummary
+    ) {
+      assertCondition(
+        Buffer.from(report.smokeSummary.stdoutPreview, 'utf8').byteLength <=
+          fixture.expectedSmokeStdoutMaxBytes,
+        `${fixture.name}: smoke stdout preview exceeded byte cap.`,
+        failures,
+      );
+    }
+
+    if (
+      fixture.expectedSmokeStderrMaxBytes !== undefined &&
+      report.smokeSummary
+    ) {
+      assertCondition(
+        Buffer.from(report.smokeSummary.stderrPreview, 'utf8').byteLength <=
+          fixture.expectedSmokeStderrMaxBytes,
+        `${fixture.name}: smoke stderr preview exceeded byte cap.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -1089,6 +1259,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerCleanupExecutionFixtures.length,
     checkedDockerSmokeLifecycleFixtures:
       localDevWorkerDockerSmokeLifecycleFixtures.length,
+    checkedDockerSmokeLifecycleReportFixtures:
+      localDevWorkerDockerSmokeLifecycleReportFixtures.length,
     failures,
   };
 }
