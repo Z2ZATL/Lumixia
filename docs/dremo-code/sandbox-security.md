@@ -28,6 +28,8 @@ Smoke audit note: PR #27 adds audit normalization for that exact smoke path. It 
 
 Cleanup planning note: PR #28 adds deterministic smoke container naming, static allowlisted labels, and a plan-only cleanup preview for `docker rm -f lumixia-dremo-smoke-echo`. It does not execute cleanup commands, run `docker ps`, inspect containers, prune, stop/kill, or add arbitrary cleanup targets.
 
+Cleanup execution note: PR #29 adds the first reviewed local-dev cleanup execution path. It may execute only `docker rm -f lumixia-dremo-smoke-echo` under cleanup-specific trusted review. Target-not-found, Docker CLI unavailable, and daemon unavailable are structured outcomes. It does not allow arbitrary cleanup targets, container IDs, wildcards, multiple targets, `docker ps`, `docker inspect`, `docker stop`, `docker kill`, prune, or any browser/production path.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -134,9 +136,9 @@ PR #21 note: the worker boundary now has a disabled-by-default execution capabil
 
 PR #22 note: the first real local-dev process execution path exists only in `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`. It is disabled by default, requires trusted local manual review metadata, uses `shell: false`, passes an empty environment, bounds timeout/stdout/stderr, and only allows reviewed non-Docker version/identity commands. Docker CLI execution remains blocked.
 
-PR #23 through PR #28 progressively add Docker-specific local-dev probes, one exact container smoke path, smoke audit normalization, and cleanup planning. `docker --version` and readiness classification are separate reviewed configs, while the container smoke adapter allows only static identity metadata plus `alpine:3.20 echo hello` with `--name lumixia-dremo-smoke-echo`, allowlisted `lumixia.dremo.*` labels, `--pull=never`, `--user 65534:65534`, no network, no mounts, no shell, no root user, no host env, bounded output, and audit-safe summaries.
+PR #23 through PR #29 progressively add Docker-specific local-dev probes, one exact container smoke path, smoke audit normalization, cleanup planning, and one exact cleanup path. `docker --version` and readiness classification are separate reviewed configs, while the container smoke adapter allows only static identity metadata plus `alpine:3.20 echo hello` with `--name lumixia-dremo-smoke-echo`, allowlisted `lumixia.dremo.*` labels, `--pull=never`, `--user 65534:65534`, no network, no mounts, no shell, no root user, no host env, bounded output, and audit-safe summaries.
 
-## Current Execution Status After PR #28
+## Current Execution Status After PR #29
 
 | Area | Status |
 | --- | --- |
@@ -145,8 +147,8 @@ PR #23 through PR #28 progressively add Docker-specific local-dev probes, one ex
 | Review gates | Capability and manual-review readiness are enforced before execution. |
 | Docker | Version probe, daemon readiness classification, and one exact no-network/no-mount smoke command are the only reviewed Docker paths. Arbitrary Docker runtime commands remain denied. |
 | Container smoke | Exact static-name/static-label `docker run` for `alpine:3.20 echo hello` only. |
-| Smoke audit | Output previews are sanitized and result outcomes/cleanup risk are normalized. No cleanup command is executed. |
-| Cleanup plan | Exact `docker rm -f lumixia-dremo-smoke-echo` is modeled as a future preview only; no cleanup execution exists. |
+| Smoke audit | Output previews are sanitized and result outcomes/cleanup risk are normalized. |
+| Cleanup | Exact `docker rm -f lumixia-dremo-smoke-echo` may execute under reviewed local-dev cleanup config only. No arbitrary cleanup, listing, inspect, stop/kill, or prune exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read, injected, logged, or traced. |

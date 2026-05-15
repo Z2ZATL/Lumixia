@@ -14,6 +14,8 @@ import {
 import { createLocalDevWorkerDockerCleanupPlan } from './localDevWorkerDockerCleanupPlan.ts';
 import { evaluateLocalDevWorkerDockerCleanupPolicy } from './localDevWorkerDockerCleanupPolicy.ts';
 import { localDevWorkerDockerCleanupFixtures } from './localDevWorkerDockerCleanupFixtures.ts';
+import { executeLocalDevWorkerDockerSmokeCleanup } from './localDevWorkerDockerCleanupAdapter.ts';
+import { localDevWorkerDockerCleanupExecutionFixtures } from './localDevWorkerDockerCleanupExecutionFixtures.ts';
 import { createLocalDevWorkerDockerSmokeAuditRecord } from './localDevWorkerDockerSmokeAudit.ts';
 import { localDevWorkerDockerSmokeAuditFixtures } from './localDevWorkerDockerSmokeAuditFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
@@ -32,6 +34,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerContainerSmokeFixtures: number;
   checkedDockerSmokeAuditFixtures: number;
   checkedDockerCleanupFixtures: number;
+  checkedDockerCleanupExecutionFixtures: number;
   failures: string[];
 }
 
@@ -751,6 +754,157 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  for (const fixture of localDevWorkerDockerCleanupExecutionFixtures) {
+    const response = await executeLocalDevWorkerDockerSmokeCleanup({
+      request: fixture.request,
+      config: fixture.config,
+      trustedManualReview: fixture.trustedManualReview,
+    });
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.noExecution === fixture.expectedNoExecution,
+      `${fixture.name}: cleanup execution noExecution mismatch.`,
+      failures,
+    );
+    assertCondition(
+      response.executionMode === fixture.expectedExecutionMode,
+      `${fixture.name}: expected cleanup executionMode ${fixture.expectedExecutionMode}, got ${response.executionMode}.`,
+      failures,
+    );
+    assertCondition(
+      response.executionAttempted === fixture.expectedExecutionAttempted,
+      `${fixture.name}: expected cleanup executionAttempted ${fixture.expectedExecutionAttempted}, got ${response.executionAttempted}.`,
+      failures,
+    );
+    assertCondition(
+      fixture.expectedOutcomes.includes(response.outcome),
+      `${fixture.name}: unexpected cleanup outcome ${response.outcome}.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.cleanupTarget === LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+      `${fixture.name}: cleanup target metadata must be deterministic.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.arbitraryTargetAllowed === false,
+      `${fixture.name}: arbitrary cleanup target must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.wildcardAllowed === false,
+      `${fixture.name}: wildcard cleanup must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.containerIdAllowed === false,
+      `${fixture.name}: container-id cleanup must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.pruneAllowed === false,
+      `${fixture.name}: prune must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.inspectAllowed === false,
+      `${fixture.name}: inspect must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.listAllowed === false,
+      `${fixture.name}: list must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.dockerSocketMounted === false,
+      `${fixture.name}: Docker socket must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.homeMounted === false,
+      `${fixture.name}: home must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.workspaceMounted === false,
+      `${fixture.name}: workspace must not be mounted.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.networkAllowed === false,
+      `${fixture.name}: network must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.shellAllowed === false,
+      `${fixture.name}: shell must remain disabled.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.hostEnvironmentInherited === false,
+      `${fixture.name}: host environment must not be inherited.`,
+      failures,
+    );
+    assertCondition(
+      Buffer.from(response.sanitizedStdout, 'utf8').byteLength <=
+        fixture.config.maxStdoutBytes,
+      `${fixture.name}: sanitized stdout exceeded configured byte cap.`,
+      failures,
+    );
+    assertCondition(
+      Buffer.from(response.sanitizedStderr, 'utf8').byteLength <=
+        fixture.config.maxStderrBytes,
+      `${fixture.name}: sanitized stderr exceeded configured byte cap.`,
+      failures,
+    );
+
+    if (fixture.expectedExecutionAttempted) {
+      assertCondition(
+        response.command === 'docker',
+        `${fixture.name}: exact cleanup must use docker executable.`,
+        failures,
+      );
+      assertCondition(
+        JSON.stringify(response.args) ===
+          JSON.stringify(['rm', '-f', LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME]),
+        `${fixture.name}: exact cleanup args must not drift.`,
+        failures,
+      );
+    } else {
+      assertCondition(
+        response.cleanupExecuted === false,
+        `${fixture.name}: blocked cleanup must not execute.`,
+        failures,
+      );
+    }
+
+    if (response.ok) {
+      assertCondition(
+        response.cleanupExecuted === fixture.expectedCleanupExecutedWhenOk,
+        `${fixture.name}: successful cleanup should set cleanupExecuted ${fixture.expectedCleanupExecutedWhenOk}.`,
+        failures,
+      );
+    }
+
+    if (
+      fixture.allowStructuredRuntimeUnavailable &&
+      response.executionAttempted &&
+      fixture.expectedOutcomes.includes(response.outcome)
+    ) {
+      continue;
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected cleanup execution rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -766,6 +920,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerSmokeAuditFixtures.length,
     checkedDockerCleanupFixtures:
       localDevWorkerDockerCleanupFixtures.length,
+    checkedDockerCleanupExecutionFixtures:
+      localDevWorkerDockerCleanupExecutionFixtures.length,
     failures,
   };
 }

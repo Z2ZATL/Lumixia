@@ -134,6 +134,17 @@ export const LOCAL_DEV_WORKER_EXECUTION_CAPABILITIES = [
     4096,
     5000,
   ),
+  capability(
+    'capability.docker.smoke.cleanup.exact',
+    'docker',
+    ['rm', '-f', 'lumixia-dremo-smoke-echo'],
+    'cleanup',
+    'metadata-string',
+    true,
+    'high',
+    4096,
+    3000,
+  ),
 ] as const satisfies readonly LocalDevWorkerExecutionCapability[];
 
 export function findLocalDevWorkerExecutionCapability(input: {

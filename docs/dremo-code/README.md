@@ -75,7 +75,9 @@ PR #27 hardens that smoke path with audit normalization, stable outcome categori
 
 PR #28 adds deterministic smoke container identity and cleanup review planning. The exact smoke command now includes static `--name lumixia-dremo-smoke-echo` and allowlisted `lumixia.dremo.*` labels, and the future cleanup preview is modeled as `docker rm -f lumixia-dremo-smoke-echo` without execution.
 
-## Current Execution Status After PR #28
+PR #29 adds the first reviewed local-dev cleanup execution path. It may attempt only `docker rm -f lumixia-dremo-smoke-echo` under the cleanup-specific trusted review/config. Missing containers, Docker CLI absence, and daemon unavailability are structured outcomes rather than safety failures.
+
+## Current Execution Status After PR #29
 
 | Area | Status |
 | --- | --- |
@@ -85,7 +87,7 @@ PR #28 adds deterministic smoke container identity and cleanup review planning. 
 | Docker | `docker --version` and the readiness-only `docker version --format "{{json .}}"` may be attempted under separate Docker-specific trusted local-dev configs. Arbitrary `docker run`, `docker info`, `docker build`, `docker compose`, image/container commands, socket paths, and mounts remain denied. |
 | Container execution | One exact local-dev smoke path may run with static `--name`, allowlisted labels, `--network none`, `--pull=never`, read-only root filesystem, dropped capabilities, no-new-privileges, resource caps, `--user 65534:65534`, `alpine:3.20`, and `echo hello`. No arbitrary image, command, metadata, pull/build/compose/exec, mounts, network, shell, root user, workspace access, or production/browser path exists. |
 | Audit normalization | Smoke results normalize to stable outcomes such as success, Docker CLI unavailable, daemon unavailable, local image unavailable, timeout, policy blocked, execution failed, or unexpected output. |
-| Cleanup planning | Timeout is classified as `unknown_after_timeout`; deterministic cleanup preview exists, but no cleanup command is executed yet. |
+| Cleanup | One exact reviewed local-dev cleanup command may run: `docker rm -f lumixia-dremo-smoke-echo`. Arbitrary names, container IDs, wildcards, multiple targets, `docker ps`, `docker inspect`, `docker stop`, `docker kill`, and prune remain denied. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -93,4 +95,4 @@ PR #28 adds deterministic smoke container identity and cleanup review planning. 
 
 ## Recommended Next PR
 
-Future PR #29 may add exact cleanup execution only after review. It should not expand to arbitrary repo execution.
+Future PR #30 should focus on lifecycle orchestration between smoke execution, audit, and exact cleanup. It should not expand to arbitrary repo execution.

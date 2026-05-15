@@ -4,7 +4,8 @@ export type LocalDevWorkerCapabilityCategory =
   | 'version'
   | 'identity'
   | 'metadata'
-  | 'smoke';
+  | 'smoke'
+  | 'cleanup';
 
 export type LocalDevWorkerExpectedOutputKind =
   | 'version-string'

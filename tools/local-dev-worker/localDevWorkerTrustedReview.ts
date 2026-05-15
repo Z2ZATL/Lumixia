@@ -38,6 +38,12 @@ export function createTrustedLocalDevManualReviewForContainerSmoke(): TrustedLoc
   ]);
 }
 
+export function createTrustedLocalDevManualReviewForDockerSmokeCleanup(): TrustedLocalDevManualSecurityReview {
+  return createTrustedLocalDevManualReviewForCapabilities([
+    'capability.docker.smoke.cleanup.exact',
+  ]);
+}
+
 export function assertTrustedManualReviewSource(
   review: LocalDevWorkerManualSecurityReview | undefined,
 ): review is TrustedLocalDevManualSecurityReview {

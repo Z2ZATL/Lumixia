@@ -50,9 +50,9 @@ export function evaluateLocalDevWorkerDockerCleanupPolicy(input: {
   }
 
   if (
-    normalizedArgs[0] === 'container' ||
-    normalizedArgs[0] === 'system' ||
-    normalizedArgs.includes('prune')
+    ((normalizedArgs[0] === 'container' || normalizedArgs[0] === 'system') &&
+      normalizedArgs.includes('prune')) ||
+    normalizedArgs[0] === 'prune'
   ) {
     rejectionCodes.push('cleanup_prune_denied');
   }

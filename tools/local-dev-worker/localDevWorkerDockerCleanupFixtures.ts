@@ -84,6 +84,10 @@ export const localDevWorkerDockerCleanupFixtures = [
     'cleanup_command_not_allowed',
     'cleanup_target_not_exact',
   ]),
+  blocked('docker-container-ls-blocked', 'docker', ['container', 'ls'], [
+    'cleanup_command_not_allowed',
+    'cleanup_target_not_exact',
+  ]),
   blocked('docker-inspect-blocked', 'docker', ['inspect', LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME], [
     'cleanup_command_not_allowed',
     'cleanup_target_not_exact',
