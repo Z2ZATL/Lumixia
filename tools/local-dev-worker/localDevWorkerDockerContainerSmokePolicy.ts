@@ -1,4 +1,9 @@
 import type { LocalDevWorkerCommandRequest } from './localDevWorkerContract.ts';
+import {
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS,
+  createLocalDevWorkerDockerSmokeLabelArgs,
+} from './localDevWorkerDockerContainerIdentity.ts';
 
 export interface LocalDevWorkerDockerContainerSmokePolicyRejection {
   code: string;
@@ -17,6 +22,9 @@ export const LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_ID =
 export const LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS = [
   'run',
   '--rm',
+  '--name',
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+  ...createLocalDevWorkerDockerSmokeLabelArgs(),
   '--network',
   'none',
   '--pull=never',
@@ -44,6 +52,11 @@ const MOUNT_FLAGS = new Set(['--mount', '-v', '--volume']);
 const ENV_FLAGS = new Set(['--env', '-e', '--env-file']);
 const PRIVILEGED_FLAGS = new Set(['--privileged', '--cap-add']);
 const ROOT_USER_VALUES = new Set(['0', '0:0', 'root', 'root:root']);
+const LABEL_VALUE_SET = new Set(
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS.map(
+    (label) => `${label.key}=${label.value}`,
+  ),
+);
 const SOCKET_PATTERNS = ['docker.sock', '/var/run/docker.sock'];
 const HOME_PATTERNS = ['~', '$home', '%userprofile%', '/home/', '/users/'];
 const WORKSPACE_PATTERNS = ['/workspace/', 'c:\\users\\', 'documents\\coding project'];
@@ -103,6 +116,22 @@ function userValues(args: readonly string[]) {
   return values;
 }
 
+function flagValues(args: readonly string[], flag: string) {
+  const values: string[] = [];
+
+  args.forEach((arg, index) => {
+    const normalizedArg = normalize(arg);
+
+    if (normalizedArg === flag) {
+      values.push(args[index + 1] ?? '');
+    } else if (normalizedArg.startsWith(`${flag}=`)) {
+      values.push(arg.slice(`${flag}=`.length));
+    }
+  });
+
+  return values;
+}
+
 export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
   request: LocalDevWorkerCommandRequest;
   capabilityId?: string;
@@ -111,9 +140,11 @@ export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
   const command = normalize(input.request.command);
   const args = input.request.args;
   const fullCommand = commandText(input.request);
-  const image = args[18] ?? '';
-  const containerCommand = args.slice(19);
+  const image = args[28] ?? '';
+  const containerCommand = args.slice(29);
   const requestedUserValues = userValues(args);
+  const requestedNames = flagValues(args, '--name');
+  const requestedLabels = flagValues(args, '--label');
 
   if (input.capabilityId !== LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_ID) {
     rejections.push(
@@ -156,6 +187,30 @@ export function evaluateLocalDevWorkerDockerContainerSmokePolicy(input: {
       reject(
         'container_smoke_image_not_allowed',
         'Container smoke execution allows only alpine:3.20.',
+      ),
+    );
+  }
+
+  if (
+    requestedNames.length !== 1 ||
+    requestedNames[0] !== LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME
+  ) {
+    rejections.push(
+      reject(
+        'container_smoke_name_not_allowed',
+        'Container smoke execution requires the exact reviewed container name.',
+      ),
+    );
+  }
+
+  if (
+    requestedLabels.length !== LABEL_VALUE_SET.size ||
+    requestedLabels.some((label) => !LABEL_VALUE_SET.has(label))
+  ) {
+    rejections.push(
+      reject(
+        'container_smoke_label_not_allowed',
+        'Container smoke execution requires the exact reviewed label set.',
       ),
     );
   }

@@ -3,6 +3,12 @@ import {
   LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_CAPABILITY_ID,
 } from './localDevWorkerDockerContainerSmokePolicy.ts';
 import {
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS,
+  type LocalDevWorkerDockerContainerLabel,
+} from './localDevWorkerDockerContainerIdentity.ts';
+import { createLocalDevWorkerDockerCleanupPlan } from './localDevWorkerDockerCleanupPlan.ts';
+import {
   type LocalDevWorkerDockerSmokeOutcome,
   type LocalDevWorkerDockerSmokeOutcomeInput,
   normalizeLocalDevWorkerDockerSmokeOutcome,
@@ -52,6 +58,11 @@ export interface LocalDevWorkerDockerSmokeAuditRecord {
   homeMounted: false;
   workspaceMounted: false;
   commandPreview: readonly string[];
+  containerName: typeof LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME;
+  containerLabels: readonly LocalDevWorkerDockerContainerLabel[];
+  cleanupPlanAvailable: boolean;
+  cleanupExecuted: false;
+  cleanupPlanPreview: readonly string[];
   stdoutPreview: string;
   stderrPreview: string;
   exitCode: number | null;
@@ -104,6 +115,7 @@ export function createLocalDevWorkerDockerSmokeAuditRecord(
     executionAttempted: input.executionAttempted,
     timedOut: input.timedOut,
   });
+  const cleanupPlan = createLocalDevWorkerDockerCleanupPlan();
 
   return {
     auditId:
@@ -125,6 +137,11 @@ export function createLocalDevWorkerDockerSmokeAuditRecord(
     homeMounted: false,
     workspaceMounted: false,
     commandPreview: [input.command, ...LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS],
+    containerName: LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+    containerLabels: LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS,
+    cleanupPlanAvailable: cleanupRisk === 'unknown_after_timeout',
+    cleanupExecuted: false,
+    cleanupPlanPreview: cleanupPlan.commandPreview,
     stdoutPreview: sanitized.stdout.value,
     stderrPreview: sanitized.stderr.value,
     exitCode: input.exitCode,

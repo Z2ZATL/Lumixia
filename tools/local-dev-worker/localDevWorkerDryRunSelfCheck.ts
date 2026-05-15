@@ -6,6 +6,14 @@ import { localDevWorkerDockerContainerPolicyFixtures } from './localDevWorkerDoc
 import { executeLocalDevWorkerDockerContainerSmoke } from './localDevWorkerDockerContainerSmokeAdapter.ts';
 import { localDevWorkerDockerContainerSmokeFixtures } from './localDevWorkerDockerContainerSmokeFixtures.ts';
 import { LOCAL_DEV_WORKER_DOCKER_CONTAINER_SMOKE_ARGS } from './localDevWorkerDockerContainerSmokePolicy.ts';
+import {
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+  LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS,
+  validateLocalDevWorkerDockerContainerIdentity,
+} from './localDevWorkerDockerContainerIdentity.ts';
+import { createLocalDevWorkerDockerCleanupPlan } from './localDevWorkerDockerCleanupPlan.ts';
+import { evaluateLocalDevWorkerDockerCleanupPolicy } from './localDevWorkerDockerCleanupPolicy.ts';
+import { localDevWorkerDockerCleanupFixtures } from './localDevWorkerDockerCleanupFixtures.ts';
 import { createLocalDevWorkerDockerSmokeAuditRecord } from './localDevWorkerDockerSmokeAudit.ts';
 import { localDevWorkerDockerSmokeAuditFixtures } from './localDevWorkerDockerSmokeAuditFixtures.ts';
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
@@ -23,6 +31,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerContainerPolicyFixtures: number;
   checkedDockerContainerSmokeFixtures: number;
   checkedDockerSmokeAuditFixtures: number;
+  checkedDockerCleanupFixtures: number;
   failures: string[];
 }
 
@@ -502,6 +511,19 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
         `${fixture.name}: smoke args must match the exact reviewed allowlist.`,
         failures,
       );
+      assertCondition(
+        response.args.includes('--name') &&
+          response.args.includes(LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME),
+        `${fixture.name}: smoke args must include deterministic container name.`,
+        failures,
+      );
+      for (const label of LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS) {
+        assertCondition(
+          response.args.includes(`${label.key}=${label.value}`),
+          `${fixture.name}: smoke args must include allowlisted label ${label.key}.`,
+          failures,
+        );
+      }
     }
 
     if (response.ok) {
@@ -593,6 +615,30 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       `${fixture.name}: audit must preserve hostEnvironmentInherited false.`,
       failures,
     );
+    assertCondition(
+      auditRecord.containerName === LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+      `${fixture.name}: audit must preserve deterministic container name.`,
+      failures,
+    );
+    assertCondition(
+      validateLocalDevWorkerDockerContainerIdentity({
+        containerName: auditRecord.containerName,
+        labels: auditRecord.containerLabels,
+      }).valid,
+      `${fixture.name}: audit container identity must remain allowlisted.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.cleanupExecuted === false,
+      `${fixture.name}: audit must not claim cleanup execution.`,
+      failures,
+    );
+    assertCondition(
+      auditRecord.cleanupPlanAvailable ===
+        (auditRecord.cleanupRisk === 'unknown_after_timeout'),
+      `${fixture.name}: cleanupPlanAvailable should only be true for unknown timeout risk.`,
+      failures,
+    );
 
     if (fixture.options?.maxStdoutBytes !== undefined) {
       assertCondition(
@@ -645,6 +691,66 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     }
   }
 
+  const cleanupPlan = createLocalDevWorkerDockerCleanupPlan();
+  assertCondition(
+    cleanupPlan.noExecution === true,
+    'cleanup plan must preserve noExecution true.',
+    failures,
+  );
+  assertCondition(
+    cleanupPlan.cleanupExecutionImplemented === false,
+    'cleanup plan must not implement execution.',
+    failures,
+  );
+  assertCondition(
+    JSON.stringify(cleanupPlan.commandPreview) ===
+      JSON.stringify(['docker', 'rm', '-f', LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME]),
+    'cleanup plan preview must be exact and deterministic.',
+    failures,
+  );
+  assertCondition(
+    cleanupPlan.targetContainerName === LOCAL_DEV_WORKER_DOCKER_SMOKE_CONTAINER_NAME,
+    'cleanup plan target must be deterministic.',
+    failures,
+  );
+  assertCondition(
+    cleanupPlan.requiredLabels.length === LOCAL_DEV_WORKER_DOCKER_SMOKE_LABELS.length,
+    'cleanup plan must preserve required labels.',
+    failures,
+  );
+  assertCondition(
+    cleanupPlan.cleanupRiskAddressed === true,
+    'cleanup plan should address only the exact deterministic cleanup target.',
+    failures,
+  );
+
+  for (const fixture of localDevWorkerDockerCleanupFixtures) {
+    const response = evaluateLocalDevWorkerDockerCleanupPolicy({
+      command: fixture.command,
+      args: fixture.args,
+    });
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      fixture.expectedPlanOnly === true,
+      `${fixture.name}: cleanup fixture must remain plan-only.`,
+      failures,
+    );
+    assertCondition(
+      response.allowed === fixture.expectedAllowed,
+      `${fixture.name}: expected cleanup allowed ${fixture.expectedAllowed}, got ${response.allowed}.`,
+      failures,
+    );
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected cleanup rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -658,6 +764,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerContainerSmokeFixtures.length,
     checkedDockerSmokeAuditFixtures:
       localDevWorkerDockerSmokeAuditFixtures.length,
+    checkedDockerCleanupFixtures:
+      localDevWorkerDockerCleanupFixtures.length,
     failures,
   };
 }

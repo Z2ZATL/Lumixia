@@ -33,6 +33,10 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerContainerPlan.ts` | Pure plan object and `dockerRunPreview` array; it is never executed. |
 | `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
 | `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
+| `localDevWorkerDockerContainerIdentity.ts` | Static smoke container name and allowlisted labels; no user input is accepted. |
+| `localDevWorkerDockerCleanupPolicy.ts` | Plan-only cleanup policy that allows only the future exact cleanup shape and rejects arbitrary targets/prune/ps/inspect/stop/kill. |
+| `localDevWorkerDockerCleanupPlan.ts` | Deterministic cleanup preview for `docker rm -f lumixia-dremo-smoke-echo`; it is not executed. |
+| `localDevWorkerDockerCleanupFixtures.ts` | Fixtures for exact cleanup preview and blocked cleanup targets. |
 | `localDevWorkerDockerContainerSmokePolicy.ts` | Exact allowlist policy for the first local-dev no-network/no-mount container smoke command. |
 | `localDevWorkerDockerContainerSmokeAdapter.ts` | Reviewed local-dev adapter that may execute only the exact non-root `alpine:3.20 echo hello` Docker smoke command. |
 | `localDevWorkerDockerContainerSmokeFixtures.ts` | Fixtures for the allowed smoke path and blocked Docker runtime variants. |
@@ -79,18 +83,18 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26 exact smoke command `docker run --rm --network none --pull=never --read-only --cap-drop ALL --security-opt no-new-privileges --memory 128m --cpus 0.5 --pids-limit 64 --user 65534:65534 alpine:3.20 echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, and the PR #26/PR #28 exact smoke command with static `--name`, allowlisted labels, `--network none`, `--pull=never`, `--user 65534:65534`, `alpine:3.20`, and `echo hello` under Docker-specific review. Docker CLI, daemon, or local image absence is treated as structured non-safety output.
 
-## Current Execution Status After PR #27
+## Current Execution Status After PR #28
 
 | Area | Status |
 | --- | --- |
 | Browser sandbox | Validation only; no execution. |
 | Worker boundary | Manually gated local-dev execution exists only for reviewed version/identity commands. Default config blocks execution. |
 | Docker | `docker --version` and readiness-only `docker version --format "{{json .}}"` may be attempted under separate reviewed configs. Runtime, object, socket, mount, and container commands remain denied. |
-| Container smoke | One exact reviewed local-dev smoke command may execute with `--pull=never`, `--network none`, `--user 65534:65534`, no mounts, no shell, no root user, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
+| Container smoke | One exact reviewed local-dev smoke command may execute with static `--name`, allowlisted labels, `--pull=never`, `--network none`, `--user 65534:65534`, no mounts, no shell, no root user, no host env, bounded output, and trusted review. No arbitrary `docker run` exists. |
 | Audit normalization | Smoke results produce stable outcomes, sanitized stdout/stderr previews, and cleanup-risk metadata. |
-| Cleanup | No cleanup command is executed. Timeout risk is classified for future review. |
+| Cleanup | Deterministic cleanup preview exists for `docker rm -f lumixia-dremo-smoke-echo`, but no cleanup command is executed. Timeout risk is classified for future review. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
@@ -120,7 +124,7 @@ PR #22 introduces the first real local-dev process execution path, and PR #23 ad
 | Environment | Empty environment; host environment is not inherited. |
 | Filesystem | No file writes; safe worker cwd only. |
 | Network | No network commands are allowed. |
-| Docker | `docker --version` may be attempted only by the Docker probe config. `docker version --format "{{json .}}"` may be attempted only by the Docker readiness config. `docker info`, `docker run`, `docker build`, `docker compose`, `docker image`, and `docker container` remain blocked. |
+| Docker | `docker --version` may be attempted only by the Docker probe config. `docker version --format "{{json .}}"` may be attempted only by the Docker readiness config. Arbitrary `docker run`, `docker info`, `docker build`, `docker compose`, `docker image`, and `docker container` remain blocked. |
 | Browser | `src/` must not import worker code. |
 
 ## Docker Readiness Classifier
