@@ -4,7 +4,7 @@ const result = await runLocalDevWorkerDryRunSelfCheckAsync();
 
 if (result.passed) {
   console.log(
-    `Dremo local-dev worker self-check passed (${result.checkedDryRunFixtures} dry-run fixtures, ${result.checkedExecutionReadinessFixtures} readiness fixtures, ${result.checkedVersionExecutionFixtures} version execution fixtures, ${result.checkedDockerReadinessFixtures} Docker readiness fixtures, ${result.checkedDockerContainerPolicyFixtures} container policy fixtures, ${result.checkedDockerContainerSmokeFixtures} container smoke fixtures, ${result.checkedDockerSmokeAuditFixtures} smoke audit fixtures, ${result.checkedDockerCleanupFixtures} cleanup fixtures, ${result.checkedDockerCleanupExecutionFixtures} cleanup execution fixtures).`,
+    `Dremo local-dev worker self-check passed (${result.checkedDryRunFixtures} dry-run fixtures, ${result.checkedExecutionReadinessFixtures} readiness fixtures, ${result.checkedVersionExecutionFixtures} version execution fixtures, ${result.checkedDockerReadinessFixtures} Docker readiness fixtures, ${result.checkedDockerContainerPolicyFixtures} container policy fixtures, ${result.checkedDockerContainerSmokeFixtures} container smoke fixtures, ${result.checkedDockerSmokeAuditFixtures} smoke audit fixtures, ${result.checkedDockerCleanupFixtures} cleanup fixtures, ${result.checkedDockerCleanupExecutionFixtures} cleanup execution fixtures, ${result.checkedDockerSmokeLifecycleFixtures} smoke lifecycle fixtures).`,
   );
 } else {
   console.error('Dremo local-dev worker dry-run self-check failed.');

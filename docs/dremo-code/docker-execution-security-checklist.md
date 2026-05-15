@@ -157,6 +157,15 @@ PR #29 implementation status:
 | Target controls | Arbitrary names, container IDs, wildcards, multiple targets, command substitution, whitespace/path targets, `docker ps`, `docker inspect`, stop/kill, and prune remain blocked. |
 | Runtime expansion | No arbitrary Docker runtime, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
 
+PR #30 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Lifecycle orchestrator | Added `tools/local-dev-worker/localDevWorkerDockerSmokeLifecycle.ts` to compose readiness classification, exact smoke execution, audit normalization, and exact cleanup execution. |
+| Lifecycle policy | Added cleanup decision and outcome classification helpers without process APIs. Readiness unavailable skips smoke/cleanup, smoke policy blocks skip cleanup, and smoke timeout/success can trigger exact cleanup. |
+| Verification model | Lifecycle self-checks use dependency-injected fake adapters, so Docker Desktop, a local image, and an existing container are not required. |
+| Runtime expansion | No new Docker command, process API file, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -374,9 +383,9 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Orchestrate smoke execution, audit, and exact cleanup lifecycle** or further refine workspace/artifact policy before any broader execution.
+Recommended next PR: **Add lifecycle telemetry and report formatting** or further refine workspace/artifact policy before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, and PR #29 adds exact cleanup execution. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, and PR #30 composes those pieces into a local-dev lifecycle. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
