@@ -20,6 +20,8 @@ const newDocs = [
   'docs/dremo-code/local-dev-worker-threat-model-v2.md',
   'docs/dremo-code/local-dev-worker-threat-checklist.md',
   'docs/dremo-code/local-dev-worker-release-readiness.md',
+  'docs/dremo-code/future-workspace-execution-design-constraints.md',
+  'docs/dremo-code/future-workspace-execution-review-checklist.md',
   'docs/dremo-code/local-dev-worker-operator-guide.md',
   'docs/dremo-code/local-dev-worker-troubleshooting.md',
   'docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -37,6 +39,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
       './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
     ],
   },
   {
@@ -51,6 +55,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../../docs/dremo-code/local-dev-worker-threat-model-v2.md',
       '../../docs/dremo-code/local-dev-worker-threat-checklist.md',
       '../../docs/dremo-code/local-dev-worker-release-readiness.md',
+      '../../docs/dremo-code/future-workspace-execution-design-constraints.md',
+      '../../docs/dremo-code/future-workspace-execution-review-checklist.md',
     ],
   },
   {
@@ -74,6 +80,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
       './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
     ],
   },
   {
@@ -84,6 +92,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-capability-registry.md',
       './local-dev-worker-threat-checklist.md',
       './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
     ],
   },
   {
@@ -93,6 +103,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
       './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
     ],
   },
   {
@@ -101,15 +113,32 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
       './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
     ],
   },
   {
     file: 'docs/dremo-code/local-dev-worker-threat-model-v2.md',
-    links: ['./local-dev-worker-release-readiness.md'],
+    links: [
+      './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
+    ],
   },
   {
     file: 'docs/dremo-code/local-dev-worker-threat-checklist.md',
-    links: ['./local-dev-worker-release-readiness.md'],
+    links: [
+      './local-dev-worker-release-readiness.md',
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
+    ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-release-readiness.md',
+    links: [
+      './future-workspace-execution-design-constraints.md',
+      './future-workspace-execution-review-checklist.md',
+    ],
   },
   {
     file: 'docs/adr/0001-dremo-local-dev-worker-boundary.md',
@@ -118,6 +147,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../dremo-code/local-dev-worker-threat-model-v2.md',
       '../dremo-code/local-dev-worker-threat-checklist.md',
       '../dremo-code/local-dev-worker-release-readiness.md',
+      '../dremo-code/future-workspace-execution-design-constraints.md',
+      '../dremo-code/future-workspace-execution-review-checklist.md',
     ],
   },
   {
