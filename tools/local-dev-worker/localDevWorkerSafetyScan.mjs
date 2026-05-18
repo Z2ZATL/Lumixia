@@ -118,6 +118,16 @@ const goldenCheckerForbiddenPatterns = [
   { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
 ];
 
+const docsCheckerForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'src import', pattern: /from\s+['"].*src\// },
+  { label: 'docker run command string', pattern: /docker\s+run/i },
+  { label: 'docker rm command string', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps command string', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect command string', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
 const goldenFixtureForbiddenPatterns = [
   { label: 'API key assignment', pattern: /\b[A-Z0-9_]*API_KEY\s*=/i },
   { label: 'token assignment', pattern: /\b[A-Z0-9_]*TOKEN\s*=/i },
@@ -225,6 +235,9 @@ const goldenCheckerFiles = workerFiles.filter((file) =>
     'localDevWorkerDockerSmokeLifecycleGoldenCheck.ts',
   ].includes(path.basename(file)),
 );
+const docsCheckerFiles = workerFiles.filter((file) =>
+  ['localDevWorkerDocsLinkCheck.ts'].includes(path.basename(file)),
+);
 const goldenFixtureFiles = [
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.md'),
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.json'),
@@ -281,6 +294,11 @@ const violations = [
     'worker-golden-checker-boundary',
   )),
   ...(await scanFiles(
+    docsCheckerFiles,
+    docsCheckerForbiddenPatterns,
+    'worker-docs-checker-boundary',
+  )),
+  ...(await scanFiles(
     goldenFixtureFiles,
     goldenFixtureForbiddenPatterns,
     'worker-golden-fixture-safety',
@@ -307,6 +325,9 @@ console.log(
 );
 console.log(
   `Golden checker files scanned for process APIs and new Docker command strings: ${goldenCheckerFiles.length}`,
+);
+console.log(
+  `Docs checker files scanned for process APIs, src imports, and new Docker command strings: ${docsCheckerFiles.length}`,
 );
 console.log(`Golden fixture files scanned for unsafe static text: ${goldenFixtureFiles.length}`);
 console.log(

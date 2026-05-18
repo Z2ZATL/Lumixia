@@ -59,6 +59,7 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `golden/docker-smoke-lifecycle.fixture.json` | Committed golden JSON output for the deterministic lifecycle dry-report fixture. |
 | `localDevWorkerGoldenReportCheck.ts` | Pure line-ending normalization, output safety validation, and mismatch summary helpers for golden report checks. |
 | `localDevWorkerDockerSmokeLifecycleGoldenCheck.ts` | Fixture-only golden checker that compares generated Markdown/JSON reports against committed goldens without Docker. |
+| `localDevWorkerDocsLinkCheck.ts` | Deterministic docs link check for the operator guide, troubleshooting matrix, extension playbook, and required doc indexes. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -99,9 +100,10 @@ npm run dremo:worker:verify
 npm run dremo:worker:lifecycle:report:fixture
 npm run dremo:worker:lifecycle:report:fixture:json
 npm run dremo:worker:lifecycle:report:golden
+npm run dremo:worker:docs
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, docs link checker, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. PR #34 docs checks verify that operator docs remain linked from the required Dremo and worker docs. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
 ## Local-dev Lifecycle Report CLI
 
@@ -126,7 +128,25 @@ npm run dremo:worker:lifecycle:report:golden
 
 The golden check does not execute Docker, does not run npm scripts internally, does not execute cleanup, does not write files, and does not require Docker Desktop or `alpine:3.20`.
 
-## Current Execution Status After PR #33
+## Operator Docs
+
+PR #34 adds operator-facing documentation for the current worker system:
+
+| Guide | Purpose |
+| --- | --- |
+| [local-dev-worker-operator-guide.md](../../docs/dremo-code/local-dev-worker-operator-guide.md) | Explains the worker boundary, capability ladder, current execution surface, verification commands, fixture reports, golden checks, and safe future PRs. |
+| [local-dev-worker-troubleshooting.md](../../docs/dremo-code/local-dev-worker-troubleshooting.md) | Maps common verification, lifecycle, Docker local state, policy, and report symptoms to safe checks and safe fixes. |
+| [local-dev-worker-extension-playbook.md](../../docs/dremo-code/local-dev-worker-extension-playbook.md) | Describes allowed and forbidden future PR shapes plus review checklists for docs, reporting, process APIs, and Docker-related changes. |
+
+Run the docs link check after documentation changes:
+
+```powershell
+npm run dremo:worker:docs
+```
+
+The docs check reads local Markdown files only. It does not execute Docker, import `src/`, read secrets, or use process execution APIs.
+
+## Current Execution Status After PR #34
 
 | Area | Status |
 | --- | --- |
@@ -140,6 +160,7 @@ The golden check does not execute Docker, does not run npm scripts internally, d
 | Lifecycle reports | Existing lifecycle results can be formatted as sanitized Markdown and deterministic JSON summaries for future local tooling only. |
 | Lifecycle CLI | Local-dev-only CLI wrapper can print Markdown or JSON reports from the existing lifecycle. Fixture mode does not call Docker. No browser, production, or `src/` import path exists. |
 | Golden reports | Committed Markdown/JSON fixture reports protect report format stability. Golden checks are fixture-only and do not call Docker. |
+| Operator docs | Operator guide, troubleshooting matrix, extension playbook, and docs link check are documentation/operator-readiness only. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
