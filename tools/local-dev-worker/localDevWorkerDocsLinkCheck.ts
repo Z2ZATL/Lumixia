@@ -17,6 +17,8 @@ const newDocs = [
   'docs/adr/README.md',
   'docs/adr/0001-dremo-local-dev-worker-boundary.md',
   'docs/dremo-code/local-dev-worker-capability-registry.md',
+  'docs/dremo-code/local-dev-worker-threat-model-v2.md',
+  'docs/dremo-code/local-dev-worker-threat-checklist.md',
   'docs/dremo-code/local-dev-worker-operator-guide.md',
   'docs/dremo-code/local-dev-worker-troubleshooting.md',
   'docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -31,6 +33,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
     ],
   },
   {
@@ -42,6 +46,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../../docs/dremo-code/local-dev-worker-operator-guide.md',
       '../../docs/dremo-code/local-dev-worker-troubleshooting.md',
       '../../docs/dremo-code/local-dev-worker-extension-playbook.md',
+      '../../docs/dremo-code/local-dev-worker-threat-model-v2.md',
+      '../../docs/dremo-code/local-dev-worker-threat-checklist.md',
     ],
   },
   {
@@ -49,6 +55,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     links: [
       '../adr/README.md',
       '../adr/0001-dremo-local-dev-worker-boundary.md',
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
@@ -60,6 +68,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../adr/README.md',
       '../adr/0001-dremo-local-dev-worker-boundary.md',
       './local-dev-worker-capability-registry.md',
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
     ],
   },
   {
@@ -68,15 +78,31 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../adr/README.md',
       '../adr/0001-dremo-local-dev-worker-boundary.md',
       './local-dev-worker-capability-registry.md',
+      './local-dev-worker-threat-checklist.md',
     ],
   },
   {
     file: 'docs/dremo-code/local-dev-worker-troubleshooting.md',
-    links: ['./local-dev-worker-capability-registry.md'],
+    links: [
+      './local-dev-worker-capability-registry.md',
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
+    ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-capability-registry.md',
+    links: [
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
+    ],
   },
   {
     file: 'docs/adr/0001-dremo-local-dev-worker-boundary.md',
-    links: ['../dremo-code/local-dev-worker-capability-registry.md'],
+    links: [
+      '../dremo-code/local-dev-worker-capability-registry.md',
+      '../dremo-code/local-dev-worker-threat-model-v2.md',
+      '../dremo-code/local-dev-worker-threat-checklist.md',
+    ],
   },
   {
     file: 'docs/dremo-code/sandbox-security.md',
@@ -84,6 +110,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
+      './local-dev-worker-threat-model-v2.md',
+      './local-dev-worker-threat-checklist.md',
     ],
   },
   {

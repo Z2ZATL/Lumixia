@@ -30,6 +30,8 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [local-dev-worker-operator-guide.md](./local-dev-worker-operator-guide.md) | Operator guide for understanding, running, verifying, and safely extending the local-dev worker. |
 | [local-dev-worker-troubleshooting.md](./local-dev-worker-troubleshooting.md) | Troubleshooting matrix for worker verification, lifecycle reports, Docker local state, and policy blocks. |
 | [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) | Future PR playbook for docs, reporting, telemetry, CLI UX, safety checks, and narrow reviewed capabilities. |
+| [local-dev-worker-threat-model-v2.md](./local-dev-worker-threat-model-v2.md) | Threat model for local-dev worker trust boundaries, assets, mitigations, residual risks, and future review gates. |
+| [local-dev-worker-threat-checklist.md](./local-dev-worker-threat-checklist.md) | Future PR author checklist for local-dev worker security scope and verification. |
 | [credit-billing-flow.md](./credit-billing-flow.md) | Trusted task credit reservation, charging, and refund model. |
 | [frontend-workspace.md](./frontend-workspace.md) | Proposed Dremo workspace UI and responsive requirements. |
 | [migration-plan.md](./migration-plan.md) | Phased path from Code Architect AI mock to Dremo Code. |
@@ -100,7 +102,9 @@ PR #37 adds [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) for the D
 
 PR #38 adds the [local-dev worker capability registry](./local-dev-worker-capability-registry.md), an operator-facing reference that maps executable, plan-only, report-only, schema-only, golden-check, and verification-only surfaces to their files, fixtures, docs, and safety notes without changing runtime behavior.
 
-## Current Execution Status After PR #38
+PR #39 adds the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md) and [threat checklist](./local-dev-worker-threat-checklist.md). They document trust boundaries, assets, threats, mitigations, residual risks, verification coverage, and future security review gates without changing runtime behavior.
+
+## Current Execution Status After PR #39
 
 | Area | Status |
 | --- | --- |
@@ -120,6 +124,7 @@ PR #38 adds the [local-dev worker capability registry](./local-dev-worker-capabi
 | Telemetry golden | Committed telemetry fixture JSON and a fixture-only checker protect telemetry schema output stability. No telemetry collection, upload, persistence, runtime file write, network, DB, browser, or production path exists. |
 | Architecture decision | [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) records the accepted worker boundary, Docker smoke lifecycle, safety invariants, verification stack, and future extension rules. |
 | Capability registry | [Registry reference](./local-dev-worker-capability-registry.md) maps every current worker capability and check to files, fixtures, docs, and safety notes. |
+| Threat model | [Threat model v2](./local-dev-worker-threat-model-v2.md) and [threat checklist](./local-dev-worker-threat-checklist.md) document boundaries, assets, mitigations, residual risks, and future security review gates. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -127,4 +132,4 @@ PR #38 adds the [local-dev worker capability registry](./local-dev-worker-capabi
 
 ## Recommended Next PR
 
-Future PR #39 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #40 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.

@@ -18,6 +18,8 @@ The current ladder moved from browser-safe gates and dry-run worker contracts to
 
 The operator-facing inventory for these surfaces is maintained in the [Dremo local-dev worker capability registry](../dremo-code/local-dev-worker-capability-registry.md).
 
+The current security model is maintained in the [Dremo local-dev worker threat model v2](../dremo-code/local-dev-worker-threat-model-v2.md), with future PR scope checks in the [local-dev worker threat checklist](../dremo-code/local-dev-worker-threat-checklist.md).
+
 ## Decision
 
 We will keep all local-dev worker execution outside the browser bundle and require local-dev-only trusted review gates for every executable capability.
@@ -184,3 +186,4 @@ git diff --check
 | #30 - #33 | Added lifecycle orchestration, report formatting, CLI wrapper, and golden report checks. |
 | #34 - #36 | Added operator docs, telemetry schema design, and telemetry golden checks. |
 | #38 | Added the capability registry reference for operator-facing capability, file, fixture, and doc mapping. |
+| #39 | Added the threat model v2 and future PR threat checklist. |
