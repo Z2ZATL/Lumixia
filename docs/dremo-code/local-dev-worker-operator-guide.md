@@ -16,6 +16,8 @@ For a single operator-facing map of every current capability, policy, adapter, f
 
 For security boundaries, assets, mitigations, residual risk, and future review gates, use the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md). Before opening a future worker PR, run through the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md).
 
+For handoff, review, future CLI use, or future integration planning, use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
+
 ## Why It Is Outside `src/`
 
 `src/` is bundled for the browser. Browser-bundled code must never contain process execution APIs, Docker command adapters, local worker imports, service role keys, secrets, or any production execution path.
@@ -68,6 +70,7 @@ tools/local-dev-worker
 | PR #37 | Architecture Decision Record | Documents the accepted worker boundary, safety invariants, capability ladder, verification stack, and future extension rules. |
 | PR #38 | Capability registry reference | Maps current executable, plan-only, report-only, schema-only, golden-check, and verification-only capabilities to files, fixtures, docs, and safety notes. |
 | PR #39 | Threat model v2 | Documents worker trust boundaries, assets, threats, mitigations, residual risks, and future security review gates. |
+| PR #40 | Release readiness checklist | Documents handoff criteria, verification blockers, release decision template, and future integration blockers. |
 
 ## What Is Currently Executable
 

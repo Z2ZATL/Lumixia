@@ -32,6 +32,7 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) | Future PR playbook for docs, reporting, telemetry, CLI UX, safety checks, and narrow reviewed capabilities. |
 | [local-dev-worker-threat-model-v2.md](./local-dev-worker-threat-model-v2.md) | Threat model for local-dev worker trust boundaries, assets, mitigations, residual risks, and future review gates. |
 | [local-dev-worker-threat-checklist.md](./local-dev-worker-threat-checklist.md) | Future PR author checklist for local-dev worker security scope and verification. |
+| [local-dev-worker-release-readiness.md](./local-dev-worker-release-readiness.md) | Release and handoff readiness checklist for the local-dev worker, Docker smoke lifecycle, docs, verification, and future integration blockers. |
 | [credit-billing-flow.md](./credit-billing-flow.md) | Trusted task credit reservation, charging, and refund model. |
 | [frontend-workspace.md](./frontend-workspace.md) | Proposed Dremo workspace UI and responsive requirements. |
 | [migration-plan.md](./migration-plan.md) | Phased path from Code Architect AI mock to Dremo Code. |
@@ -104,7 +105,9 @@ PR #38 adds the [local-dev worker capability registry](./local-dev-worker-capabi
 
 PR #39 adds the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md) and [threat checklist](./local-dev-worker-threat-checklist.md). They document trust boundaries, assets, threats, mitigations, residual risks, verification coverage, and future security review gates without changing runtime behavior.
 
-## Current Execution Status After PR #39
+PR #40 adds the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md). It gives maintainers a handoff checklist, release decision template, readiness status matrix, and future integration blockers without changing runtime behavior.
+
+## Current Execution Status After PR #40
 
 | Area | Status |
 | --- | --- |
@@ -125,6 +128,7 @@ PR #39 adds the [local-dev worker threat model v2](./local-dev-worker-threat-mod
 | Architecture decision | [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) records the accepted worker boundary, Docker smoke lifecycle, safety invariants, verification stack, and future extension rules. |
 | Capability registry | [Registry reference](./local-dev-worker-capability-registry.md) maps every current worker capability and check to files, fixtures, docs, and safety notes. |
 | Threat model | [Threat model v2](./local-dev-worker-threat-model-v2.md) and [threat checklist](./local-dev-worker-threat-checklist.md) document boundaries, assets, mitigations, residual risks, and future security review gates. |
+| Release readiness | [Release readiness checklist](./local-dev-worker-release-readiness.md) documents handoff criteria, verification commands, readiness blockers, and future integration blockers. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -132,4 +136,4 @@ PR #39 adds the [local-dev worker threat model v2](./local-dev-worker-threat-mod
 
 ## Recommended Next PR
 
-Future PR #40 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #41 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
