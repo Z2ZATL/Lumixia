@@ -26,6 +26,7 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [sandbox-security.md](./sandbox-security.md) | Sandbox threat model, isolation rules, and provider criteria. |
 | [sandbox-provider-decision.md](./sandbox-provider-decision.md) | Proposed sandbox provider decision, MVP path, and production boundary. |
 | [docker-execution-security-checklist.md](./docker-execution-security-checklist.md) | Required gate before any local-dev Docker execution PR. |
+| [local-dev-worker-capability-registry.md](./local-dev-worker-capability-registry.md) | Operator reference mapping worker capabilities, policies, adapters, fixtures, golden checks, telemetry schema, and verification checks. |
 | [local-dev-worker-operator-guide.md](./local-dev-worker-operator-guide.md) | Operator guide for understanding, running, verifying, and safely extending the local-dev worker. |
 | [local-dev-worker-troubleshooting.md](./local-dev-worker-troubleshooting.md) | Troubleshooting matrix for worker verification, lifecycle reports, Docker local state, and policy blocks. |
 | [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) | Future PR playbook for docs, reporting, telemetry, CLI UX, safety checks, and narrow reviewed capabilities. |
@@ -97,7 +98,9 @@ PR #36 adds deterministic golden checks for local-dev telemetry fixture JSON. Th
 
 PR #37 adds [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) for the Dremo local-dev worker boundary and Docker smoke lifecycle. It records the architecture decision, safety invariants, capability ladder, verification stack, and future extension rules without changing runtime behavior.
 
-## Current Execution Status After PR #37
+PR #38 adds the [local-dev worker capability registry](./local-dev-worker-capability-registry.md), an operator-facing reference that maps executable, plan-only, report-only, schema-only, golden-check, and verification-only surfaces to their files, fixtures, docs, and safety notes without changing runtime behavior.
+
+## Current Execution Status After PR #38
 
 | Area | Status |
 | --- | --- |
@@ -116,6 +119,7 @@ PR #37 adds [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) for the D
 | Telemetry schema | Local-dev-only schema objects, redaction policy, event builders, and fixtures exist for future lifecycle telemetry. No upload, analytics provider, network, DB write, file write, browser path, or production path exists. |
 | Telemetry golden | Committed telemetry fixture JSON and a fixture-only checker protect telemetry schema output stability. No telemetry collection, upload, persistence, runtime file write, network, DB, browser, or production path exists. |
 | Architecture decision | [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) records the accepted worker boundary, Docker smoke lifecycle, safety invariants, verification stack, and future extension rules. |
+| Capability registry | [Registry reference](./local-dev-worker-capability-registry.md) maps every current worker capability and check to files, fixtures, docs, and safety notes. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -123,4 +127,4 @@ PR #37 adds [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) for the D
 
 ## Recommended Next PR
 
-Future PR #38 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #39 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.

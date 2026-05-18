@@ -16,6 +16,7 @@ const repoRoot = path.resolve(
 const newDocs = [
   'docs/adr/README.md',
   'docs/adr/0001-dremo-local-dev-worker-boundary.md',
+  'docs/dremo-code/local-dev-worker-capability-registry.md',
   'docs/dremo-code/local-dev-worker-operator-guide.md',
   'docs/dremo-code/local-dev-worker-troubleshooting.md',
   'docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -26,6 +27,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     file: 'docs/dremo-code/README.md',
     links: [
       '../adr/README.md',
+      './local-dev-worker-capability-registry.md',
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
@@ -36,6 +38,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     links: [
       '../../docs/adr/README.md',
       '../../docs/adr/0001-dremo-local-dev-worker-boundary.md',
+      '../../docs/dremo-code/local-dev-worker-capability-registry.md',
       '../../docs/dremo-code/local-dev-worker-operator-guide.md',
       '../../docs/dremo-code/local-dev-worker-troubleshooting.md',
       '../../docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -56,6 +59,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     links: [
       '../adr/README.md',
       '../adr/0001-dremo-local-dev-worker-boundary.md',
+      './local-dev-worker-capability-registry.md',
     ],
   },
   {
@@ -63,7 +67,16 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     links: [
       '../adr/README.md',
       '../adr/0001-dremo-local-dev-worker-boundary.md',
+      './local-dev-worker-capability-registry.md',
     ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-troubleshooting.md',
+    links: ['./local-dev-worker-capability-registry.md'],
+  },
+  {
+    file: 'docs/adr/0001-dremo-local-dev-worker-boundary.md',
+    links: ['../dremo-code/local-dev-worker-capability-registry.md'],
   },
   {
     file: 'docs/dremo-code/sandbox-security.md',
