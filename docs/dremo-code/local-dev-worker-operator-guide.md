@@ -33,6 +33,7 @@ tools/local-dev-worker
   -> lifecycle orchestrator
   -> report formatter and CLI
   -> golden fixture checks
+  -> telemetry schema design and fixtures
 ```
 
 ## Capability Ladder
@@ -56,6 +57,7 @@ tools/local-dev-worker
 | PR #32 | Local-dev lifecycle CLI wrapper | Local CLI only; fixture mode does not call Docker. |
 | PR #33 | Golden lifecycle report checks | Fixture-only format drift protection. |
 | PR #34 | Operator guide and troubleshooting docs | Documentation only; no runtime behavior changes. |
+| PR #35 | Lifecycle telemetry schema design | Typed local-dev telemetry objects only; no collection, upload, DB, file, or network path. |
 
 ## What Is Currently Executable
 
@@ -80,6 +82,7 @@ The normal operator checks do not require Docker unless the operator intentional
 | Report formatting | Report-only; does not execute commands. |
 | Golden checks | Fixture-only; does not call Docker. |
 | CLI fixture mode | Report-only; no Docker, cleanup, or process adapter execution. |
+| Telemetry schema | Design-only local-dev event objects and fixtures; no upload, persistence, or network calls. |
 
 ## What Remains Forbidden
 
@@ -150,6 +153,17 @@ If it fails, review the diff-like summary. Do not update golden files casually. 
 | `cleanupSummary` | Exact cleanup result. Missing target is an acceptable structured outcome. |
 | `safetySummary` | Dangerous capabilities must remain false. |
 | `nextRecommendedAction` | Human guidance for the local operator; it must not suggest broad Docker expansion. |
+
+## Telemetry Schema Design
+
+PR #35 adds local-dev lifecycle telemetry schema objects under `tools/local-dev-worker/`. These are typed summaries for future local tooling only.
+
+| Area | Current behavior |
+| --- | --- |
+| Event objects | Built in memory from existing lifecycle, report, and golden-check fixture results. |
+| Redaction | Secret-like strings, service-role markers, home paths, and `.env` references are denied or redacted before fixture events validate. |
+| Determinism | Fixture helpers do not use timestamps, environment values, usernames, home paths, repo paths, or machine-specific Docker values. |
+| Collection | Not implemented. No upload, analytics provider, database write, file write, network call, or browser path exists. |
 
 ## Safe Troubleshooting Flow
 
