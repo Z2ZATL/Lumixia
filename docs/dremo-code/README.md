@@ -18,6 +18,7 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 
 | File | Purpose |
 | --- | --- |
+| [ADR index](../adr/README.md) | Architecture Decision Records for Dremo worker and sandbox decisions. |
 | [architecture.md](./architecture.md) | Proposed system architecture and component boundaries. |
 | [api-contract.md](./api-contract.md) | Proposed authenticated Dremo API routes. |
 | [event-schema.md](./event-schema.md) | Proposed server-owned structured event stream model. |
@@ -94,7 +95,9 @@ PR #35 adds local-dev lifecycle telemetry schema design. It defines typed event 
 
 PR #36 adds deterministic golden checks for local-dev telemetry fixture JSON. The checker reads the committed fixture, regenerates fixture JSON from local telemetry fixtures, validates output safety, and compares the results without uploading, storing, transmitting, writing runtime telemetry files, calling networks, or touching databases.
 
-## Current Execution Status After PR #36
+PR #37 adds [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) for the Dremo local-dev worker boundary and Docker smoke lifecycle. It records the architecture decision, safety invariants, capability ladder, verification stack, and future extension rules without changing runtime behavior.
+
+## Current Execution Status After PR #37
 
 | Area | Status |
 | --- | --- |
@@ -112,6 +115,7 @@ PR #36 adds deterministic golden checks for local-dev telemetry fixture JSON. Th
 | Operator docs | Operator guide, troubleshooting matrix, extension playbook, and docs link check are docs/operator-readiness only. |
 | Telemetry schema | Local-dev-only schema objects, redaction policy, event builders, and fixtures exist for future lifecycle telemetry. No upload, analytics provider, network, DB write, file write, browser path, or production path exists. |
 | Telemetry golden | Committed telemetry fixture JSON and a fixture-only checker protect telemetry schema output stability. No telemetry collection, upload, persistence, runtime file write, network, DB, browser, or production path exists. |
+| Architecture decision | [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) records the accepted worker boundary, Docker smoke lifecycle, safety invariants, verification stack, and future extension rules. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -119,4 +123,4 @@ PR #36 adds deterministic golden checks for local-dev telemetry fixture JSON. Th
 
 ## Recommended Next PR
 
-Future PR #37 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #38 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
