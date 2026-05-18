@@ -4,7 +4,7 @@ Status: operator troubleshooting matrix.
 
 This document helps diagnose the local-dev worker and Docker smoke lifecycle without expanding execution capability. It does not recommend broad Docker cleanup, container inspection, image pull/build, workspace mounts, network access, browser integration, or production execution.
 
-For a cross-reference from symptoms to capability files, fixtures, docs, and verification checks, use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md). For security boundaries and residual risks, use the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md), and for future PR scope checks use the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md).
+For a cross-reference from symptoms to capability files, fixtures, docs, and verification checks, use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md). For security boundaries and residual risks, use the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md), for future PR scope checks use the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md), and for handoff blockers use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
 
 ## Troubleshooting Matrix
 

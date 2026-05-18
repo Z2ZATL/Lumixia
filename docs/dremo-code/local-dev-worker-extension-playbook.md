@@ -10,6 +10,8 @@ Use the [local-dev worker capability registry](./local-dev-worker-capability-reg
 
 Use the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md) before opening a PR, and update the [threat model v2](./local-dev-worker-threat-model-v2.md) when a boundary or residual risk changes.
 
+Use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md) before a handoff, review milestone, future CLI-use milestone, or integration planning milestone.
+
 ## Allowed Future PR Shapes
 
 | Shape | Examples |
@@ -67,6 +69,7 @@ If any answer is not yes, split the work into design/docs first.
 | ADRs | Boundary-level changes update ADR 0001 or add a new ADR before runtime behavior changes. |
 | Registry | Capability, fixture, doc, and verification maps stay current. |
 | Threat model | Threat checklist is satisfied and threat model v2 is updated for boundary or residual-risk changes. |
+| Release readiness | Release readiness checklist is updated or reviewed when handoff criteria, integration blockers, or verification requirements change. |
 
 ## Review Checklist For Telemetry Schema PRs
 

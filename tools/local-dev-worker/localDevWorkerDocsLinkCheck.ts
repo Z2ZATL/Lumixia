@@ -19,6 +19,7 @@ const newDocs = [
   'docs/dremo-code/local-dev-worker-capability-registry.md',
   'docs/dremo-code/local-dev-worker-threat-model-v2.md',
   'docs/dremo-code/local-dev-worker-threat-checklist.md',
+  'docs/dremo-code/local-dev-worker-release-readiness.md',
   'docs/dremo-code/local-dev-worker-operator-guide.md',
   'docs/dremo-code/local-dev-worker-troubleshooting.md',
   'docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -35,6 +36,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-extension-playbook.md',
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
+      './local-dev-worker-release-readiness.md',
     ],
   },
   {
@@ -48,6 +50,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../../docs/dremo-code/local-dev-worker-extension-playbook.md',
       '../../docs/dremo-code/local-dev-worker-threat-model-v2.md',
       '../../docs/dremo-code/local-dev-worker-threat-checklist.md',
+      '../../docs/dremo-code/local-dev-worker-release-readiness.md',
     ],
   },
   {
@@ -70,6 +73,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-capability-registry.md',
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
+      './local-dev-worker-release-readiness.md',
     ],
   },
   {
@@ -79,6 +83,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../adr/0001-dremo-local-dev-worker-boundary.md',
       './local-dev-worker-capability-registry.md',
       './local-dev-worker-threat-checklist.md',
+      './local-dev-worker-release-readiness.md',
     ],
   },
   {
@@ -87,6 +92,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       './local-dev-worker-capability-registry.md',
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
+      './local-dev-worker-release-readiness.md',
     ],
   },
   {
@@ -94,7 +100,16 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
     links: [
       './local-dev-worker-threat-model-v2.md',
       './local-dev-worker-threat-checklist.md',
+      './local-dev-worker-release-readiness.md',
     ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-threat-model-v2.md',
+    links: ['./local-dev-worker-release-readiness.md'],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-threat-checklist.md',
+    links: ['./local-dev-worker-release-readiness.md'],
   },
   {
     file: 'docs/adr/0001-dremo-local-dev-worker-boundary.md',
@@ -102,6 +117,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
       '../dremo-code/local-dev-worker-capability-registry.md',
       '../dremo-code/local-dev-worker-threat-model-v2.md',
       '../dremo-code/local-dev-worker-threat-checklist.md',
+      '../dremo-code/local-dev-worker-release-readiness.md',
     ],
   },
   {

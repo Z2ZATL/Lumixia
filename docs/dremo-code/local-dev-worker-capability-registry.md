@@ -8,7 +8,7 @@ This registry maps the current Dremo local-dev worker capabilities, policies, ad
 
 The local-dev worker has grown through many deliberately small PRs. This registry gives operators and reviewers a single reference for what exists, what may execute, what is plan-only or report-only, where the files live, and which verification commands cover each surface.
 
-Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), the [operator guide](./local-dev-worker-operator-guide.md), the [extension playbook](./local-dev-worker-extension-playbook.md), the [threat model v2](./local-dev-worker-threat-model-v2.md), the [threat checklist](./local-dev-worker-threat-checklist.md), and the [Docker execution security checklist](./docker-execution-security-checklist.md).
+Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), the [operator guide](./local-dev-worker-operator-guide.md), the [extension playbook](./local-dev-worker-extension-playbook.md), the [threat model v2](./local-dev-worker-threat-model-v2.md), the [threat checklist](./local-dev-worker-threat-checklist.md), the [release readiness checklist](./local-dev-worker-release-readiness.md), and the [Docker execution security checklist](./docker-execution-security-checklist.md).
 
 ## How to read this registry
 
@@ -142,6 +142,7 @@ Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), t
 | [Extension playbook](./local-dev-worker-extension-playbook.md) | Allowed and forbidden future PR shapes and review checklists. |
 | [Threat model v2](./local-dev-worker-threat-model-v2.md) | Current worker trust boundaries, assets, threats, mitigations, residual risks, and future review gates. |
 | [Threat checklist](./local-dev-worker-threat-checklist.md) | Future PR author checklist for security scope and verification. |
+| [Release readiness checklist](./local-dev-worker-release-readiness.md) | Maintainer handoff checklist, release decision template, readiness matrix, and future integration blockers. |
 | [Docker execution security checklist](./docker-execution-security-checklist.md) | Required gates before Docker execution expansion. |
 | [Sandbox security](./sandbox-security.md) | Broader sandbox threat model and isolation rules. |
 | [Sandbox provider decision](./sandbox-provider-decision.md) | Production sandbox provider boundary and local-dev worker notes. |

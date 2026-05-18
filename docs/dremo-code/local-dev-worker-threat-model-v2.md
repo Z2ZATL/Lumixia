@@ -4,6 +4,8 @@ Status: accepted local-dev security model.
 
 This document describes the current threat model for the Dremo local-dev worker and Docker smoke lifecycle. It is documentation only. It does not change runtime behavior, add Docker execution, collect telemetry, add network calls, write databases, expose browser or production UI paths, or add dependencies.
 
+For release or handoff decisions, pair this threat model with the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
+
 ## Scope
 
 This threat model covers:
@@ -215,6 +217,7 @@ Before high-risk expansion, require a dedicated PR and review for:
 | [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) | Accepted architecture decision for the local-dev worker boundary and Docker smoke lifecycle. |
 | [Capability registry](./local-dev-worker-capability-registry.md) | Current capability, file, fixture, doc, and verification inventory. |
 | [Threat checklist](./local-dev-worker-threat-checklist.md) | Future PR author checklist derived from this threat model. |
+| [Release readiness checklist](./local-dev-worker-release-readiness.md) | Maintainer handoff checklist and readiness decision template. |
 | [Operator guide](./local-dev-worker-operator-guide.md) | How to run, verify, and safely extend the worker. |
 | [Extension playbook](./local-dev-worker-extension-playbook.md) | Allowed/forbidden future PR shapes and review checklists. |
 | [Docker execution security checklist](./docker-execution-security-checklist.md) | Docker-specific blocker, gate, and review requirements. |

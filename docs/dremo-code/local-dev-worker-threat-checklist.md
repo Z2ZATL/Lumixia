@@ -4,6 +4,8 @@ Status: future PR author checklist.
 
 Use this checklist before opening any Dremo local-dev worker PR. It is documentation only and does not approve runtime changes.
 
+For maintainer handoff or release decisions, also use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
+
 ## Scope check
 
 | Question | Required safe answer |

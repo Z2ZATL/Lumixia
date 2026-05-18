@@ -20,6 +20,8 @@ The operator-facing inventory for these surfaces is maintained in the [Dremo loc
 
 The current security model is maintained in the [Dremo local-dev worker threat model v2](../dremo-code/local-dev-worker-threat-model-v2.md), with future PR scope checks in the [local-dev worker threat checklist](../dremo-code/local-dev-worker-threat-checklist.md).
 
+Maintainer handoff and future integration readiness decisions are tracked with the [Dremo local-dev worker release readiness checklist](../dremo-code/local-dev-worker-release-readiness.md).
+
 ## Decision
 
 We will keep all local-dev worker execution outside the browser bundle and require local-dev-only trusted review gates for every executable capability.
@@ -187,3 +189,4 @@ git diff --check
 | #34 - #36 | Added operator docs, telemetry schema design, and telemetry golden checks. |
 | #38 | Added the capability registry reference for operator-facing capability, file, fixture, and doc mapping. |
 | #39 | Added the threat model v2 and future PR threat checklist. |
+| #40 | Added the release readiness checklist, decision template, readiness matrix, and future integration blockers. |
