@@ -6,6 +6,8 @@ Use this playbook before proposing changes to the Dremo local-dev worker. The go
 
 The accepted worker boundary decision is recorded in [ADR 0001: Dremo local-dev worker boundary and Docker smoke lifecycle](../adr/0001-dremo-local-dev-worker-boundary.md). Use the [ADR index](../adr/README.md) for future boundary-level decisions.
 
+Use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md) before changing worker files so the capability, fixture, doc, and verification surfaces stay aligned.
+
 ## Allowed Future PR Shapes
 
 | Shape | Examples |
@@ -61,6 +63,7 @@ If any answer is not yes, split the work into design/docs first.
 | Verification | Typecheck, worker verify, safety scan, and relevant report checks. |
 | Docs links | New docs linked from the docs index and worker README. |
 | ADRs | Boundary-level changes update ADR 0001 or add a new ADR before runtime behavior changes. |
+| Registry | Capability, fixture, doc, and verification maps stay current. |
 
 ## Review Checklist For Telemetry Schema PRs
 

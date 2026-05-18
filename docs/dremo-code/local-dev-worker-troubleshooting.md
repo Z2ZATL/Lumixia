@@ -4,6 +4,8 @@ Status: operator troubleshooting matrix.
 
 This document helps diagnose the local-dev worker and Docker smoke lifecycle without expanding execution capability. It does not recommend broad Docker cleanup, container inspection, image pull/build, workspace mounts, network access, browser integration, or production execution.
 
+For a cross-reference from symptoms to capability files, fixtures, docs, and verification checks, use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md).
+
 ## Troubleshooting Matrix
 
 | Symptom | Likely cause | Safe check | Safe fix | What NOT to do |

@@ -12,6 +12,8 @@ The worker is not production infrastructure. It is a safety-reviewed local harne
 
 The accepted architectural record is [ADR 0001: Dremo local-dev worker boundary and Docker smoke lifecycle](../adr/0001-dremo-local-dev-worker-boundary.md).
 
+For a single operator-facing map of every current capability, policy, adapter, fixture, golden check, telemetry schema, and docs check, use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md).
+
 ## Why It Is Outside `src/`
 
 `src/` is bundled for the browser. Browser-bundled code must never contain process execution APIs, Docker command adapters, local worker imports, service role keys, secrets, or any production execution path.
@@ -62,6 +64,7 @@ tools/local-dev-worker
 | PR #35 | Lifecycle telemetry schema design | Typed local-dev telemetry objects only; no collection, upload, DB, file, or network path. |
 | PR #36 | Telemetry golden fixture checks | Fixture-only schema drift protection; no telemetry collection, upload, storage, network, DB, or runtime file writes. |
 | PR #37 | Architecture Decision Record | Documents the accepted worker boundary, safety invariants, capability ladder, verification stack, and future extension rules. |
+| PR #38 | Capability registry reference | Maps current executable, plan-only, report-only, schema-only, golden-check, and verification-only capabilities to files, fixtures, docs, and safety notes. |
 
 ## What Is Currently Executable
 

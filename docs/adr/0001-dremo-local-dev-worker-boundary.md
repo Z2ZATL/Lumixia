@@ -16,6 +16,8 @@ The Dremo local-dev worker lives under `tools/local-dev-worker/` as an explicit 
 
 The current ladder moved from browser-safe gates and dry-run worker contracts to reviewed version probes, Docker CLI/version readiness classification, one exact no-network Docker smoke run, exact deterministic cleanup, lifecycle orchestration, report formatting, golden report checks, operator docs, local-dev telemetry schema design, and telemetry golden checks.
 
+The operator-facing inventory for these surfaces is maintained in the [Dremo local-dev worker capability registry](../dremo-code/local-dev-worker-capability-registry.md).
+
 ## Decision
 
 We will keep all local-dev worker execution outside the browser bundle and require local-dev-only trusted review gates for every executable capability.
@@ -181,3 +183,4 @@ git diff --check
 | #25 - #29 | Added container policy design, exact smoke execution, audit hardening, deterministic naming, cleanup planning, and exact cleanup. |
 | #30 - #33 | Added lifecycle orchestration, report formatting, CLI wrapper, and golden report checks. |
 | #34 - #36 | Added operator docs, telemetry schema design, and telemetry golden checks. |
+| #38 | Added the capability registry reference for operator-facing capability, file, fixture, and doc mapping. |
