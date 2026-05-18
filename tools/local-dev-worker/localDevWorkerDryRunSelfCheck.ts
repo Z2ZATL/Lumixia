@@ -61,6 +61,8 @@ import {
 import { assertTrustedManualReviewSource } from './localDevWorkerTrustedReview.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
 import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
+import { evaluateLocalDevWorkerWorkspacePathPolicy } from './localDevWorkerWorkspacePathPolicy.ts';
+import { localDevWorkerWorkspacePathPolicyFixtures } from './localDevWorkerWorkspacePathPolicyFixtures.ts';
 import { localDevWorkerDryRunFixtures } from './localDevWorkerFixtures.ts';
 
 export interface LocalDevWorkerDryRunSelfCheckResult {
@@ -70,6 +72,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedVersionExecutionFixtures: number;
   checkedDockerReadinessFixtures: number;
   checkedDockerContainerPolicyFixtures: number;
+  checkedWorkspacePathPolicyFixtures: number;
   checkedDockerContainerSmokeFixtures: number;
   checkedDockerSmokeAuditFixtures: number;
   checkedDockerCleanupFixtures: number;
@@ -447,6 +450,79 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       assertCondition(
         observedCodes.has(code),
         `${fixture.name}: expected container policy rejection code ${code}.`,
+        failures,
+      );
+    }
+  }
+
+  for (const fixture of localDevWorkerWorkspacePathPolicyFixtures) {
+    const response = evaluateLocalDevWorkerWorkspacePathPolicy(fixture.input);
+    const observedCodes = new Set(response.rejectionCodes);
+
+    assertCondition(
+      response.ok === fixture.expectedOk,
+      `${fixture.name}: expected ok ${fixture.expectedOk}, got ${response.ok}.`,
+      failures,
+    );
+    assertCondition(
+      response.noFilesystemAccess === true,
+      `${fixture.name}: workspace path policy must never access the filesystem.`,
+      failures,
+    );
+    assertCondition(
+      response.decision === fixture.expectedDecision,
+      `${fixture.name}: expected decision ${fixture.expectedDecision}, got ${response.decision}.`,
+      failures,
+    );
+    assertCondition(
+      response.normalizedSyntheticPath ===
+        fixture.expectedNormalizedSyntheticPath,
+      `${fixture.name}: expected normalizedSyntheticPath ${fixture.expectedNormalizedSyntheticPath}, got ${response.normalizedSyntheticPath}.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.syntheticOnly === true &&
+        response.safetyMetadata.realWorkspaceRead === false &&
+        response.safetyMetadata.realWorkspaceWrite === false,
+      `${fixture.name}: workspace path policy must remain synthetic-only with no real reads or writes.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.executionAllowed === false &&
+        response.safetyMetadata.symlinkFollowAllowed === false,
+      `${fixture.name}: execution and symlink following must remain denied.`,
+      failures,
+    );
+    assertCondition(
+      response.safetyMetadata.homePathAllowed === false &&
+        response.safetyMetadata.envFileAllowed === false &&
+        response.safetyMetadata.secretsAllowed === false,
+      `${fixture.name}: home paths, env files, and secrets must remain denied.`,
+      failures,
+    );
+
+    if (response.normalizedSyntheticPath) {
+      assertCondition(
+        response.normalizedSyntheticPath.startsWith('/workspace/'),
+        `${fixture.name}: normalized path must stay under /workspace.`,
+        failures,
+      );
+      assertCondition(
+        !response.normalizedSyntheticPath.includes('..'),
+        `${fixture.name}: normalized path must not include parent traversal.`,
+        failures,
+      );
+      assertCondition(
+        !/^[A-Za-z]:/.test(response.normalizedSyntheticPath),
+        `${fixture.name}: normalized path must not be a Windows host path.`,
+        failures,
+      );
+    }
+
+    for (const code of fixture.expectedRejectionCodes) {
+      assertCondition(
+        observedCodes.has(code),
+        `${fixture.name}: expected workspace path rejection code ${code}.`,
         failures,
       );
     }
@@ -1657,6 +1733,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     checkedDockerReadinessFixtures: localDevWorkerDockerReadinessFixtures.length,
     checkedDockerContainerPolicyFixtures:
       localDevWorkerDockerContainerPolicyFixtures.length,
+    checkedWorkspacePathPolicyFixtures:
+      localDevWorkerWorkspacePathPolicyFixtures.length,
     checkedDockerContainerSmokeFixtures:
       localDevWorkerDockerContainerSmokeFixtures.length,
     checkedDockerSmokeAuditFixtures:

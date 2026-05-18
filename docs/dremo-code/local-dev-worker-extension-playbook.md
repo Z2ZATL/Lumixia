@@ -25,6 +25,7 @@ Use the [future workspace execution design constraints](./future-workspace-execu
 | CLI UX | Local-dev CLI help text, fixture-only modes, output formatting without new commands. |
 | Lifecycle docs | Result schema documentation, outcome guidance, review checklists. |
 | Safety checks | Link checks, fixture consistency checks, static boundary checks without process execution. |
+| Workspace path policy design | String-only synthetic path policy, fixtures, and safety scan checks without real filesystem access. |
 
 ## Forbidden PR Shapes For Now
 
@@ -73,6 +74,7 @@ If any answer is not yes, split the work into design/docs first.
 | Threat model | Threat checklist is satisfied and threat model v2 is updated for boundary or residual-risk changes. |
 | Release readiness | Release readiness checklist is updated or reviewed when handoff criteria, integration blockers, or verification requirements change. |
 | Workspace execution | Future workspace design constraints and review checklist are satisfied before any workspace/repo boundary work. |
+| Path policy | Synthetic path policy remains string-only and fixture-only until a separate reviewed mount/read PR exists. |
 
 ## Review Checklist For Telemetry Schema PRs
 

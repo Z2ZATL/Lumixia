@@ -83,6 +83,20 @@ Before execution, future PRs must add pure design/policy models for:
 | Cleanup policy | Deny recursive cleanup, broad Docker cleanup, workspace deletion, wildcard targets, and unreviewed generated paths. |
 | Telemetry policy | Deny upload, raw prompts, raw file contents, host paths, env values, and identifiers until a separate privacy review exists. |
 
+## Synthetic workspace path policy design
+
+PR #42 adds a string-only synthetic path policy model under `tools/local-dev-worker/`. It does not read real files, write files, resolve real paths, mount directories, follow symlinks, execute repo commands, or add Docker behavior.
+
+| Policy area | PR #42 behavior |
+| --- | --- |
+| Root | Accepts only synthetic `/workspace` paths or safe relative paths normalized under `/workspace`. |
+| Access mode | Allows synthetic read decisions only; write and execute requests are denied. |
+| Path normalization | Normalizes slash direction and removes `.` segments in string space only. |
+| Denied paths | Blocks absolute host paths, Windows drive paths, parent traversal, home paths, `.env`, secret-looking files, `.git`, `node_modules`, null bytes, shell metacharacters, and empty paths. |
+| Symlinks | Denies any request that would follow symlinks. |
+| Filesystem access | No `fs`, `path`, realpath, stat, lstat, read, write, or directory access is used. |
+| Future requirement | A future PR must add golden path-policy fixtures before any mount design or synthetic read-only mount execution. |
+
 ## Required fixture and golden coverage before implementation
 
 Future workspace execution work must add deterministic tests before execution:
