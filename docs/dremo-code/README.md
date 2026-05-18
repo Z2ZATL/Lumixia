@@ -25,6 +25,9 @@ The current Code Architect AI workspace remains a mock/demo surface. It must not
 | [sandbox-security.md](./sandbox-security.md) | Sandbox threat model, isolation rules, and provider criteria. |
 | [sandbox-provider-decision.md](./sandbox-provider-decision.md) | Proposed sandbox provider decision, MVP path, and production boundary. |
 | [docker-execution-security-checklist.md](./docker-execution-security-checklist.md) | Required gate before any local-dev Docker execution PR. |
+| [local-dev-worker-operator-guide.md](./local-dev-worker-operator-guide.md) | Operator guide for understanding, running, verifying, and safely extending the local-dev worker. |
+| [local-dev-worker-troubleshooting.md](./local-dev-worker-troubleshooting.md) | Troubleshooting matrix for worker verification, lifecycle reports, Docker local state, and policy blocks. |
+| [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) | Future PR playbook for docs, reporting, telemetry, CLI UX, safety checks, and narrow reviewed capabilities. |
 | [credit-billing-flow.md](./credit-billing-flow.md) | Trusted task credit reservation, charging, and refund model. |
 | [frontend-workspace.md](./frontend-workspace.md) | Proposed Dremo workspace UI and responsive requirements. |
 | [migration-plan.md](./migration-plan.md) | Phased path from Code Architect AI mock to Dremo Code. |
@@ -85,7 +88,9 @@ PR #32 adds a local-dev CLI wrapper under `tools/local-dev-worker` for the exist
 
 PR #33 adds golden Markdown and JSON checks for the deterministic dry-report fixture output. The checker imports fixture functions directly, does not execute Docker or cleanup, and protects report format stability without adding browser, production, Supabase, SQL, billing, or Docker capability changes.
 
-## Current Execution Status After PR #33
+PR #34 adds operator-readiness documentation for the local-dev worker. The operator guide, troubleshooting matrix, extension playbook, and docs link check make the current worker easier to run and safely extend without changing runtime behavior, Docker command capability, browser/production paths, Supabase, SQL, billing, branding, or TerminalWorkspace.
+
+## Current Execution Status After PR #34
 
 | Area | Status |
 | --- | --- |
@@ -100,6 +105,7 @@ PR #33 adds golden Markdown and JSON checks for the deterministic dry-report fix
 | Lifecycle reports | Worker can format existing lifecycle results into sanitized Markdown and deterministic JSON summaries for future local tooling. No browser or production path exists. |
 | Lifecycle CLI | Worker can print those sanitized reports from a local-dev-only CLI. Fixture mode is deterministic and does not invoke Docker. No browser, production, Supabase, SQL, billing, branding, or TerminalWorkspace path exists. |
 | Golden reports | Worker has committed fixture Markdown/JSON golden files and a fixture-only checker. No Docker, cleanup, browser, or production path is used. |
+| Operator docs | Operator guide, troubleshooting matrix, extension playbook, and docs link check are docs/operator-readiness only. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -107,4 +113,4 @@ PR #33 adds golden Markdown and JSON checks for the deterministic dry-report fix
 
 ## Recommended Next PR
 
-Future PR #34 should remain reporting/telemetry-oriented, for example adding local-only operator guidance or telemetry export formatting. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.
+Future PR #35 should remain reporting, telemetry, documentation, or operator-experience oriented. It should not expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.

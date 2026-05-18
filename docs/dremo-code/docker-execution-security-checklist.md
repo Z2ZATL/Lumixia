@@ -193,6 +193,16 @@ PR #33 implementation status:
 | Docker independence | Golden checks import fixture functions directly and do not execute Docker, cleanup, npm scripts, or process adapters. |
 | Runtime expansion | No new Docker command, process API file, cleanup execution, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
 
+PR #34 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Operator guide | Added [local-dev-worker-operator-guide.md](./local-dev-worker-operator-guide.md) for the worker boundary, capability ladder, verification, reports, and safe future PRs. |
+| Troubleshooting matrix | Added [local-dev-worker-troubleshooting.md](./local-dev-worker-troubleshooting.md) with safe checks and safe fixes that avoid broad Docker cleanup, pull/build, inspect, prune, browser imports, and safety bypasses. |
+| Extension playbook | Added [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) with allowed/forbidden future PR shapes and review checklists. |
+| Docs link check | Added a local docs consistency check that reads Markdown files only and verifies the operator docs remain linked from the required Dremo and worker docs. |
+| Runtime expansion | No runtime behavior, Docker command capability, process API file, browser/production path, Supabase, SQL, billing, branding, or TerminalWorkspace behavior was added. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -410,9 +420,9 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add local lifecycle operator guide** or further refine telemetry/export formatting before any broader execution.
+Recommended next PR: **Refine local lifecycle telemetry/reporting** or improve operator documentation before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, and PR #33 adds golden checks for fixture report stability. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, PR #33 adds golden checks for fixture report stability, and PR #34 adds operator guidance/troubleshooting without runtime changes. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
