@@ -108,6 +108,27 @@ const cliWrapperForbiddenPatterns = [
   { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
 ];
 
+const goldenCheckerForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'src import', pattern: /from\s+['"].*src\// },
+  { label: 'docker run command string', pattern: /docker\s+run/i },
+  { label: 'docker rm command string', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps command string', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect command string', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
+const goldenFixtureForbiddenPatterns = [
+  { label: 'API key assignment', pattern: /\b[A-Z0-9_]*API_KEY\s*=/i },
+  { label: 'token assignment', pattern: /\b[A-Z0-9_]*TOKEN\s*=/i },
+  { label: 'secret assignment', pattern: /\b[A-Z0-9_]*SECRET\s*=/i },
+  { label: 'SERVICE_ROLE', pattern: /SERVICE_ROLE/i },
+  { label: '.env reference', pattern: /\.env/i },
+  { label: 'Windows home path', pattern: /[A-Z]:[\\/]+Users[\\/]/i },
+  { label: 'Linux home path', pattern: /\/home\//i },
+  { label: 'macOS home path', pattern: /\/Users\//i },
+];
+
 const reviewedWorkerProcessApiAllowlist = new Set([
   path.normalize('tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts'),
   path.normalize('tools/local-dev-worker/localDevWorkerDockerReadinessAdapter.ts'),
@@ -198,6 +219,16 @@ const cliWrapperFiles = workerFiles.filter((file) =>
     'localDevWorkerDockerSmokeLifecycleCliFixtures.ts',
   ].includes(path.basename(file)),
 );
+const goldenCheckerFiles = workerFiles.filter((file) =>
+  [
+    'localDevWorkerGoldenReportCheck.ts',
+    'localDevWorkerDockerSmokeLifecycleGoldenCheck.ts',
+  ].includes(path.basename(file)),
+);
+const goldenFixtureFiles = [
+  path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.md'),
+  path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.json'),
+];
 const workerProcessApiFiles = workerFiles.filter(
   (file) =>
     !reviewedWorkerProcessApiAllowlist.has(path.normalize(path.relative(repoRoot, file))),
@@ -244,6 +275,16 @@ const violations = [
     cliWrapperForbiddenPatterns,
     'worker-lifecycle-cli-boundary',
   )),
+  ...(await scanFiles(
+    goldenCheckerFiles,
+    goldenCheckerForbiddenPatterns,
+    'worker-golden-checker-boundary',
+  )),
+  ...(await scanFiles(
+    goldenFixtureFiles,
+    goldenFixtureForbiddenPatterns,
+    'worker-golden-fixture-safety',
+  )),
 ];
 
 console.log(
@@ -264,6 +305,10 @@ console.log(
 console.log(
   `Lifecycle CLI wrapper files scanned for process APIs and new Docker command strings: ${cliWrapperFiles.length}`,
 );
+console.log(
+  `Golden checker files scanned for process APIs and new Docker command strings: ${goldenCheckerFiles.length}`,
+);
+console.log(`Golden fixture files scanned for unsafe static text: ${goldenFixtureFiles.length}`);
 console.log(
   `Reviewed process adapter files scanned for cleanup commands: ${reviewedProcessApiFilesWithoutCleanup.length}`,
 );

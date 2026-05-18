@@ -83,7 +83,9 @@ PR #31 adds lifecycle report formatting utilities for future CLI/UI/audit displa
 
 PR #32 adds a local-dev CLI wrapper under `tools/local-dev-worker` for the existing Docker smoke lifecycle report. It can print sanitized Markdown or deterministic JSON, includes a dry-report fixture mode that does not require Docker, accepts no user-provided command/image/container/cleanup input, and is not imported by `src/` or exposed through Dremo Lab/production UI.
 
-## Current Execution Status After PR #32
+PR #33 adds golden Markdown and JSON checks for the deterministic dry-report fixture output. The checker imports fixture functions directly, does not execute Docker or cleanup, and protects report format stability without adding browser, production, Supabase, SQL, billing, or Docker capability changes.
+
+## Current Execution Status After PR #33
 
 | Area | Status |
 | --- | --- |
@@ -97,6 +99,7 @@ PR #32 adds a local-dev CLI wrapper under `tools/local-dev-worker` for the exist
 | Lifecycle orchestration | Local-dev worker can compose readiness -> exact smoke -> audit -> exact cleanup using existing reviewed adapters only. Dependency-injected self-checks cover ordering and cleanup decisions without requiring Docker. |
 | Lifecycle reports | Worker can format existing lifecycle results into sanitized Markdown and deterministic JSON summaries for future local tooling. No browser or production path exists. |
 | Lifecycle CLI | Worker can print those sanitized reports from a local-dev-only CLI. Fixture mode is deterministic and does not invoke Docker. No browser, production, Supabase, SQL, billing, branding, or TerminalWorkspace path exists. |
+| Golden reports | Worker has committed fixture Markdown/JSON golden files and a fixture-only checker. No Docker, cleanup, browser, or production path is used. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -104,4 +107,4 @@ PR #32 adds a local-dev CLI wrapper under `tools/local-dev-worker` for the exist
 
 ## Recommended Next PR
 
-Future PR #33 should remain reporting/telemetry-oriented, for example adding local-only telemetry export formatting or runbook notes. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.
+Future PR #34 should remain reporting/telemetry-oriented, for example adding local-only operator guidance or telemetry export formatting. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.

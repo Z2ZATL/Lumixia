@@ -36,6 +36,8 @@ Lifecycle reporting note: PR #31 adds sanitized report formatting for existing l
 
 Lifecycle CLI note: PR #32 adds a local-dev-only CLI wrapper under `tools/local-dev-worker` for the existing lifecycle report. It can print Markdown or JSON summaries and includes a deterministic fixture mode that does not call Docker. The CLI accepts no user-provided command, image, container name, label, cleanup target, workspace path, environment, or secret, and it is not imported by `src/` or exposed through browser/production UI.
 
+Golden report note: PR #33 adds committed Markdown and JSON golden checks for the deterministic lifecycle dry-report fixture. The checker imports fixture functions directly, validates no secret/home/.env markers, and does not execute Docker, cleanup, npm scripts, or any process adapter.
+
 ## Sandbox Lifecycle Model
 
 The proposed lifecycle uses these statuses:
@@ -142,9 +144,9 @@ PR #21 note: the worker boundary now has a disabled-by-default execution capabil
 
 PR #22 note: the first real local-dev process execution path exists only in `tools/local-dev-worker/localDevWorkerVersionExecutionAdapter.ts`. It is disabled by default, requires trusted local manual review metadata, uses `shell: false`, passes an empty environment, bounds timeout/stdout/stderr, and only allows reviewed non-Docker version/identity commands. Docker CLI execution remains blocked.
 
-PR #23 through PR #32 progressively add Docker-specific local-dev probes, one exact container smoke path, smoke audit normalization, cleanup planning, one exact cleanup path, lifecycle orchestration, lifecycle report formatting, and a local-dev CLI report wrapper. `docker --version` and readiness classification are separate reviewed configs, while the container smoke adapter allows only static identity metadata plus `alpine:3.20 echo hello` with `--name lumixia-dremo-smoke-echo`, allowlisted `lumixia.dremo.*` labels, `--pull=never`, `--user 65534:65534`, no network, no mounts, no shell, no root user, no host env, bounded output, and audit-safe summaries.
+PR #23 through PR #33 progressively add Docker-specific local-dev probes, one exact container smoke path, smoke audit normalization, cleanup planning, one exact cleanup path, lifecycle orchestration, lifecycle report formatting, a local-dev CLI report wrapper, and fixture-only golden checks. `docker --version` and readiness classification are separate reviewed configs, while the container smoke adapter allows only static identity metadata plus `alpine:3.20 echo hello` with `--name lumixia-dremo-smoke-echo`, allowlisted `lumixia.dremo.*` labels, `--pull=never`, `--user 65534:65534`, no network, no mounts, no shell, no root user, no host env, bounded output, and audit-safe summaries.
 
-## Current Execution Status After PR #32
+## Current Execution Status After PR #33
 
 | Area | Status |
 | --- | --- |
@@ -158,6 +160,7 @@ PR #23 through PR #32 progressively add Docker-specific local-dev probes, one ex
 | Lifecycle | Worker can orchestrate readiness -> exact smoke -> audit -> exact cleanup using existing adapters only. It does not add commands, Docker flags, process APIs, network, mounts, or a browser/production path. |
 | Lifecycle reports | Existing lifecycle results can be formatted as sanitized Markdown or deterministic JSON summaries for future local tooling only. |
 | Lifecycle CLI | Local-dev-only CLI wrapper can print those reports. Fixture mode is deterministic and does not call Docker; real mode uses the existing reviewed lifecycle only. |
+| Golden reports | Fixture-only golden checks protect report format stability without Docker, cleanup, browser, or production execution. |
 | Network | Disabled for container smoke with `--network none`; no network command surface. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read, injected, logged, or traced. |

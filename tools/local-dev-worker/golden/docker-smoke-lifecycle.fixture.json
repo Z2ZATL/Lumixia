@@ -1,0 +1,59 @@
+{
+  "reportId": "local-dev-docker-smoke-lifecycle-report.local-dev-docker-smoke-lifecycle-cli-dry-report-fixture.cleanup_success",
+  "kind": "local-dev-docker-smoke-lifecycle-report",
+  "localDevOnly": true,
+  "lifecycleId": "local-dev-docker-smoke-lifecycle-cli-dry-report-fixture",
+  "ok": true,
+  "outcome": "cleanup_success",
+  "stageSummary": [
+    "not_started",
+    "readiness_checked",
+    "smoke_executed",
+    "audit_created",
+    "cleanup_attempted",
+    "completed"
+  ],
+  "readinessSummary": {
+    "readinessState": "daemon_available",
+    "daemonReachable": true,
+    "rejectionCodes": []
+  },
+  "smokeSummary": {
+    "outcome": "success",
+    "executionAttempted": true,
+    "containerStarted": true,
+    "cleanupRisk": "none_expected",
+    "stdoutPreview": "hello\n",
+    "stderrPreview": "",
+    "rejectionCodes": []
+  },
+  "cleanupSummary": {
+    "outcome": "cleanup_success",
+    "executionAttempted": true,
+    "cleanupExecuted": true,
+    "stdoutPreview": "lumixia-dremo-smoke-echo\n",
+    "stderrPreview": "",
+    "rejectionCodes": []
+  },
+  "safetySummary": {
+    "workerBoundary": "outside-browser-bundle",
+    "noNewDockerCapabilities": true,
+    "usedExistingReadinessAdapter": true,
+    "usedExistingSmokeAdapter": true,
+    "usedExistingCleanupAdapter": true,
+    "arbitraryDockerRunAllowed": false,
+    "arbitraryCleanupAllowed": false,
+    "imagePullAllowed": false,
+    "networkAllowed": false,
+    "mountsAllowed": false,
+    "workspaceMounted": false,
+    "dockerSocketMounted": false,
+    "homeMounted": false,
+    "shellAllowed": false,
+    "hostEnvironmentInherited": false,
+    "productionUiPath": false,
+    "srcImportPath": false
+  },
+  "warnings": [],
+  "nextRecommendedAction": "Smoke lifecycle completed and exact cleanup succeeded. Continue with report review or telemetry formatting."
+}
