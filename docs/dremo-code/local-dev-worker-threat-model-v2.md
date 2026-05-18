@@ -6,6 +6,8 @@ This document describes the current threat model for the Dremo local-dev worker 
 
 For release or handoff decisions, pair this threat model with the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
 
+Before workspace mounts or repo command execution are considered, use the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](./future-workspace-execution-review-checklist.md).
+
 ## Scope
 
 This threat model covers:
@@ -218,6 +220,8 @@ Before high-risk expansion, require a dedicated PR and review for:
 | [Capability registry](./local-dev-worker-capability-registry.md) | Current capability, file, fixture, doc, and verification inventory. |
 | [Threat checklist](./local-dev-worker-threat-checklist.md) | Future PR author checklist derived from this threat model. |
 | [Release readiness checklist](./local-dev-worker-release-readiness.md) | Maintainer handoff checklist and readiness decision template. |
+| [Future workspace execution design constraints](./future-workspace-execution-design-constraints.md) | Required constraints and staged prerequisites before workspace/repo execution. |
+| [Future workspace execution review checklist](./future-workspace-execution-review-checklist.md) | Future PR checklist for workspace/repo execution review. |
 | [Operator guide](./local-dev-worker-operator-guide.md) | How to run, verify, and safely extend the worker. |
 | [Extension playbook](./local-dev-worker-extension-playbook.md) | Allowed/forbidden future PR shapes and review checklists. |
 | [Docker execution security checklist](./docker-execution-security-checklist.md) | Docker-specific blocker, gate, and review requirements. |

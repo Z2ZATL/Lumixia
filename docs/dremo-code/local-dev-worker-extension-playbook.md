@@ -12,6 +12,8 @@ Use the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.
 
 Use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md) before a handoff, review milestone, future CLI-use milestone, or integration planning milestone.
 
+Use the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](./future-workspace-execution-review-checklist.md) before proposing workspace mounts, repo execution, package install, network, or browser-to-worker integration.
+
 ## Allowed Future PR Shapes
 
 | Shape | Examples |
@@ -70,6 +72,7 @@ If any answer is not yes, split the work into design/docs first.
 | Registry | Capability, fixture, doc, and verification maps stay current. |
 | Threat model | Threat checklist is satisfied and threat model v2 is updated for boundary or residual-risk changes. |
 | Release readiness | Release readiness checklist is updated or reviewed when handoff criteria, integration blockers, or verification requirements change. |
+| Workspace execution | Future workspace design constraints and review checklist are satisfied before any workspace/repo boundary work. |
 
 ## Review Checklist For Telemetry Schema PRs
 

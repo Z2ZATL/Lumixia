@@ -150,6 +150,8 @@ PR #34 adds operator-facing documentation for the current worker system, and PR 
 | [local-dev-worker-threat-model-v2.md](../../docs/dremo-code/local-dev-worker-threat-model-v2.md) | Documents current trust boundaries, assets, threats, mitigations, residual risks, and future security review gates. |
 | [local-dev-worker-threat-checklist.md](../../docs/dremo-code/local-dev-worker-threat-checklist.md) | Future PR author checklist for local-dev worker security scope and verification. |
 | [local-dev-worker-release-readiness.md](../../docs/dremo-code/local-dev-worker-release-readiness.md) | Maintainer handoff checklist, release decision template, readiness matrix, and future integration blockers. |
+| [future-workspace-execution-design-constraints.md](../../docs/dremo-code/future-workspace-execution-design-constraints.md) | Design constraints, forbidden defaults, staged PR sequence, and blocked implementation work before any workspace mount or repo execution. |
+| [future-workspace-execution-review-checklist.md](../../docs/dremo-code/future-workspace-execution-review-checklist.md) | Checklist for future workspace/repo execution scope, path, mount, command, network, secret, cleanup, telemetry, browser, production, verification, and docs review. |
 
 Run the docs link check after documentation changes:
 
@@ -180,7 +182,7 @@ npm run dremo:worker:telemetry:golden
 
 The checker reads the committed golden file, regenerates local-dev telemetry fixture JSON in memory, parses and validates both outputs, checks for secret/home-path/environment markers, and compares the result with stable key ordering. It does not upload, persist, transmit, store, or write runtime telemetry. It does not call networks, write databases, execute Docker, read `.env` files, read `process.env`, or import `src/`.
 
-## Current Execution Status After PR #40
+## Current Execution Status After PR #41
 
 | Area | Status |
 | --- | --- |
@@ -201,6 +203,7 @@ The checker reads the committed golden file, regenerates local-dev telemetry fix
 | Capability registry | The Dremo docs include an operator-facing registry of current capabilities, policies, adapters, fixtures, docs, and verification checks. |
 | Threat model | Threat model v2 and the threat checklist document assets, trust boundaries, current mitigations, residual risks, and future review gates. |
 | Release readiness | Release readiness checklist documents handoff criteria, verification blockers, release decision template, and future integration blockers. |
+| Workspace execution design | Future workspace constraints and review checklist document prerequisites before workspace mounts or repo execution. No workspace execution exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

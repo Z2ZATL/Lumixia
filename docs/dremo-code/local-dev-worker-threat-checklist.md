@@ -6,6 +6,8 @@ Use this checklist before opening any Dremo local-dev worker PR. It is documenta
 
 For maintainer handoff or release decisions, also use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
 
+For any future workspace mount or repo command work, also use the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](./future-workspace-execution-review-checklist.md).
+
 ## Scope check
 
 | Question | Required safe answer |

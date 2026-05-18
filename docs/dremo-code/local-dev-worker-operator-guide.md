@@ -18,6 +18,8 @@ For security boundaries, assets, mitigations, residual risk, and future review g
 
 For handoff, review, future CLI use, or future integration planning, use the [local-dev worker release readiness checklist](./local-dev-worker-release-readiness.md).
 
+Before any workspace mount, repo command, package install, network, or browser-to-worker integration proposal, use the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](./future-workspace-execution-review-checklist.md).
+
 ## Why It Is Outside `src/`
 
 `src/` is bundled for the browser. Browser-bundled code must never contain process execution APIs, Docker command adapters, local worker imports, service role keys, secrets, or any production execution path.

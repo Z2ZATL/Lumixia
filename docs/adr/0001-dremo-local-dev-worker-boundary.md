@@ -22,6 +22,8 @@ The current security model is maintained in the [Dremo local-dev worker threat m
 
 Maintainer handoff and future integration readiness decisions are tracked with the [Dremo local-dev worker release readiness checklist](../dremo-code/local-dev-worker-release-readiness.md).
 
+Future workspace or repository execution must follow the [future workspace execution design constraints](../dremo-code/future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](../dremo-code/future-workspace-execution-review-checklist.md) before any workspace mount or repo command is implemented.
+
 ## Decision
 
 We will keep all local-dev worker execution outside the browser bundle and require local-dev-only trusted review gates for every executable capability.
@@ -190,3 +192,4 @@ git diff --check
 | #38 | Added the capability registry reference for operator-facing capability, file, fixture, and doc mapping. |
 | #39 | Added the threat model v2 and future PR threat checklist. |
 | #40 | Added the release readiness checklist, decision template, readiness matrix, and future integration blockers. |
+| #41 | Added future workspace execution design constraints and review checklist. |

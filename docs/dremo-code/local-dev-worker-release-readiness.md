@@ -8,6 +8,8 @@ This checklist helps maintainers decide whether the Dremo local-dev worker and D
 
 Use this checklist before treating the local-dev worker as ready for a handoff milestone. It gathers the current boundary, verification, threat model, registry, reporting, telemetry schema, and operator documentation requirements in one place.
 
+Future workspace or repo execution planning must also satisfy the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and [future workspace execution review checklist](./future-workspace-execution-review-checklist.md).
+
 ## Current status
 
 | Area | Current state |
