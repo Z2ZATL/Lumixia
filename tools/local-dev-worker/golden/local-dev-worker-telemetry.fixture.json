@@ -1,0 +1,538 @@
+{
+  "kind": "local-dev-worker-telemetry-golden-fixture",
+  "localDevOnly": true,
+  "fixtureCount": 10,
+  "fixtures": [
+    {
+      "name": "lifecycle-cleanup-success",
+      "expectedEventKind": "docker-smoke.lifecycle.completed",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.cleanup-success.lifecycle.completed",
+        "eventKind": "docker-smoke.lifecycle.completed",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "report-cleanup-success",
+          "ok": true,
+          "outcome": "cleanup_success",
+          "stages": [
+            "not_started",
+            "readiness_checked",
+            "smoke_executed",
+            "audit_created",
+            "cleanup_attempted",
+            "completed"
+          ],
+          "cleanupAttempted": true,
+          "cleanupRequired": true,
+          "rejectionCodes": [],
+          "readiness": {
+            "readinessState": "daemon_available",
+            "daemonReachable": true,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "smoke": {
+            "outcome": "success",
+            "executionAttempted": true,
+            "containerStarted": true,
+            "cleanupRisk": "none_expected",
+            "stdoutPreview": "hello\n",
+            "stderrPreview": "",
+            "stdoutPreviewBytes": 6,
+            "stderrPreviewBytes": 0,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "cleanup": {
+            "outcome": "cleanup_success",
+            "executionAttempted": true,
+            "cleanupExecuted": true,
+            "stdoutPreview": "lumixia-dremo-smoke-echo\n",
+            "stderrPreview": "",
+            "stdoutPreviewBytes": 25,
+            "stderrPreviewBytes": 0,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "lifecycle-readiness-unavailable",
+      "expectedEventKind": "docker-smoke.lifecycle.completed",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.readiness-unavailable.lifecycle.completed",
+        "eventKind": "docker-smoke.lifecycle.completed",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "report-readiness-unavailable",
+          "ok": false,
+          "outcome": "readiness_unavailable",
+          "stages": [
+            "not_started",
+            "readiness_checked",
+            "cleanup_skipped",
+            "completed"
+          ],
+          "cleanupAttempted": false,
+          "cleanupRequired": false,
+          "rejectionCodes": [],
+          "readiness": {
+            "readinessState": "daemon_unavailable",
+            "daemonReachable": false,
+            "rejectionCodes": [
+              "docker_daemon_unavailable"
+            ],
+            "durationMs": 1
+          },
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "lifecycle-policy-blocked",
+      "expectedEventKind": "docker-smoke.lifecycle.completed",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.policy-blocked.lifecycle.completed",
+        "eventKind": "docker-smoke.lifecycle.completed",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "report-policy-blocked",
+          "ok": false,
+          "outcome": "policy_blocked",
+          "stages": [
+            "not_started",
+            "readiness_checked",
+            "completed"
+          ],
+          "cleanupAttempted": false,
+          "cleanupRequired": false,
+          "rejectionCodes": [
+            "lifecycle_smoke_request_not_exact"
+          ],
+          "readiness": {
+            "readinessState": "daemon_unavailable",
+            "daemonReachable": false,
+            "rejectionCodes": [
+              "lifecycle_smoke_request_not_exact"
+            ],
+            "durationMs": 1
+          },
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "lifecycle-smoke-timeout-cleanup-attempted",
+      "expectedEventKind": "docker-smoke.lifecycle.completed",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.smoke-timeout-cleanup-attempted.lifecycle.completed",
+        "eventKind": "docker-smoke.lifecycle.completed",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "report-smoke-timeout",
+          "ok": false,
+          "outcome": "smoke_timeout_cleanup_attempted",
+          "stages": [
+            "not_started",
+            "readiness_checked",
+            "smoke_executed",
+            "audit_created",
+            "cleanup_attempted",
+            "completed"
+          ],
+          "cleanupAttempted": true,
+          "cleanupRequired": true,
+          "rejectionCodes": [],
+          "readiness": {
+            "readinessState": "daemon_available",
+            "daemonReachable": true,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "smoke": {
+            "outcome": "timeout",
+            "executionAttempted": true,
+            "containerStarted": true,
+            "cleanupRisk": "unknown_after_timeout",
+            "stdoutPreview": "",
+            "stderrPreview": "timeout",
+            "stdoutPreviewBytes": 0,
+            "stderrPreviewBytes": 7,
+            "rejectionCodes": [
+              "container_smoke_timeout"
+            ],
+            "durationMs": 1
+          },
+          "cleanup": {
+            "outcome": "cleanup_success",
+            "executionAttempted": true,
+            "cleanupExecuted": true,
+            "stdoutPreview": "lumixia-dremo-smoke-echo\n",
+            "stderrPreview": "",
+            "stdoutPreviewBytes": 25,
+            "stderrPreviewBytes": 0,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "lifecycle-cleanup-failed-structured",
+      "expectedEventKind": "docker-smoke.lifecycle.completed",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.cleanup-failed-structured.lifecycle.completed",
+        "eventKind": "docker-smoke.lifecycle.completed",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "report-cleanup-failed",
+          "ok": false,
+          "outcome": "cleanup_failed_structured",
+          "stages": [
+            "not_started",
+            "readiness_checked",
+            "smoke_executed",
+            "audit_created",
+            "cleanup_attempted",
+            "completed"
+          ],
+          "cleanupAttempted": true,
+          "cleanupRequired": true,
+          "rejectionCodes": [],
+          "readiness": {
+            "readinessState": "daemon_available",
+            "daemonReachable": true,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "smoke": {
+            "outcome": "success",
+            "executionAttempted": true,
+            "containerStarted": true,
+            "cleanupRisk": "none_expected",
+            "stdoutPreview": "hello\n",
+            "stderrPreview": "",
+            "stdoutPreviewBytes": 6,
+            "stderrPreviewBytes": 0,
+            "rejectionCodes": [],
+            "durationMs": 1
+          },
+          "cleanup": {
+            "outcome": "docker_daemon_unavailable",
+            "executionAttempted": true,
+            "cleanupExecuted": false,
+            "stdoutPreview": "",
+            "stderrPreview": "",
+            "stdoutPreviewBytes": 0,
+            "stderrPreviewBytes": 0,
+            "rejectionCodes": [
+              "docker_daemon_unavailable"
+            ],
+            "durationMs": 1
+          },
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "report-generated",
+      "expectedEventKind": "docker-smoke.lifecycle.report.generated",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.cleanup-success.report.generated",
+        "eventKind": "docker-smoke.lifecycle.report.generated",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "reportId": "telemetry.fixture.cleanup-success.report",
+          "lifecycleId": "report-cleanup-success",
+          "ok": true,
+          "outcome": "cleanup_success",
+          "warnings": [],
+          "nextRecommendedAction": "Smoke lifecycle completed and exact cleanup succeeded. Continue with report review or telemetry formatting.",
+          "smokeStdoutPreviewBytes": 6,
+          "smokeStderrPreviewBytes": 0,
+          "cleanupStdoutPreviewBytes": 25,
+          "cleanupStderrPreviewBytes": 0,
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "golden-check-passed",
+      "expectedEventKind": "docker-smoke.lifecycle.golden.checked",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.golden.passed",
+        "eventKind": "docker-smoke.lifecycle.golden.checked",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "passed": true,
+          "checkedFiles": [
+            "tools/local-dev-worker/golden/docker-smoke-lifecycle.fixture.md",
+            "tools/local-dev-worker/golden/docker-smoke-lifecycle.fixture.json"
+          ],
+          "mismatchSummary": "",
+          "rejectionCodes": []
+        }
+      }
+    },
+    {
+      "name": "golden-check-failed-summary",
+      "expectedEventKind": "docker-smoke.lifecycle.golden.checked",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.golden.failed",
+        "eventKind": "docker-smoke.lifecycle.golden.checked",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "passed": false,
+          "checkedFiles": [
+            "tools/local-dev-worker/golden/docker-smoke-lifecycle.fixture.md"
+          ],
+          "mismatchSummary": "First mismatch at line 4: expected outcome cleanup_success.",
+          "rejectionCodes": [
+            "golden_report_mismatch"
+          ]
+        }
+      }
+    },
+    {
+      "name": "secret-looking-output-is-redacted",
+      "expectedEventKind": "docker-smoke.lifecycle.policy.blocked",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.policy.secret-redaction",
+        "eventKind": "docker-smoke.lifecycle.policy.blocked",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "telemetry-secret-redaction",
+          "blockedStage": "smoke",
+          "sanitizedReason": "blocked because [REDACTED_SECRET] and [REDACTED_SECRET] were omitted",
+          "rejectionCodes": [
+            "telemetry_secret_like_input_redacted"
+          ],
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    },
+    {
+      "name": "home-path-output-is-redacted",
+      "expectedEventKind": "docker-smoke.lifecycle.policy.blocked",
+      "event": {
+        "schemaVersion": "2026-05-18.local-dev-worker.telemetry.v1",
+        "eventId": "telemetry.fixture.policy.home-redaction",
+        "eventKind": "docker-smoke.lifecycle.policy.blocked",
+        "localDevOnly": true,
+        "source": "tools/local-dev-worker",
+        "productionUiPath": false,
+        "srcImportPath": false,
+        "timestampPolicy": "omitted-for-deterministic-fixtures",
+        "containsSecrets": false,
+        "containsHostPaths": false,
+        "containsUserPrompt": false,
+        "containsEnvironment": false,
+        "payload": {
+          "lifecycleId": "telemetry-home-redaction",
+          "blockedStage": "smoke",
+          "sanitizedReason": "blocked path [REDACTED_HOME_PATH] and [REDACTED_HOME_PATH] with [REDACTED_ENV_FILE]",
+          "rejectionCodes": [
+            "telemetry_home_path_input_redacted"
+          ],
+          "safety": {
+            "noNewDockerCapabilities": true,
+            "arbitraryDockerRunAllowed": false,
+            "arbitraryCleanupAllowed": false,
+            "imagePullAllowed": false,
+            "networkAllowed": false,
+            "mountsAllowed": false,
+            "workspaceMounted": false,
+            "dockerSocketMounted": false,
+            "homeMounted": false,
+            "shellAllowed": false,
+            "hostEnvironmentInherited": false,
+            "productionUiPath": false,
+            "srcImportPath": false
+          }
+        }
+      }
+    }
+  ]
+}

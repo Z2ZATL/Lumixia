@@ -261,6 +261,7 @@ const telemetryFiles = workerFiles.filter((file) =>
     'localDevWorkerLifecycleTelemetryPolicy.ts',
     'localDevWorkerLifecycleTelemetryEvents.ts',
     'localDevWorkerLifecycleTelemetryFixtures.ts',
+    'localDevWorkerTelemetryGoldenCheck.ts',
   ].includes(path.basename(file)),
 );
 const telemetryFixtureFiles = workerFiles.filter((file) =>
@@ -269,6 +270,7 @@ const telemetryFixtureFiles = workerFiles.filter((file) =>
 const goldenFixtureFiles = [
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.md'),
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.json'),
+  path.join(workerRoot, 'golden', 'local-dev-worker-telemetry.fixture.json'),
 ];
 const workerProcessApiFiles = workerFiles.filter(
   (file) =>

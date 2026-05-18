@@ -58,6 +58,7 @@ tools/local-dev-worker
 | PR #33 | Golden lifecycle report checks | Fixture-only format drift protection. |
 | PR #34 | Operator guide and troubleshooting docs | Documentation only; no runtime behavior changes. |
 | PR #35 | Lifecycle telemetry schema design | Typed local-dev telemetry objects only; no collection, upload, DB, file, or network path. |
+| PR #36 | Telemetry golden fixture checks | Fixture-only schema drift protection; no telemetry collection, upload, storage, network, DB, or runtime file writes. |
 
 ## What Is Currently Executable
 
@@ -83,6 +84,7 @@ The normal operator checks do not require Docker unless the operator intentional
 | Golden checks | Fixture-only; does not call Docker. |
 | CLI fixture mode | Report-only; no Docker, cleanup, or process adapter execution. |
 | Telemetry schema | Design-only local-dev event objects and fixtures; no upload, persistence, or network calls. |
+| Telemetry golden checks | Fixture-only JSON comparison; no upload, runtime persistence, Docker, network, DB, or file writes. |
 
 ## What Remains Forbidden
 
@@ -112,13 +114,9 @@ npm run dremo:worker:typecheck
 npm run dremo:worker:selfcheck
 npm run dremo:worker:safety
 npm run dremo:worker:lifecycle:report:golden
-npm run dremo:worker:verify
-```
-
-If this PR adds docs links, also run:
-
-```powershell
+npm run dremo:worker:telemetry:golden
 npm run dremo:worker:docs
+npm run dremo:worker:verify
 ```
 
 ## Fixture Reports
@@ -142,6 +140,16 @@ npm run dremo:worker:lifecycle:report:golden
 
 If it fails, review the diff-like summary. Do not update golden files casually. A golden change should be intentional and explained in the PR body.
 
+## Telemetry Golden Checks
+
+PR #36 adds a committed local-dev telemetry fixture JSON file and a fixture-only checker:
+
+```powershell
+npm run dremo:worker:telemetry:golden
+```
+
+The checker reads the committed golden file, regenerates telemetry fixture JSON in memory from the existing telemetry fixtures, validates both outputs for redaction and deterministic shape, and compares them. It does not upload telemetry, write runtime telemetry files, call networks, write databases, read environment values, execute Docker, or import `src/`.
+
 ## Interpreting Lifecycle Reports
 
 | Report field | How to read it |
@@ -164,6 +172,7 @@ PR #35 adds local-dev lifecycle telemetry schema objects under `tools/local-dev-
 | Redaction | Secret-like strings, service-role markers, home paths, and `.env` references are denied or redacted before fixture events validate. |
 | Determinism | Fixture helpers do not use timestamps, environment values, usernames, home paths, repo paths, or machine-specific Docker values. |
 | Collection | Not implemented. No upload, analytics provider, database write, file write, network call, or browser path exists. |
+| Golden fixture | PR #36 commits deterministic sanitized telemetry fixture JSON and validates it with a fixture-only checker. |
 
 ## Safe Troubleshooting Flow
 

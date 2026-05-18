@@ -92,7 +92,9 @@ PR #34 adds operator-readiness documentation for the local-dev worker. The opera
 
 PR #35 adds local-dev lifecycle telemetry schema design. It defines typed event shapes, redaction policy, pure event builders, deterministic fixtures, self-check coverage, and safety scan coverage without collecting, uploading, persisting, transmitting, storing, or writing telemetry anywhere.
 
-## Current Execution Status After PR #35
+PR #36 adds deterministic golden checks for local-dev telemetry fixture JSON. The checker reads the committed fixture, regenerates fixture JSON from local telemetry fixtures, validates output safety, and compares the results without uploading, storing, transmitting, writing runtime telemetry files, calling networks, or touching databases.
+
+## Current Execution Status After PR #36
 
 | Area | Status |
 | --- | --- |
@@ -109,6 +111,7 @@ PR #35 adds local-dev lifecycle telemetry schema design. It defines typed event 
 | Golden reports | Worker has committed fixture Markdown/JSON golden files and a fixture-only checker. No Docker, cleanup, browser, or production path is used. |
 | Operator docs | Operator guide, troubleshooting matrix, extension playbook, and docs link check are docs/operator-readiness only. |
 | Telemetry schema | Local-dev-only schema objects, redaction policy, event builders, and fixtures exist for future lifecycle telemetry. No upload, analytics provider, network, DB write, file write, browser path, or production path exists. |
+| Telemetry golden | Committed telemetry fixture JSON and a fixture-only checker protect telemetry schema output stability. No telemetry collection, upload, persistence, runtime file write, network, DB, browser, or production path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -116,4 +119,4 @@ PR #35 adds local-dev lifecycle telemetry schema design. It defines typed event 
 
 ## Recommended Next PR
 
-Future PR #36 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #37 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
