@@ -137,6 +137,7 @@ The current executable Docker surface is intentionally tiny:
 | Production UI path exposure | Worker becomes callable from Dremo Lab or production UI. | Production path flags, no `src` imports, safety scan. |
 | Supabase/service role misuse | Worker reads service role key or mutates Supabase. | No secrets/env reads, no Supabase function/SQL changes, safety scan coverage. |
 | Documentation drift | Operators follow stale instructions. | ADR, capability registry, docs link check, checklist, and operator docs. |
+| Workspace path policy drift | String-only synthetic path policy accidentally starts resolving or trusting real host paths. | PR #42 workspace path policy fixtures, self-check coverage, and safety scan coverage for filesystem/process/network/env APIs. |
 
 ## Current mitigations
 
@@ -167,6 +168,7 @@ The current executable Docker surface is intentionally tiny:
 | Telemetry golden checks | Deterministic telemetry fixture JSON protects schema output stability. |
 | Docs link check | Ensures operator docs, ADR, capability registry, threat model, and checklist remain linked. |
 | ADR and capability registry | Record the architectural decision and current capability inventory. |
+| Synthetic workspace path policy | PR #42 models future workspace path decisions with string-only synthetic fixtures; it does not read files, resolve real paths, mount workspaces, or execute repo commands. |
 
 ## Verification coverage
 

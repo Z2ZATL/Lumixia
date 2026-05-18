@@ -6,6 +6,8 @@ Use this checklist before proposing any Dremo local-dev workspace mount, reposit
 
 Pair this checklist with the [future workspace execution design constraints](./future-workspace-execution-design-constraints.md).
 
+PR #42 adds a synthetic workspace path policy model only. It is string-only and fixture-only; it does not read real workspace files, mount directories, write files, follow symlinks, execute commands, or add Docker behavior.
+
 ## Scope
 
 | Question | Required safe answer |
@@ -36,6 +38,7 @@ Pair this checklist with the [future workspace execution design constraints](./f
 | Does this follow symlinks? | No until a dedicated symlink policy exists. |
 | Does this read `.env` or hidden secret-like files? | No. |
 | Does this expose home paths or workspace absolute paths in reports? | No. |
+| Does this rely on real filesystem resolution? | No. Path policy must remain string-only until a separate reviewed mount/read PR exists. |
 
 ## Mount policy
 

@@ -161,6 +161,7 @@ Before any integration beyond local-dev reports, resolve:
 | Production execution | Server-owned execution, sandbox provider, audit, billing, and artifact lifecycle review. |
 | Workspace mounts | Workspace path, secret exclusion, artifact, cleanup, and rollback threat model. |
 | Repo execution | Prompt-injection, command allowlist, package lifecycle scripts, network, and recovery model. |
+| Synthetic path policy golden fixtures | PR #42 path-policy decisions are fixture-covered only; a future PR must add golden path-policy outputs before mount design. |
 | Telemetry collection | Privacy, consent, storage, retention, deletion, and upload review. |
 | Broader Docker cleanup | Exact target, stale resource, collision, quarantine, and audit review. |
 

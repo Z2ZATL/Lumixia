@@ -111,7 +111,9 @@ PR #40 adds the [local-dev worker release readiness checklist](./local-dev-worke
 
 PR #41 adds [future workspace execution design constraints](./future-workspace-execution-design-constraints.md) and a [future workspace execution review checklist](./future-workspace-execution-review-checklist.md). They document prerequisites, forbidden defaults, staged review gates, and blocked implementation work before any future workspace mount or repo command execution is allowed.
 
-## Current Execution Status After PR #41
+PR #42 adds a synthetic workspace path policy design under `tools/local-dev-worker`. The policy is string-only and fixture-only: it normalizes synthetic `/workspace` read paths and denies host paths, parent traversal, home paths, `.env`, secrets, `.git`, `node_modules`, symlink following, writes, executes, null bytes, and shell metacharacters without reading or writing real files.
+
+## Current Execution Status After PR #42
 
 | Area | Status |
 | --- | --- |
@@ -134,6 +136,7 @@ PR #41 adds [future workspace execution design constraints](./future-workspace-e
 | Threat model | [Threat model v2](./local-dev-worker-threat-model-v2.md) and [threat checklist](./local-dev-worker-threat-checklist.md) document boundaries, assets, mitigations, residual risks, and future security review gates. |
 | Release readiness | [Release readiness checklist](./local-dev-worker-release-readiness.md) documents handoff criteria, verification commands, readiness blockers, and future integration blockers. |
 | Workspace execution design | [Future workspace constraints](./future-workspace-execution-design-constraints.md) and [review checklist](./future-workspace-execution-review-checklist.md) block workspace mounts, repo execution, package install, network, browser bridge, and production UI paths until separate staged reviews exist. |
+| Synthetic workspace path policy | String-only TypeScript policy and fixtures model safe synthetic read paths under `/workspace`; no real filesystem reads, writes, mounts, symlink following, or repo execution exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -141,4 +144,4 @@ PR #41 adds [future workspace execution design constraints](./future-workspace-e
 
 ## Recommended Next PR
 
-Future PR #42 should remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.
+Future PR #43 should add golden path-policy fixtures or remain reporting, telemetry design, documentation, or operator-experience oriented. It should not add telemetry upload or expand to arbitrary repo execution, workspace mounts, network, package install, broad cleanup, browser-to-worker bridges, production UI execution, or broader Docker runtime commands.

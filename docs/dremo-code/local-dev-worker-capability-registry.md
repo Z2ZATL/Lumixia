@@ -51,6 +51,7 @@ Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), t
 | Capability | Capability ID / name | Command shape if any | Status | Gate / config | Files | Fixture coverage | Safety notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Container execution policy design | Container policy model | Plan previews only | Plan-only | Policy objects require no network, no mounts, read-only root filesystem, non-root, no privileged mode | `localDevWorkerDockerContainerPolicy.ts`, `localDevWorkerDockerImagePolicy.ts`, `localDevWorkerDockerContainerCommandPolicy.ts`, `localDevWorkerDockerContainerReadinessGate.ts` | `localDevWorkerDockerContainerPolicyFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` | No `docker run` execution is introduced by the plan model. |
+| Synthetic workspace path policy design | `LocalDevWorkerWorkspacePathPolicyInput` / `LocalDevWorkerWorkspacePathPolicyResult` | None | Design/model-only | Synthetic `/workspace` string policy; no filesystem access | `localDevWorkerWorkspacePathPolicy.ts` | `localDevWorkerWorkspacePathPolicyFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` | Allows only synthetic read path decisions; denies real host paths, traversal, home, `.env`, secrets, `.git`, `node_modules`, symlinks, writes, executes, null bytes, and shell metacharacters. |
 | Container plan model | `LocalDevWorkerDockerContainerPlan` | `dockerRunPreview` array only | Plan-only | Image policy and command policy must allow the preview | `localDevWorkerDockerContainerPlan.ts` | `localDevWorkerDockerContainerPolicyFixtures.ts` | Preview is data only and must not be passed to process APIs. |
 | Cleanup plan model | `LocalDevWorkerDockerCleanupPlan` | `docker rm -f lumixia-dremo-smoke-echo` preview only | Plan-only companion to exact cleanup policy | Exact deterministic target and labels | `localDevWorkerDockerCleanupPlan.ts`, `localDevWorkerDockerCleanupPolicy.ts` | `localDevWorkerDockerCleanupFixtures.ts` | No arbitrary target, wildcard, container id, prune, ps, inspect, stop, or kill. |
 | Execution readiness evaluator | Future execution readiness | None | Plan/readiness-only | Capability manifest, validation, guards, manual review gate | `localDevWorkerExecutionReadiness.ts`, `localDevWorkerExecutionReviewGate.ts`, `localDevWorkerExecutionManifest.ts` | `localDevWorkerExecutionReadinessFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` | Preserves blocked/default posture and records rejection codes. |
@@ -105,6 +106,7 @@ Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), t
 | Version and identity execution | `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerVersionExecutionFixtures.ts` |
 | Docker version/readiness probes | `localDevWorkerDockerProbePolicy.ts`, `localDevWorkerDockerDaemonReadinessPolicy.ts`, `localDevWorkerDockerReadiness.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerVersionParser.ts` |
 | Container policy/design | `localDevWorkerDockerContainerPolicy.ts`, `localDevWorkerDockerImagePolicy.ts`, `localDevWorkerDockerContainerCommandPolicy.ts`, `localDevWorkerDockerContainerPlan.ts`, `localDevWorkerDockerContainerReadinessGate.ts` |
+| Synthetic workspace path policy | `localDevWorkerWorkspacePathPolicy.ts`, `localDevWorkerWorkspacePathPolicyFixtures.ts` |
 | Smoke execution and identity | `localDevWorkerDockerContainerSmokePolicy.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, `localDevWorkerDockerContainerIdentity.ts` |
 | Cleanup plan/execution | `localDevWorkerDockerCleanupPolicy.ts`, `localDevWorkerDockerCleanupPlan.ts`, `localDevWorkerDockerCleanupAdapter.ts` |
 | Audit and output safety | `localDevWorkerDockerSmokeResultNormalizer.ts`, `localDevWorkerOutputSanitizer.ts`, `localDevWorkerDockerSmokeAudit.ts` |
@@ -123,6 +125,7 @@ Use this page with [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md), t
 | Version and Docker probe execution | `localDevWorkerVersionExecutionFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
 | Docker readiness | `localDevWorkerDockerReadinessFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
 | Container policy design | `localDevWorkerDockerContainerPolicyFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
+| Synthetic workspace path policy | `localDevWorkerWorkspacePathPolicyFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
 | Smoke execution | `localDevWorkerDockerContainerSmokeFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
 | Smoke audit and output sanitization | `localDevWorkerDockerSmokeAuditFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |
 | Cleanup plan and execution | `localDevWorkerDockerCleanupFixtures.ts`, `localDevWorkerDockerCleanupExecutionFixtures.ts`, `localDevWorkerDryRunSelfCheck.ts` |

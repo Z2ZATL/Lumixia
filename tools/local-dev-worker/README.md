@@ -33,6 +33,8 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerContainerPlan.ts` | Pure plan object and `dockerRunPreview` array; it is never executed. |
 | `localDevWorkerDockerContainerReadinessGate.ts` | Combines Docker readiness, trusted review, image policy, command policy, and runtime safety gates without execution. |
 | `localDevWorkerDockerContainerPolicyFixtures.ts` | Plan-only and blocked fixtures for future container execution policies. |
+| `localDevWorkerWorkspacePathPolicy.ts` | String-only synthetic workspace path policy for future workspace design. It never reads, writes, resolves, or mounts real workspace files. |
+| `localDevWorkerWorkspacePathPolicyFixtures.ts` | Deterministic synthetic path fixtures for safe reads, host paths, traversal, home paths, `.env`, secrets, `.git`, `node_modules`, symlinks, writes, executes, null bytes, and shell metacharacters. |
 | `localDevWorkerDockerContainerIdentity.ts` | Static smoke container name and allowlisted labels; no user input is accepted. |
 | `localDevWorkerDockerCleanupPolicy.ts` | Exact cleanup policy that allows only `docker rm -f lumixia-dremo-smoke-echo` and rejects arbitrary targets/prune/ps/inspect/stop/kill. |
 | `localDevWorkerDockerCleanupPlan.ts` | Deterministic cleanup preview for `docker rm -f lumixia-dremo-smoke-echo`; it is not executed. |
@@ -110,7 +112,7 @@ npm run dremo:worker:telemetry:golden
 npm run dremo:worker:docs
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, docs link checker, telemetry schema, telemetry policy, telemetry event builders, telemetry golden checker, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. PR #34 docs checks verify that operator docs remain linked from the required Dremo and worker docs. PR #35 telemetry fixtures validate local-dev-only schema objects without upload, network, DB writes, file writes, or telemetry collection. PR #36 telemetry golden checks compare committed telemetry fixture JSON with regenerated in-memory telemetry fixture output without upload, persistence, network, DB writes, runtime file writes, Docker, or `src` imports. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, docs link checker, telemetry schema, telemetry policy, telemetry event builders, telemetry golden checker, synthetic workspace path policy, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. PR #34 docs checks verify that operator docs remain linked from the required Dremo and worker docs. PR #35 telemetry fixtures validate local-dev-only schema objects without upload, network, DB writes, file writes, or telemetry collection. PR #36 telemetry golden checks compare committed telemetry fixture JSON with regenerated in-memory telemetry fixture output without upload, persistence, network, DB writes, runtime file writes, Docker, or `src` imports. PR #42 workspace path fixtures validate string-only synthetic path decisions without real filesystem access, workspace mounts, writes, symlink following, repo execution, or Docker changes. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
 ## Local-dev Lifecycle Report CLI
 
@@ -182,7 +184,7 @@ npm run dremo:worker:telemetry:golden
 
 The checker reads the committed golden file, regenerates local-dev telemetry fixture JSON in memory, parses and validates both outputs, checks for secret/home-path/environment markers, and compares the result with stable key ordering. It does not upload, persist, transmit, store, or write runtime telemetry. It does not call networks, write databases, execute Docker, read `.env` files, read `process.env`, or import `src/`.
 
-## Current Execution Status After PR #41
+## Current Execution Status After PR #42
 
 | Area | Status |
 | --- | --- |
@@ -204,6 +206,7 @@ The checker reads the committed golden file, regenerates local-dev telemetry fix
 | Threat model | Threat model v2 and the threat checklist document assets, trust boundaries, current mitigations, residual risks, and future review gates. |
 | Release readiness | Release readiness checklist documents handoff criteria, verification blockers, release decision template, and future integration blockers. |
 | Workspace execution design | Future workspace constraints and review checklist document prerequisites before workspace mounts or repo execution. No workspace execution exists. |
+| Synthetic workspace path policy | String-only TypeScript policy and fixtures model safe synthetic `/workspace` read paths and deny host/traversal/home/env/secret/git/node_modules/symlink/write/execute/null-byte/shell-metacharacter paths. No real filesystem access exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

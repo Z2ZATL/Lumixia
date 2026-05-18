@@ -145,6 +145,31 @@ const telemetryFileForbiddenPatterns = [
   { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
 ];
 
+const workspacePathPolicyForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'src import', pattern: /from\s+['"].*src\// },
+  { label: 'node fs import', pattern: /from\s+['"]node:fs/ },
+  { label: 'fs import', pattern: /from\s+['"]fs/ },
+  { label: 'node path import', pattern: /from\s+['"]node:path/ },
+  { label: 'path import', pattern: /from\s+['"]path/ },
+  { label: 'readFile', pattern: /\breadFile\b/ },
+  { label: 'writeFile', pattern: /\bwriteFile\b/ },
+  { label: 'appendFile', pattern: /\bappendFile\b/ },
+  { label: 'readdir', pattern: /\breaddir\b/ },
+  { label: 'stat(', pattern: /\bstat\s*\(/ },
+  { label: 'lstat', pattern: /\blstat\b/ },
+  { label: 'realpath', pattern: /\brealpath\b/ },
+  { label: 'process.env read', pattern: /process\.env/ },
+  { label: 'fetch(', pattern: /\bfetch\s*\(/ },
+  { label: 'XMLHttpRequest', pattern: /XMLHttpRequest/ },
+  { label: 'Supabase client import', pattern: /@supabase\/supabase-js/ },
+  { label: 'docker run command string', pattern: /docker\s+run/i },
+  { label: 'docker rm command string', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps command string', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect command string', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
 const goldenFixtureForbiddenPatterns = [
   { label: 'API key assignment', pattern: /\b[A-Z0-9_]*API_KEY\s*=/i },
   { label: 'token assignment', pattern: /\b[A-Z0-9_]*TOKEN\s*=/i },
@@ -267,6 +292,12 @@ const telemetryFiles = workerFiles.filter((file) =>
 const telemetryFixtureFiles = workerFiles.filter((file) =>
   ['localDevWorkerLifecycleTelemetryFixtures.ts'].includes(path.basename(file)),
 );
+const workspacePathPolicyFiles = workerFiles.filter((file) =>
+  [
+    'localDevWorkerWorkspacePathPolicy.ts',
+    'localDevWorkerWorkspacePathPolicyFixtures.ts',
+  ].includes(path.basename(file)),
+);
 const goldenFixtureFiles = [
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.md'),
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.json'),
@@ -334,6 +365,11 @@ const violations = [
     'worker-telemetry-schema-boundary',
   )),
   ...(await scanFiles(
+    workspacePathPolicyFiles,
+    workspacePathPolicyForbiddenPatterns,
+    'worker-workspace-path-policy-boundary',
+  )),
+  ...(await scanFiles(
     telemetryFixtureFiles,
     goldenFixtureForbiddenPatterns,
     'worker-telemetry-fixture-safety',
@@ -371,6 +407,9 @@ console.log(
 );
 console.log(
   `Telemetry schema files scanned for process APIs, network calls, file writes, src imports, and new Docker command strings: ${telemetryFiles.length}`,
+);
+console.log(
+  `Workspace path policy files scanned for process APIs, filesystem access, src imports, env reads, network calls, and Docker command strings: ${workspacePathPolicyFiles.length}`,
 );
 console.log(
   `Telemetry fixture files scanned for unsafe static text: ${telemetryFixtureFiles.length}`,
