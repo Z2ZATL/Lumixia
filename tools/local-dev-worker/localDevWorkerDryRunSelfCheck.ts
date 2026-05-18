@@ -53,6 +53,11 @@ import {
   sanitizeLocalDevWorkerTelemetryString,
   validateLocalDevWorkerTelemetryEvent,
 } from './localDevWorkerLifecycleTelemetryPolicy.ts';
+import {
+  compareLocalDevWorkerTelemetryGoldenJson,
+  createLocalDevWorkerTelemetryGoldenJson,
+  validateLocalDevWorkerTelemetryGoldenJson,
+} from './localDevWorkerTelemetryGoldenCheck.ts';
 import { assertTrustedManualReviewSource } from './localDevWorkerTrustedReview.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
 import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
@@ -74,6 +79,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerSmokeLifecycleCliFixtures: number;
   checkedDockerSmokeLifecycleGoldenChecks: number;
   checkedLifecycleTelemetryFixtures: number;
+  checkedLifecycleTelemetryGoldenChecks: number;
   failures: string[];
 }
 
@@ -1586,6 +1592,62 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     failures,
   );
 
+  const telemetryGoldenJson = createLocalDevWorkerTelemetryGoldenJson();
+  const repeatedTelemetryGoldenJson = createLocalDevWorkerTelemetryGoldenJson();
+  const telemetryGoldenParsed = JSON.parse(telemetryGoldenJson) as {
+    kind: string;
+    localDevOnly: boolean;
+    fixtureCount: number;
+    fixtures: unknown[];
+  };
+  const telemetryGoldenMatch = compareLocalDevWorkerTelemetryGoldenJson({
+    expected: telemetryGoldenJson,
+    actual: repeatedTelemetryGoldenJson,
+  });
+  const telemetryGoldenMismatch = compareLocalDevWorkerTelemetryGoldenJson({
+    expected: telemetryGoldenJson,
+    actual: telemetryGoldenJson.replace(
+      '"fixtureCount": 10',
+      '"fixtureCount": 999',
+    ),
+  });
+  const telemetryGoldenSafetyIssues =
+    validateLocalDevWorkerTelemetryGoldenJson(telemetryGoldenJson);
+
+  assertCondition(
+    telemetryGoldenJson === repeatedTelemetryGoldenJson,
+    'Telemetry golden JSON generation must be deterministic.',
+    failures,
+  );
+  assertCondition(
+    telemetryGoldenParsed.kind === 'local-dev-worker-telemetry-golden-fixture' &&
+      telemetryGoldenParsed.localDevOnly === true &&
+      telemetryGoldenParsed.fixtureCount ===
+        localDevWorkerLifecycleTelemetryFixtures.length &&
+      telemetryGoldenParsed.fixtures.length ===
+        localDevWorkerLifecycleTelemetryFixtures.length,
+    'Telemetry golden JSON must parse back to stable fixture metadata.',
+    failures,
+  );
+  assertCondition(
+    telemetryGoldenMatch.matches,
+    `Telemetry golden comparison should match: ${telemetryGoldenMatch.mismatchSummary}`,
+    failures,
+  );
+  assertCondition(
+    !telemetryGoldenMismatch.matches &&
+      telemetryGoldenMismatch.mismatchSummary.includes('First mismatch at line'),
+    'Telemetry golden comparison helper must detect mismatches with a useful summary.',
+    failures,
+  );
+  assertCondition(
+    telemetryGoldenSafetyIssues.length === 0,
+    `Telemetry golden JSON safety validation must pass, got ${telemetryGoldenSafetyIssues
+      .map((issue) => issue.code)
+      .join(', ')}.`,
+    failures,
+  );
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -1611,6 +1673,7 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     checkedDockerSmokeLifecycleGoldenChecks: 3,
     checkedLifecycleTelemetryFixtures:
       localDevWorkerLifecycleTelemetryFixtures.length,
+    checkedLifecycleTelemetryGoldenChecks: 3,
     failures,
   };
 }

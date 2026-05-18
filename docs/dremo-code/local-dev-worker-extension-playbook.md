@@ -11,6 +11,7 @@ Use this playbook before proposing changes to the Dremo local-dev worker. The go
 | Documentation | Operator guide improvements, troubleshooting additions, runbooks, architecture diagrams. |
 | Reporting | Report formatting improvements, golden fixture maintenance, deterministic summaries. |
 | Telemetry design | Event or telemetry schema proposals without execution. |
+| Telemetry golden checks | Deterministic fixture maintenance that protects schema output without collection, upload, network, DB, or runtime file writes. |
 | CLI UX | Local-dev CLI help text, fixture-only modes, output formatting without new commands. |
 | Lifecycle docs | Result schema documentation, outcome guidance, review checklists. |
 | Safety checks | Link checks, fixture consistency checks, static boundary checks without process execution. |
@@ -70,6 +71,7 @@ Telemetry schema work is allowed only while it stays design-only.
 | Determinism | Fixtures do not use `Date.now()`, `new Date()`, machine-specific paths, usernames, or Docker daemon values. |
 | Payload scope | Include only schema version, event kind, lifecycle outcome, stages, readiness state, safety booleans, rejection codes, sanitized preview lengths, and pass/fail state. |
 | Safety scan | Telemetry files are scanned for process APIs, `fetch`, XHR, Supabase imports, file writes, `process.env`, `src` imports, and new Docker command strings. |
+| Golden stability | If telemetry fixture output changes, update the committed telemetry golden JSON only after reviewing the schema drift and documenting why it is intentional. |
 
 ## Review Checklist For Process API Changes
 
@@ -126,13 +128,9 @@ npm run dremo:worker:typecheck
 npm run dremo:worker:selfcheck
 npm run dremo:worker:safety
 npm run dremo:worker:lifecycle:report:golden
-npm run dremo:worker:verify
-```
-
-If docs links changed, run:
-
-```powershell
+npm run dremo:worker:telemetry:golden
 npm run dremo:worker:docs
+npm run dremo:worker:verify
 ```
 
 ## PR Body Template

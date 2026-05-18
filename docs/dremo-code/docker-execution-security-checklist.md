@@ -213,6 +213,16 @@ PR #35 implementation status:
 | Fixtures and self-check | Added deterministic telemetry fixtures and self-check coverage for validation, stable JSON, redaction, and forbidden-field absence. |
 | Collection | Not implemented. No telemetry upload, analytics provider, network call, database write, file write, Supabase change, SQL migration, browser path, or production UI path exists. |
 
+PR #36 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Telemetry golden fixture | Added committed deterministic sanitized JSON output for local-dev telemetry fixtures. |
+| Telemetry golden checker | Added a fixture-only checker that reads the committed JSON, regenerates telemetry fixture output in memory, validates safety, and compares the outputs. |
+| Self-check coverage | Added in-memory match/mismatch coverage so schema drift is caught without Docker, network, DB, upload, or runtime file writes. |
+| Safety scan | Added telemetry golden checker and fixture coverage for process APIs, network APIs, Supabase imports, file writes, `process.env`, `src` imports, secrets, home paths, `.env` markers, and service role markers. |
+| Collection | Still not implemented. No telemetry upload, analytics provider, network call, database write, runtime file write, Supabase change, SQL migration, browser path, or production UI path exists. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -432,7 +442,7 @@ If local-dev Docker execution behaves unexpectedly:
 
 Recommended next PR: **Refine local lifecycle telemetry/reporting** or improve operator documentation before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, PR #33 adds golden checks for fixture report stability, PR #34 adds operator guidance/troubleshooting without runtime changes, and PR #35 adds telemetry schema design without collection. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, PR #33 adds golden checks for fixture report stability, PR #34 adds operator guidance/troubleshooting without runtime changes, PR #35 adds telemetry schema design without collection, and PR #36 adds telemetry golden fixture checks without collection, upload, persistence, network, DB, or runtime file writes. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
