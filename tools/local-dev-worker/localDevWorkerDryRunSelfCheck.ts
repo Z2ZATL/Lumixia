@@ -44,6 +44,10 @@ import {
 import { evaluateLocalDevWorkerExecutionReadiness } from './localDevWorkerExecutionReadiness.ts';
 import { localDevWorkerExecutionReadinessFixtures } from './localDevWorkerExecutionReadinessFixtures.ts';
 import { findLocalDevWorkerExecutionCapability } from './localDevWorkerExecutionManifest.ts';
+import {
+  compareGoldenReportOutput,
+  validateGoldenReportSafety,
+} from './localDevWorkerGoldenReportCheck.ts';
 import { assertTrustedManualReviewSource } from './localDevWorkerTrustedReview.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
 import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
@@ -63,6 +67,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerSmokeLifecycleFixtures: number;
   checkedDockerSmokeLifecycleReportFixtures: number;
   checkedDockerSmokeLifecycleCliFixtures: number;
+  checkedDockerSmokeLifecycleGoldenChecks: number;
   failures: string[];
 }
 
@@ -1323,6 +1328,7 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     'CLI dry-report JSON must preserve deterministic lifecycle identifiers.',
     failures,
   );
+  JSON.parse(cliDryJson);
   assertCondition(
     parsedCliDryJson.safetySummary.noNewDockerCapabilities === true,
     'CLI dry-report JSON must preserve noNewDockerCapabilities true.',
@@ -1353,6 +1359,61 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       failures,
     );
   }
+
+  const goldenMarkdownMatch = compareGoldenReportOutput({
+    expectedName: 'expected Markdown report',
+    actualName: 'actual Markdown report',
+    expected: cliDryMarkdown,
+    actual: repeatedCliDryMarkdown,
+  });
+  const goldenJsonMatch = compareGoldenReportOutput({
+    expectedName: 'expected JSON report',
+    actualName: 'actual JSON report',
+    expected: cliDryJson,
+    actual: repeatedCliDryJson,
+  });
+  const goldenMismatch = compareGoldenReportOutput({
+    expectedName: 'expected mismatch fixture',
+    actualName: 'actual mismatch fixture',
+    expected: cliDryMarkdown,
+    actual: cliDryMarkdown.replace(
+      '- Outcome: cleanup_success',
+      '- Outcome: drifted',
+    ),
+  });
+  const unsafeGoldenSafetyIssues = validateGoldenReportSafety(
+    'TOKEN=value\n/home/alice/project\n.env.local',
+  );
+
+  assertCondition(
+    goldenMarkdownMatch.matches,
+    `Golden Markdown comparison should match: ${goldenMarkdownMatch.mismatchSummary}`,
+    failures,
+  );
+  assertCondition(
+    goldenJsonMatch.matches,
+    `Golden JSON comparison should match: ${goldenJsonMatch.mismatchSummary}`,
+    failures,
+  );
+  assertCondition(
+    !goldenMismatch.matches &&
+      goldenMismatch.mismatchSummary.includes('First mismatch at line'),
+    'Golden comparison helper must detect mismatches with a useful summary.',
+    failures,
+  );
+  assertCondition(
+    validateGoldenReportSafety(cliDryMarkdown).length === 0 &&
+      validateGoldenReportSafety(cliDryJson).length === 0,
+    'Golden report safety validation must pass for generated fixture output.',
+    failures,
+  );
+  assertCondition(
+    unsafeGoldenSafetyIssues.some((issue) => issue.code === 'token_assignment') &&
+      unsafeGoldenSafetyIssues.some((issue) => issue.code === 'linux_home_path') &&
+      unsafeGoldenSafetyIssues.some((issue) => issue.code === 'env_file_marker'),
+    'Golden report safety validation must detect token, home path, and .env markers.',
+    failures,
+  );
 
   assertCondition(
     cliReadinessRequest.command === 'docker' &&
@@ -1459,6 +1520,7 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     checkedDockerSmokeLifecycleReportFixtures:
       localDevWorkerDockerSmokeLifecycleReportFixtures.length,
     checkedDockerSmokeLifecycleCliFixtures: 1,
+    checkedDockerSmokeLifecycleGoldenChecks: 3,
     failures,
   };
 }

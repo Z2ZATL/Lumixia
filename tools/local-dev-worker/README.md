@@ -55,6 +55,10 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerSmokeLifecycleCliRequests.ts` | Exact request factory for the local-dev lifecycle CLI; it accepts no user-provided command, image, label, or cleanup target. |
 | `localDevWorkerDockerSmokeLifecycleCliFixtures.ts` | Deterministic dry-report fixture for CLI verification without Docker. |
 | `localDevWorkerDockerSmokeLifecycleCli.ts` | Local-dev-only CLI wrapper that prints sanitized Markdown or JSON reports from the existing lifecycle. |
+| `golden/docker-smoke-lifecycle.fixture.md` | Committed golden Markdown output for the deterministic lifecycle dry-report fixture. |
+| `golden/docker-smoke-lifecycle.fixture.json` | Committed golden JSON output for the deterministic lifecycle dry-report fixture. |
+| `localDevWorkerGoldenReportCheck.ts` | Pure line-ending normalization, output safety validation, and mismatch summary helpers for golden report checks. |
+| `localDevWorkerDockerSmokeLifecycleGoldenCheck.ts` | Fixture-only golden checker that compares generated Markdown/JSON reports against committed goldens without Docker. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -83,7 +87,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle, report formatter, and lifecycle CLI files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Guard/report fixtures may still contain denied command strings by design.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle, report formatter, lifecycle CLI, and golden checker files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Golden fixture files are scanned for secret-looking strings, `.env` references, and home paths.
 
 ## Verification Scripts
 
@@ -94,9 +98,10 @@ npm run dremo:worker:safety
 npm run dremo:worker:verify
 npm run dremo:worker:lifecycle:report:fixture
 npm run dremo:worker:lifecycle:report:fixture:json
+npm run dremo:worker:lifecycle:report:golden
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
 ## Local-dev Lifecycle Report CLI
 
@@ -111,7 +116,17 @@ npm run dremo:worker:lifecycle:report:fixture:json
 
 The default report commands compose the existing reviewed lifecycle only. The fixture commands use deterministic fake lifecycle data and do not require Docker Desktop, `alpine:3.20`, or a cleanup target.
 
-## Current Execution Status After PR #32
+## Golden Lifecycle Report Checks
+
+PR #33 adds committed Markdown and JSON golden files for the deterministic dry-report fixture. The golden checker imports fixture report functions directly, normalizes line endings, validates output safety, and compares generated output with the committed files.
+
+```powershell
+npm run dremo:worker:lifecycle:report:golden
+```
+
+The golden check does not execute Docker, does not run npm scripts internally, does not execute cleanup, does not write files, and does not require Docker Desktop or `alpine:3.20`.
+
+## Current Execution Status After PR #33
 
 | Area | Status |
 | --- | --- |
@@ -124,6 +139,7 @@ The default report commands compose the existing reviewed lifecycle only. The fi
 | Lifecycle | The worker can orchestrate readiness -> exact smoke -> audit -> exact cleanup with existing adapters only. No new command, process API file, network, mount, or browser path is added. |
 | Lifecycle reports | Existing lifecycle results can be formatted as sanitized Markdown and deterministic JSON summaries for future local tooling only. |
 | Lifecycle CLI | Local-dev-only CLI wrapper can print Markdown or JSON reports from the existing lifecycle. Fixture mode does not call Docker. No browser, production, or `src/` import path exists. |
+| Golden reports | Committed Markdown/JSON fixture reports protect report format stability. Golden checks are fixture-only and do not call Docker. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |
