@@ -4,6 +4,8 @@ Status: future PR planning guide.
 
 Use this playbook before proposing changes to the Dremo local-dev worker. The goal is to keep PRs small, reviewable, and safety-preserving.
 
+The accepted worker boundary decision is recorded in [ADR 0001: Dremo local-dev worker boundary and Docker smoke lifecycle](../adr/0001-dremo-local-dev-worker-boundary.md). Use the [ADR index](../adr/README.md) for future boundary-level decisions.
+
 ## Allowed Future PR Shapes
 
 | Shape | Examples |
@@ -58,6 +60,7 @@ If any answer is not yes, split the work into design/docs first.
 | Fixtures | Deterministic and sanitized. |
 | Verification | Typecheck, worker verify, safety scan, and relevant report checks. |
 | Docs links | New docs linked from the docs index and worker README. |
+| ADRs | Boundary-level changes update ADR 0001 or add a new ADR before runtime behavior changes. |
 
 ## Review Checklist For Telemetry Schema PRs
 
@@ -102,6 +105,7 @@ Do not add process APIs to docs checkers, report formatters, lifecycle orchestra
 | Cleanup | Exact deterministic target only. |
 | Browser/production | No path. |
 | Docs | Update operator guide, troubleshooting, checklist, and provider decision docs. |
+| ADR | Update ADR 0001 or create a new ADR if the Docker boundary changes. |
 
 ## Keep PRs Small And Mergeable
 

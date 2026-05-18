@@ -14,6 +14,8 @@ const repoRoot = path.resolve(
 );
 
 const newDocs = [
+  'docs/adr/README.md',
+  'docs/adr/0001-dremo-local-dev-worker-boundary.md',
   'docs/dremo-code/local-dev-worker-operator-guide.md',
   'docs/dremo-code/local-dev-worker-troubleshooting.md',
   'docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -23,6 +25,7 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
   {
     file: 'docs/dremo-code/README.md',
     links: [
+      '../adr/README.md',
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
@@ -31,6 +34,8 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
   {
     file: 'tools/local-dev-worker/README.md',
     links: [
+      '../../docs/adr/README.md',
+      '../../docs/adr/0001-dremo-local-dev-worker-boundary.md',
       '../../docs/dremo-code/local-dev-worker-operator-guide.md',
       '../../docs/dremo-code/local-dev-worker-troubleshooting.md',
       '../../docs/dremo-code/local-dev-worker-extension-playbook.md',
@@ -39,9 +44,25 @@ const requiredDocLinks: readonly RequiredDocLink[] = [
   {
     file: 'docs/dremo-code/docker-execution-security-checklist.md',
     links: [
+      '../adr/README.md',
+      '../adr/0001-dremo-local-dev-worker-boundary.md',
       './local-dev-worker-operator-guide.md',
       './local-dev-worker-troubleshooting.md',
       './local-dev-worker-extension-playbook.md',
+    ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-operator-guide.md',
+    links: [
+      '../adr/README.md',
+      '../adr/0001-dremo-local-dev-worker-boundary.md',
+    ],
+  },
+  {
+    file: 'docs/dremo-code/local-dev-worker-extension-playbook.md',
+    links: [
+      '../adr/README.md',
+      '../adr/0001-dremo-local-dev-worker-boundary.md',
     ],
   },
   {

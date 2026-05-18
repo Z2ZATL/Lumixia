@@ -10,6 +10,8 @@ The Dremo local-dev worker is a developer-only boundary for reviewed local sandb
 
 The worker is not production infrastructure. It is a safety-reviewed local harness that lets developers test a tiny ladder of capabilities before any hosted sandbox provider or production worker exists.
 
+The accepted architectural record is [ADR 0001: Dremo local-dev worker boundary and Docker smoke lifecycle](../adr/0001-dremo-local-dev-worker-boundary.md).
+
 ## Why It Is Outside `src/`
 
 `src/` is bundled for the browser. Browser-bundled code must never contain process execution APIs, Docker command adapters, local worker imports, service role keys, secrets, or any production execution path.
@@ -59,6 +61,7 @@ tools/local-dev-worker
 | PR #34 | Operator guide and troubleshooting docs | Documentation only; no runtime behavior changes. |
 | PR #35 | Lifecycle telemetry schema design | Typed local-dev telemetry objects only; no collection, upload, DB, file, or network path. |
 | PR #36 | Telemetry golden fixture checks | Fixture-only schema drift protection; no telemetry collection, upload, storage, network, DB, or runtime file writes. |
+| PR #37 | Architecture Decision Record | Documents the accepted worker boundary, safety invariants, capability ladder, verification stack, and future extension rules. |
 
 ## What Is Currently Executable
 
@@ -188,3 +191,5 @@ Do not bypass the safety scan, import worker files into `src/`, add broad Docker
 ## Safe Future PRs
 
 Use [local-dev-worker-extension-playbook.md](./local-dev-worker-extension-playbook.md) before proposing future work. Good next PRs should remain documentation, reporting, telemetry, or operator-experience focused unless a separate security review explicitly approves a narrow execution change.
+
+For boundary-level decisions, update [ADR 0001](../adr/0001-dremo-local-dev-worker-boundary.md) or add a new ADR under [docs/adr](../adr/README.md) before expanding runtime behavior.

@@ -16,6 +16,8 @@ This checklist must be completed before any PR enables or expands real local-dev
 
 No PR may expand Docker execution until every required blocker, gate, and review item below has an owner and a passing verification result.
 
+The accepted architecture decision for this worker boundary is [ADR 0001: Dremo local-dev worker boundary and Docker smoke lifecycle](../adr/0001-dremo-local-dev-worker-boundary.md). Use the [ADR index](../adr/README.md) for future architecture decisions.
+
 PR #18 implementation status:
 
 | Gate | Status |
@@ -222,6 +224,14 @@ PR #36 implementation status:
 | Self-check coverage | Added in-memory match/mismatch coverage so schema drift is caught without Docker, network, DB, upload, or runtime file writes. |
 | Safety scan | Added telemetry golden checker and fixture coverage for process APIs, network APIs, Supabase imports, file writes, `process.env`, `src` imports, secrets, home paths, `.env` markers, and service role markers. |
 | Collection | Still not implemented. No telemetry upload, analytics provider, network call, database write, runtime file write, Supabase change, SQL migration, browser path, or production UI path exists. |
+
+PR #37 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Architecture decision record | Added ADR 0001 for the Dremo local-dev worker boundary and Docker smoke lifecycle. |
+| ADR index | Added a docs/adr index for future architecture decisions. |
+| Runtime behavior | Unchanged. No Docker capability, telemetry collection, network, DB write, file write, process API, browser path, production UI path, Supabase, SQL, billing, branding, or TerminalWorkspace behavior was added. |
 
 ## 2. Threat Model
 
@@ -442,7 +452,7 @@ If local-dev Docker execution behaves unexpectedly:
 
 Recommended next PR: **Refine local lifecycle telemetry/reporting** or improve operator documentation before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, PR #33 adds golden checks for fixture report stability, PR #34 adds operator guidance/troubleshooting without runtime changes, PR #35 adds telemetry schema design without collection, and PR #36 adds telemetry golden fixture checks without collection, upload, persistence, network, DB, or runtime file writes. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, PR #32 adds a local-dev CLI wrapper around those existing reports, PR #33 adds golden checks for fixture report stability, PR #34 adds operator guidance/troubleshooting without runtime changes, PR #35 adds telemetry schema design without collection, PR #36 adds telemetry golden fixture checks without collection, upload, persistence, network, DB, or runtime file writes, and PR #37 records the accepted architecture decision without runtime changes. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
