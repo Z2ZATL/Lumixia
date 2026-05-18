@@ -60,6 +60,10 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerGoldenReportCheck.ts` | Pure line-ending normalization, output safety validation, and mismatch summary helpers for golden report checks. |
 | `localDevWorkerDockerSmokeLifecycleGoldenCheck.ts` | Fixture-only golden checker that compares generated Markdown/JSON reports against committed goldens without Docker. |
 | `localDevWorkerDocsLinkCheck.ts` | Deterministic docs link check for the operator guide, troubleshooting matrix, extension playbook, and required doc indexes. |
+| `localDevWorkerLifecycleTelemetrySchema.ts` | Local-dev-only telemetry event type model for future lifecycle/report/golden summaries. |
+| `localDevWorkerLifecycleTelemetryPolicy.ts` | Pure telemetry redaction and validation policy; no upload, network, file, env, or DB behavior. |
+| `localDevWorkerLifecycleTelemetryEvents.ts` | Pure event builders from existing lifecycle/report/golden fixture results. |
+| `localDevWorkerLifecycleTelemetryFixtures.ts` | Deterministic sanitized telemetry fixtures for lifecycle outcomes, reports, golden checks, and redaction cases. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -88,7 +92,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle, report formatter, lifecycle CLI, and golden checker files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Golden fixture files are scanned for secret-looking strings, `.env` references, and home paths.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle, report formatter, lifecycle CLI, golden checker, docs checker, and telemetry files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Telemetry files are also scanned for `fetch`, XHR, Supabase imports, file writes, `process.env`, `src` imports, and new Docker command strings. Golden and telemetry fixture files are scanned for secret-looking strings, `.env` references, and home paths.
 
 ## Verification Scripts
 
@@ -103,7 +107,7 @@ npm run dremo:worker:lifecycle:report:golden
 npm run dremo:worker:docs
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, docs link checker, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. PR #34 docs checks verify that operator docs remain linked from the required Dremo and worker docs. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, golden checker, docs link checker, telemetry schema, telemetry policy, telemetry event builders, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. PR #33 golden checks compare those generated fixture reports to committed Markdown/JSON snapshots without Docker. PR #34 docs checks verify that operator docs remain linked from the required Dremo and worker docs. PR #35 telemetry fixtures validate local-dev-only schema objects without upload, network, DB writes, file writes, or telemetry collection. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
 ## Local-dev Lifecycle Report CLI
 
@@ -146,7 +150,18 @@ npm run dremo:worker:docs
 
 The docs check reads local Markdown files only. It does not execute Docker, import `src/`, read secrets, or use process execution APIs.
 
-## Current Execution Status After PR #34
+## Local-dev Lifecycle Telemetry Schema
+
+PR #35 adds schema design only for future local-dev lifecycle telemetry.
+
+| Area | Status |
+| --- | --- |
+| Event shapes | Typed local-dev events for verify, lifecycle completed, report generated, golden checked, and policy blocked summaries. |
+| Redaction policy | Denies raw secrets, service role markers, API keys, tokens, `.env` values, home paths, absolute workspace paths, raw user prompts, and environment values. |
+| Fixtures | Deterministic in-memory events; no timestamps, usernames, host paths, environment reads, Docker calls, network calls, DB writes, or file writes. |
+| Collection | Not implemented. Future telemetry collection/upload must be a separate reviewed PR. |
+
+## Current Execution Status After PR #35
 
 | Area | Status |
 | --- | --- |
@@ -161,6 +176,7 @@ The docs check reads local Markdown files only. It does not execute Docker, impo
 | Lifecycle CLI | Local-dev-only CLI wrapper can print Markdown or JSON reports from the existing lifecycle. Fixture mode does not call Docker. No browser, production, or `src/` import path exists. |
 | Golden reports | Committed Markdown/JSON fixture reports protect report format stability. Golden checks are fixture-only and do not call Docker. |
 | Operator docs | Operator guide, troubleshooting matrix, extension playbook, and docs link check are documentation/operator-readiness only. |
+| Telemetry schema | Local-dev-only schema objects, policy validation, event builders, and fixtures exist. No collection, upload, persistence, transmission, file write, DB write, network call, browser path, or production path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

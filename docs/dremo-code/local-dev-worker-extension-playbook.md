@@ -58,6 +58,19 @@ If any answer is not yes, split the work into design/docs first.
 | Verification | Typecheck, worker verify, safety scan, and relevant report checks. |
 | Docs links | New docs linked from the docs index and worker README. |
 
+## Review Checklist For Telemetry Schema PRs
+
+Telemetry schema work is allowed only while it stays design-only.
+
+| Check | Requirement |
+| --- | --- |
+| Collection | No telemetry upload, analytics provider, network call, database write, or file write. |
+| Boundary | Files stay under `tools/local-dev-worker` and are not imported from `src/`. |
+| Secrets | No raw secrets, service role keys, API keys, tokens, `.env` values, home paths, absolute workspace paths, raw user prompts, or environment values. |
+| Determinism | Fixtures do not use `Date.now()`, `new Date()`, machine-specific paths, usernames, or Docker daemon values. |
+| Payload scope | Include only schema version, event kind, lifecycle outcome, stages, readiness state, safety booleans, rejection codes, sanitized preview lengths, and pass/fail state. |
+| Safety scan | Telemetry files are scanned for process APIs, `fetch`, XHR, Supabase imports, file writes, `process.env`, `src` imports, and new Docker command strings. |
+
 ## Review Checklist For Process API Changes
 
 Process API changes are high-risk and should be rare.

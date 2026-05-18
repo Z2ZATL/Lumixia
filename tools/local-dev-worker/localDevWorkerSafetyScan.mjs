@@ -128,6 +128,23 @@ const docsCheckerForbiddenPatterns = [
   { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
 ];
 
+const telemetryFileForbiddenPatterns = [
+  ...workerProcessApiForbiddenPatterns,
+  { label: 'src import', pattern: /from\s+['"].*src\// },
+  { label: 'fetch(', pattern: /\bfetch\s*\(/ },
+  { label: 'XMLHttpRequest', pattern: /XMLHttpRequest/ },
+  { label: 'Supabase client import', pattern: /@supabase\/supabase-js/ },
+  { label: 'process.env read', pattern: /process\.env/ },
+  { label: 'fs.write', pattern: /fs\.write/ },
+  { label: 'writeFile', pattern: /writeFile/ },
+  { label: 'appendFile', pattern: /appendFile/ },
+  { label: 'docker run command string', pattern: /docker\s+run/i },
+  { label: 'docker rm command string', pattern: /docker\s+rm\b/i },
+  { label: 'docker ps command string', pattern: /docker\s+ps\b/i },
+  { label: 'docker inspect command string', pattern: /docker\s+inspect\b/i },
+  { label: 'docker prune command string', pattern: /docker\s+(?:container|system)\s+prune\b/i },
+];
+
 const goldenFixtureForbiddenPatterns = [
   { label: 'API key assignment', pattern: /\b[A-Z0-9_]*API_KEY\s*=/i },
   { label: 'token assignment', pattern: /\b[A-Z0-9_]*TOKEN\s*=/i },
@@ -238,6 +255,17 @@ const goldenCheckerFiles = workerFiles.filter((file) =>
 const docsCheckerFiles = workerFiles.filter((file) =>
   ['localDevWorkerDocsLinkCheck.ts'].includes(path.basename(file)),
 );
+const telemetryFiles = workerFiles.filter((file) =>
+  [
+    'localDevWorkerLifecycleTelemetrySchema.ts',
+    'localDevWorkerLifecycleTelemetryPolicy.ts',
+    'localDevWorkerLifecycleTelemetryEvents.ts',
+    'localDevWorkerLifecycleTelemetryFixtures.ts',
+  ].includes(path.basename(file)),
+);
+const telemetryFixtureFiles = workerFiles.filter((file) =>
+  ['localDevWorkerLifecycleTelemetryFixtures.ts'].includes(path.basename(file)),
+);
 const goldenFixtureFiles = [
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.md'),
   path.join(workerRoot, 'golden', 'docker-smoke-lifecycle.fixture.json'),
@@ -299,6 +327,16 @@ const violations = [
     'worker-docs-checker-boundary',
   )),
   ...(await scanFiles(
+    telemetryFiles,
+    telemetryFileForbiddenPatterns,
+    'worker-telemetry-schema-boundary',
+  )),
+  ...(await scanFiles(
+    telemetryFixtureFiles,
+    goldenFixtureForbiddenPatterns,
+    'worker-telemetry-fixture-safety',
+  )),
+  ...(await scanFiles(
     goldenFixtureFiles,
     goldenFixtureForbiddenPatterns,
     'worker-golden-fixture-safety',
@@ -328,6 +366,12 @@ console.log(
 );
 console.log(
   `Docs checker files scanned for process APIs, src imports, and new Docker command strings: ${docsCheckerFiles.length}`,
+);
+console.log(
+  `Telemetry schema files scanned for process APIs, network calls, file writes, src imports, and new Docker command strings: ${telemetryFiles.length}`,
+);
+console.log(
+  `Telemetry fixture files scanned for unsafe static text: ${telemetryFixtureFiles.length}`,
 );
 console.log(`Golden fixture files scanned for unsafe static text: ${goldenFixtureFiles.length}`);
 console.log(

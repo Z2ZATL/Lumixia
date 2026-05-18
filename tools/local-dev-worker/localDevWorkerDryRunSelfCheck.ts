@@ -48,6 +48,11 @@ import {
   compareGoldenReportOutput,
   validateGoldenReportSafety,
 } from './localDevWorkerGoldenReportCheck.ts';
+import { localDevWorkerLifecycleTelemetryFixtures } from './localDevWorkerLifecycleTelemetryFixtures.ts';
+import {
+  sanitizeLocalDevWorkerTelemetryString,
+  validateLocalDevWorkerTelemetryEvent,
+} from './localDevWorkerLifecycleTelemetryPolicy.ts';
 import { assertTrustedManualReviewSource } from './localDevWorkerTrustedReview.ts';
 import { executeLocalDevWorkerVersionCommand } from './localDevWorkerVersionExecutionAdapter.ts';
 import { localDevWorkerVersionExecutionFixtures } from './localDevWorkerVersionExecutionFixtures.ts';
@@ -68,6 +73,7 @@ export interface LocalDevWorkerDryRunSelfCheckResult {
   checkedDockerSmokeLifecycleReportFixtures: number;
   checkedDockerSmokeLifecycleCliFixtures: number;
   checkedDockerSmokeLifecycleGoldenChecks: number;
+  checkedLifecycleTelemetryFixtures: number;
   failures: string[];
 }
 
@@ -1498,6 +1504,88 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
     failures,
   );
 
+  for (const fixture of localDevWorkerLifecycleTelemetryFixtures) {
+    const validation = validateLocalDevWorkerTelemetryEvent(fixture.event);
+    const jsonSummary = JSON.stringify(fixture.event, null, 2);
+    const repeatedJsonSummary = JSON.stringify(fixture.event, null, 2);
+    const parsedJson = JSON.parse(jsonSummary) as typeof fixture.event;
+
+    assertCondition(
+      validation.safe,
+      `${fixture.name}: telemetry validation failed with ${validation.issues
+        .map((item) => item.code)
+        .join(', ')}.`,
+      failures,
+    );
+    assertCondition(
+      fixture.event.eventKind === fixture.expectedEventKind,
+      `${fixture.name}: expected telemetry kind ${fixture.expectedEventKind}, got ${fixture.event.eventKind}.`,
+      failures,
+    );
+    assertCondition(
+      jsonSummary === repeatedJsonSummary,
+      `${fixture.name}: telemetry JSON must be deterministic.`,
+      failures,
+    );
+    assertCondition(
+      parsedJson.eventId === fixture.event.eventId &&
+        parsedJson.schemaVersion === fixture.event.schemaVersion &&
+        parsedJson.eventKind === fixture.event.eventKind,
+      `${fixture.name}: telemetry JSON must parse back to stable identifiers.`,
+      failures,
+    );
+    assertCondition(
+      fixture.event.localDevOnly === true &&
+        fixture.event.source === 'tools/local-dev-worker' &&
+        fixture.event.productionUiPath === false &&
+        fixture.event.srcImportPath === false,
+      `${fixture.name}: telemetry must remain local-dev worker only.`,
+      failures,
+    );
+    assertCondition(
+      fixture.event.containsSecrets === false &&
+        fixture.event.containsHostPaths === false &&
+        fixture.event.containsUserPrompt === false &&
+        fixture.event.containsEnvironment === false,
+      `${fixture.name}: telemetry sensitive-content flags must remain false.`,
+      failures,
+    );
+
+    for (const expected of fixture.expectedRedactedFragments ?? []) {
+      assertCondition(
+        jsonSummary.includes(expected),
+        `${fixture.name}: expected telemetry JSON to include redacted fragment ${expected}.`,
+        failures,
+      );
+    }
+
+    for (const forbidden of fixture.forbiddenPatterns ?? []) {
+      assertCondition(
+        !forbidden.test(jsonSummary),
+        `${fixture.name}: telemetry JSON matched forbidden pattern ${forbidden}.`,
+        failures,
+      );
+    }
+  }
+
+  const unsafeTelemetrySecret = sanitizeLocalDevWorkerTelemetryString(
+    ['API_KEY', '=fixture-value'].join(''),
+  );
+  const unsafeTelemetryHome = sanitizeLocalDevWorkerTelemetryString(
+    ['/Users', '/operator/project'].join(''),
+  );
+
+  assertCondition(
+    unsafeTelemetrySecret.includes('[REDACTED_SECRET]'),
+    'Telemetry sanitizer must redact secret-like assignments.',
+    failures,
+  );
+  assertCondition(
+    unsafeTelemetryHome.includes('[REDACTED_HOME_PATH]'),
+    'Telemetry sanitizer must redact home-looking paths.',
+    failures,
+  );
+
   return {
     passed: failures.length === 0,
     checkedDryRunFixtures: localDevWorkerDryRunFixtures.length,
@@ -1521,6 +1609,8 @@ export async function runLocalDevWorkerDryRunSelfCheckAsync(): Promise<LocalDevW
       localDevWorkerDockerSmokeLifecycleReportFixtures.length,
     checkedDockerSmokeLifecycleCliFixtures: 1,
     checkedDockerSmokeLifecycleGoldenChecks: 3,
+    checkedLifecycleTelemetryFixtures:
+      localDevWorkerLifecycleTelemetryFixtures.length,
     failures,
   };
 }
