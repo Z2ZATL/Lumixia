@@ -147,6 +147,8 @@ PR #34 adds operator-facing documentation for the current worker system, and PR 
 | [local-dev-worker-operator-guide.md](../../docs/dremo-code/local-dev-worker-operator-guide.md) | Explains the worker boundary, capability ladder, current execution surface, verification commands, fixture reports, golden checks, and safe future PRs. |
 | [local-dev-worker-troubleshooting.md](../../docs/dremo-code/local-dev-worker-troubleshooting.md) | Maps common verification, lifecycle, Docker local state, policy, and report symptoms to safe checks and safe fixes. |
 | [local-dev-worker-extension-playbook.md](../../docs/dremo-code/local-dev-worker-extension-playbook.md) | Describes allowed and forbidden future PR shapes plus review checklists for docs, reporting, process APIs, and Docker-related changes. |
+| [local-dev-worker-threat-model-v2.md](../../docs/dremo-code/local-dev-worker-threat-model-v2.md) | Documents current trust boundaries, assets, threats, mitigations, residual risks, and future security review gates. |
+| [local-dev-worker-threat-checklist.md](../../docs/dremo-code/local-dev-worker-threat-checklist.md) | Future PR author checklist for local-dev worker security scope and verification. |
 
 Run the docs link check after documentation changes:
 
@@ -177,7 +179,7 @@ npm run dremo:worker:telemetry:golden
 
 The checker reads the committed golden file, regenerates local-dev telemetry fixture JSON in memory, parses and validates both outputs, checks for secret/home-path/environment markers, and compares the result with stable key ordering. It does not upload, persist, transmit, store, or write runtime telemetry. It does not call networks, write databases, execute Docker, read `.env` files, read `process.env`, or import `src/`.
 
-## Current Execution Status After PR #38
+## Current Execution Status After PR #39
 
 | Area | Status |
 | --- | --- |
@@ -196,6 +198,7 @@ The checker reads the committed golden file, regenerates local-dev telemetry fix
 | Telemetry golden | Committed deterministic telemetry fixture JSON and fixture-only comparison protect schema output stability. No collection, upload, persistence, runtime file write, network, DB, Docker, browser, or production path exists. |
 | Architecture decision | ADR 0001 records the accepted local-dev worker boundary, Docker smoke lifecycle, safety invariants, verification stack, and future extension rules. |
 | Capability registry | The Dremo docs include an operator-facing registry of current capabilities, policies, adapters, fixtures, docs, and verification checks. |
+| Threat model | Threat model v2 and the threat checklist document assets, trust boundaries, current mitigations, residual risks, and future review gates. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

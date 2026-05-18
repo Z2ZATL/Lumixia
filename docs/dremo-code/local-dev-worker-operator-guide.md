@@ -14,6 +14,8 @@ The accepted architectural record is [ADR 0001: Dremo local-dev worker boundary 
 
 For a single operator-facing map of every current capability, policy, adapter, fixture, golden check, telemetry schema, and docs check, use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md).
 
+For security boundaries, assets, mitigations, residual risk, and future review gates, use the [local-dev worker threat model v2](./local-dev-worker-threat-model-v2.md). Before opening a future worker PR, run through the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md).
+
 ## Why It Is Outside `src/`
 
 `src/` is bundled for the browser. Browser-bundled code must never contain process execution APIs, Docker command adapters, local worker imports, service role keys, secrets, or any production execution path.
@@ -65,6 +67,7 @@ tools/local-dev-worker
 | PR #36 | Telemetry golden fixture checks | Fixture-only schema drift protection; no telemetry collection, upload, storage, network, DB, or runtime file writes. |
 | PR #37 | Architecture Decision Record | Documents the accepted worker boundary, safety invariants, capability ladder, verification stack, and future extension rules. |
 | PR #38 | Capability registry reference | Maps current executable, plan-only, report-only, schema-only, golden-check, and verification-only capabilities to files, fixtures, docs, and safety notes. |
+| PR #39 | Threat model v2 | Documents worker trust boundaries, assets, threats, mitigations, residual risks, and future security review gates. |
 
 ## What Is Currently Executable
 

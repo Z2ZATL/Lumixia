@@ -8,6 +8,8 @@ The accepted worker boundary decision is recorded in [ADR 0001: Dremo local-dev 
 
 Use the [local-dev worker capability registry](./local-dev-worker-capability-registry.md) before changing worker files so the capability, fixture, doc, and verification surfaces stay aligned.
 
+Use the [local-dev worker threat checklist](./local-dev-worker-threat-checklist.md) before opening a PR, and update the [threat model v2](./local-dev-worker-threat-model-v2.md) when a boundary or residual risk changes.
+
 ## Allowed Future PR Shapes
 
 | Shape | Examples |
@@ -64,6 +66,7 @@ If any answer is not yes, split the work into design/docs first.
 | Docs links | New docs linked from the docs index and worker README. |
 | ADRs | Boundary-level changes update ADR 0001 or add a new ADR before runtime behavior changes. |
 | Registry | Capability, fixture, doc, and verification maps stay current. |
+| Threat model | Threat checklist is satisfied and threat model v2 is updated for boundary or residual-risk changes. |
 
 ## Review Checklist For Telemetry Schema PRs
 
