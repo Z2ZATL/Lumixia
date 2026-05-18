@@ -52,6 +52,9 @@ This directory is intentionally outside `src/` so future local-dev Docker execut
 | `localDevWorkerDockerSmokeLifecycleReportPolicy.ts` | Stable lifecycle outcome-to-next-action mapping for local report summaries. |
 | `localDevWorkerDockerSmokeLifecycleReport.ts` | Sanitized Markdown and deterministic JSON report formatter for existing lifecycle results. |
 | `localDevWorkerDockerSmokeLifecycleReportFixtures.ts` | Fixtures for report outcome mapping, redaction, byte caps, and deterministic formatting. |
+| `localDevWorkerDockerSmokeLifecycleCliRequests.ts` | Exact request factory for the local-dev lifecycle CLI; it accepts no user-provided command, image, label, or cleanup target. |
+| `localDevWorkerDockerSmokeLifecycleCliFixtures.ts` | Deterministic dry-report fixture for CLI verification without Docker. |
+| `localDevWorkerDockerSmokeLifecycleCli.ts` | Local-dev-only CLI wrapper that prints sanitized Markdown or JSON reports from the existing lifecycle. |
 | `localDevWorkerTrustedReview.ts` | Trusted local manual-review helpers; browser/user payloads are not accepted as review evidence. |
 | `localDevWorkerVersionExecutionAdapter.ts` | Manually gated local-dev adapter for reviewed version/identity commands, including the Docker CLI version probe only. |
 | `localDevWorkerVersionExecutionFixtures.ts` | Execution fixtures for default-blocked, unsafe-blocked, optional-command, and reviewed local cases. |
@@ -80,7 +83,7 @@ node tools/local-dev-worker/localDevWorkerSafetyScan.mjs
 
 The scan covers `src/features/dremo-code/sandbox` because that folder is browser-bundled. It also checks all `src/` files for imports or references to worker implementation files. The frontend must not import this worker boundary.
 
-The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle and report formatter files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Guard/report fixtures may still contain denied command strings by design.
+The scan checks worker TypeScript files for process APIs too. Process APIs are allowed only in explicitly reviewed worker adapters: `localDevWorkerVersionExecutionAdapter.ts`, `localDevWorkerDockerReadinessAdapter.ts`, `localDevWorkerDockerContainerSmokeAdapter.ts`, and `localDevWorkerDockerCleanupAdapter.ts`. Lifecycle, report formatter, and lifecycle CLI files are included in the process API boundary scan and must not import `child_process`, call `execFile`, or construct new Docker commands. Guard/report fixtures may still contain denied command strings by design.
 
 ## Verification Scripts
 
@@ -89,11 +92,26 @@ npm run dremo:worker:typecheck
 npm run dremo:worker:selfcheck
 npm run dremo:worker:safety
 npm run dremo:worker:verify
+npm run dremo:worker:lifecycle:report:fixture
+npm run dremo:worker:lifecycle:report:fixture:json
 ```
 
-These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
+These scripts typecheck the worker contract, validation, trace, fixtures, lifecycle orchestrator, report formatter, CLI wrapper, and self-check harness, execute the fixture self-check, then run the browser-boundary safety scan. The self-check may attempt reviewed local version/identity commands, the readiness-only `docker version --format "{{json .}}"`, the PR #26/PR #28 exact smoke command, and the PR #29 exact cleanup command `docker rm -f lumixia-dremo-smoke-echo` under Docker-specific review. PR #30 lifecycle self-checks use dependency injection/fake adapters, so they do not require Docker Desktop, `alpine:3.20`, or an existing cleanup target. PR #31 report self-checks use fixture data only and validate deterministic Markdown/JSON formatting, redaction, and byte caps. PR #32 CLI fixture scripts print deterministic sanitized reports without Docker. Docker CLI, daemon, local image absence, or missing cleanup target is treated as structured non-safety output.
 
-## Current Execution Status After PR #31
+## Local-dev Lifecycle Report CLI
+
+PR #32 adds a local-dev-only CLI wrapper under `tools/local-dev-worker`. It accepts only report-format flags and never accepts a command, image, container name, label, cleanup target, environment variable, workspace path, or secret as input.
+
+```powershell
+npm run dremo:worker:lifecycle:report
+npm run dremo:worker:lifecycle:report:json
+npm run dremo:worker:lifecycle:report:fixture
+npm run dremo:worker:lifecycle:report:fixture:json
+```
+
+The default report commands compose the existing reviewed lifecycle only. The fixture commands use deterministic fake lifecycle data and do not require Docker Desktop, `alpine:3.20`, or a cleanup target.
+
+## Current Execution Status After PR #32
 
 | Area | Status |
 | --- | --- |
@@ -105,6 +123,7 @@ These scripts typecheck the worker contract, validation, trace, fixtures, lifecy
 | Cleanup | One exact reviewed local-dev cleanup command may execute: `docker rm -f lumixia-dremo-smoke-echo`. Missing target is structured and acceptable. No arbitrary target, container ID, wildcard, multiple target, ps/inspect/stop/kill, or prune path exists. |
 | Lifecycle | The worker can orchestrate readiness -> exact smoke -> audit -> exact cleanup with existing adapters only. No new command, process API file, network, mount, or browser path is added. |
 | Lifecycle reports | Existing lifecycle results can be formatted as sanitized Markdown and deterministic JSON summaries for future local tooling only. |
+| Lifecycle CLI | Local-dev-only CLI wrapper can print Markdown or JSON reports from the existing lifecycle. Fixture mode does not call Docker. No browser, production, or `src/` import path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | Disabled; no worker runtime writes. |
 | Secrets | Not read. |

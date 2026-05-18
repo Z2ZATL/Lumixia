@@ -81,7 +81,9 @@ PR #30 adds a local-dev Docker smoke lifecycle orchestrator that composes the al
 
 PR #31 adds lifecycle report formatting utilities for future CLI/UI/audit display. Reports are generated from existing lifecycle results only, re-sanitize stdout/stderr previews, map outcomes to stable next actions, and do not add Docker execution, cleanup execution, browser integration, production UI, Supabase, SQL, or billing behavior.
 
-## Current Execution Status After PR #31
+PR #32 adds a local-dev CLI wrapper under `tools/local-dev-worker` for the existing Docker smoke lifecycle report. It can print sanitized Markdown or deterministic JSON, includes a dry-report fixture mode that does not require Docker, accepts no user-provided command/image/container/cleanup input, and is not imported by `src/` or exposed through Dremo Lab/production UI.
+
+## Current Execution Status After PR #32
 
 | Area | Status |
 | --- | --- |
@@ -94,6 +96,7 @@ PR #31 adds lifecycle report formatting utilities for future CLI/UI/audit displa
 | Cleanup | One exact reviewed local-dev cleanup command may run: `docker rm -f lumixia-dremo-smoke-echo`. Arbitrary names, container IDs, wildcards, multiple targets, `docker ps`, `docker inspect`, `docker stop`, `docker kill`, and prune remain denied. |
 | Lifecycle orchestration | Local-dev worker can compose readiness -> exact smoke -> audit -> exact cleanup using existing reviewed adapters only. Dependency-injected self-checks cover ordering and cleanup decisions without requiring Docker. |
 | Lifecycle reports | Worker can format existing lifecycle results into sanitized Markdown and deterministic JSON summaries for future local tooling. No browser or production path exists. |
+| Lifecycle CLI | Worker can print those sanitized reports from a local-dev-only CLI. Fixture mode is deterministic and does not invoke Docker. No browser, production, Supabase, SQL, billing, branding, or TerminalWorkspace path exists. |
 | Network | Disabled for container smoke with `--network none`; no network command surface exists. |
 | File writes | No worker runtime writes. |
 | Secrets | Not read or injected. |
@@ -101,4 +104,4 @@ PR #31 adds lifecycle report formatting utilities for future CLI/UI/audit displa
 
 ## Recommended Next PR
 
-Future PR #32 should remain reporting/telemetry-oriented or add a local CLI wrapper around existing reports. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.
+Future PR #33 should remain reporting/telemetry-oriented, for example adding local-only telemetry export formatting or runbook notes. It should not expand to arbitrary repo execution, workspace mounts, network, package install, or broader Docker runtime commands.

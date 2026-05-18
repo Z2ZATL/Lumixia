@@ -175,6 +175,15 @@ PR #31 implementation status:
 | Redaction coverage | Report fixtures cover secret-like strings, service role markers, `.env` references, home paths, and long output previews. |
 | Runtime expansion | No new Docker command, process API file, cleanup execution, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
 
+PR #32 implementation status:
+
+| Gate | Status |
+| --- | --- |
+| Local-dev CLI wrapper | Added under `tools/local-dev-worker` only for the existing smoke lifecycle report. |
+| Request factory | Builds exact readiness, smoke, and cleanup requests from existing constants and trusted local review helpers. It accepts no user-provided command, image, container name, label, cleanup target, workspace path, or secret. |
+| Fixture mode | Added deterministic dry-report mode for Markdown/JSON output without Docker, Docker Desktop, local images, or cleanup targets. |
+| Runtime expansion | No new Docker command, process API file, cleanup execution, image, pull/build, compose, exec/cp/login, mount, network, shell, workspace, browser, production, Supabase, SQL, or billing capability was added. |
+
 ## 2. Threat Model
 
 | Threat | Why it matters | Required control |
@@ -392,9 +401,9 @@ If local-dev Docker execution behaves unexpectedly:
 
 ## 12. Next PR Recommendation
 
-Recommended next PR: **Add local lifecycle telemetry/report wrapper** or further refine workspace/artifact policy before any broader execution.
+Recommended next PR: **Add local lifecycle telemetry export formatting** or further refine workspace/artifact policy before any broader execution.
 
-PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, and PR #31 formats lifecycle results safely. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
+PR #24 fulfills readiness classification, PR #25 fulfills the design-gate layer, PR #26 adds the first exact no-network/no-mount smoke command, PR #27 adds audit normalization plus cleanup-risk metadata, PR #28 adds deterministic naming plus cleanup planning, PR #29 adds exact cleanup execution, PR #30 composes those pieces into a local-dev lifecycle, PR #31 formats lifecycle results safely, and PR #32 adds a local-dev CLI wrapper around those existing reports. Do not jump directly to arbitrary `docker run`; the next Docker step should stay conservative:
 
 | Scope | Requirement |
 | --- | --- |
